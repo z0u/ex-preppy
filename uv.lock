@@ -1839,6 +1839,7 @@ dependencies = [
     { name = "requests" },
     { name = "scikit-image" },
     { name = "scikit-learn" },
+    { name = "sympy" },
 ]
 
 [package.optional-dependencies]
@@ -1877,6 +1878,7 @@ requires-dist = [
     { name = "requests", specifier = ">=2.32.3" },
     { name = "scikit-image", specifier = ">=0.25.2" },
     { name = "scikit-learn", specifier = ">=1.6.1" },
+    { name = "sympy", specifier = ">=1.13.1" },
     { name = "torch", marker = "extra == 'torch'", specifier = ">=2.6.0" },
     { name = "torch", marker = "extra == 'torch-cpu'", specifier = ">=2.6.0", index = "https://download.pytorch.org/whl/cpu", conflict = { package = "utils", extra = "torch-cpu" } },
 ]

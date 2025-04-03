@@ -13,6 +13,7 @@ dependencies = [
     "requests>=2.32.3",
     "scikit-image>=0.25.2",
     "scikit-learn>=1.6.1",
+    "sympy>=1.13.1",
 ]
 
 [project.optional-dependencies]
