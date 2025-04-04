@@ -36,9 +36,9 @@ case "${1:-all}" in
     check)
         "$SCRIPT_DIR/format.sh"
         "$SCRIPT_DIR/lint.sh"
-        "$SCRIPT_DIR/deadcode.sh"
         "$SCRIPT_DIR/typecheck.sh"
         "$SCRIPT_DIR/test.sh"
+        "$SCRIPT_DIR/deadcode.sh"
         ;;
     *)
         # Important: heredoc indented with tab characters.

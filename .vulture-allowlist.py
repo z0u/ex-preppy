@@ -30,3 +30,7 @@ total_chars  # unused variable (src/experiment/config.py:79)
 total_tokens  # unused variable (src/experiment/config.py:76)
 training_tokens  # unused variable (src/experiment/training/metrics.py:8)
 val_loss  # unused variable (src/experiment/training/metrics.py:7)
+
+lime  # unused variable (src/ex_color/data.py:120)
+azure  # unused variable (src/ex_color/data.py:125)
+pink  # unused variable (src/ex_color/data.py:129)
