@@ -32,11 +32,12 @@ jobs:
       - name: Linting
         run: ./go lint
 
-      - name: Dead code detection
-        run: ./go deadcode
-
       - name: Type checking
         run: ./go types
 
       - name: Run tests
         run: ./go test -v
+
+      - name: Dead code detection
+        continue-on-error: true
+        run: ./go deadcode

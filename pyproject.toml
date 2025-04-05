@@ -137,7 +137,7 @@ ignore_names = [
     "setUp",
     "tearDown"
 ]
-make_whitelist = true
+# make_whitelist = true
 min_confidence = 60
 paths = [
     "src/",
