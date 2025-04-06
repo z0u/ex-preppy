@@ -1,116 +1,26 @@
-# mi-ni — AI Research Template
+# DevInterp experiments with color embeddings
 
-> **<ruby>見<rt>み</rt>に</ruby> /mi·ni/** — _with intent to see_ [^etymology]
+This is a series of experiments in which we attempt to impose structure on (latent) embeddings. Ultimately, the goal is to develop a capability to structure the latent spaces in complex models like LLMs.
 
-[^etymology]: From 見に行く (mi-ni iku), meaning "to go for the purpose of seeing something." This library is about small AI experiments—quick, lightweight explorations to try and see what happens.
+## Background
 
-&nbsp;
+Recent experiments have provided some evidence that "bad" behaviors in LLMS cluster together (such as _writing malicious code_ and _being racist_). Although surprising, it makes some intuitive sense: perhaps such behaviors cluster together because it's just the most efficient way to compress knowledge. However, _intervening_ on model behavior remains a tremendous challenge — partly because we don't know which directions in latent space correspond to undesirable traits, and we don't know how tangled up they might be with benign concepts. Indeed, attempts to align models to display "good" behavior often comes at the cost of reduced performance overall.
 
-This is a template repository for doing AI research. Features:
+We hope that this research will reveal more precise and robust ways to constrain the capabilities of LLMs. In contrast to mech interp — which attempts to discover model characteristics _after_ training — we anticipate that anchoring core concepts to known directions will make alignment efforts more robust, through two mechanisms:
 
-- **Local Python notebooks**
-- **Remote per-function GPU compute** [^modal]
-- **Inline visualization** with remote-to-local callbacks
-- **AI-assisted coding** with Copilot/VS Code
+1. The relevant directions would be known _even before training_, so you don't need to look for them. This could improve the prospect of both measuring model alignment throughout training, and intervening on misaligned behavior after training.
+2. Directions of interest should act as attractors for similar concepts, reducing the chance that unrelated (benign) concepts become entangled with them.
 
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/z0u/mi-ni)
+## Preliminary experiments with color
 
-&nbsp;
+We begin with some experiments with color, because color spaces are well defined and highly intuitive for visualization.
 
-![Screen recording of a notebook cell in VS Code, with code to run a distributed training job and an inline loss chart that updates in real-time.](https://github.com/user-attachments/assets/6eb94b46-0b8f-4cd2-b200-abcec86c88cd)
+1. [Color data](ex-1.1-color-data.ipynb): Exploration of ways to construct and visualize color spaces such as RGB and HSV.
+2. [MLP bottleneck](ex-1.2-color-mlp-bottleneck.ipynb): A 2-layer MLP autoencoder (extremely simple network) that squeezes bright, saturated RGB data through a 2D embedding layer. The network successfully discovers the color wheel — although it needs some help, in the form of explicit normalization.
+3. [Curriculum learning](ex-1.3-color-mlp-curriculum.ipynb): The same MLP, but with a 3D embedding layer. Curriculum learning and regularization are used to encourage the model to discover the color wheel without explicit normalization. The hues are embedded into the first two dimensions (as before); later phases in the curriculum add varying tones (values), which naturally balloon out into the third dimension.
 
-Above: screen recording of a local notebook running a remote training job. `train()` is a function that runs in the cloud (with a GPU), and `track()` is a function that runs locally — even when called from `train`!
+## Future work
 
-<details><summary>Code for the above demo</summary>
-
-The code shown in the screen recording is [^recording-correction]:
-
-```python
-@run.hither
-async def track(loss: float):
-    history.append(loss)
-    plot(history)
-
-@run.thither(gpu='L4')
-async def train(epochs: int, track):
-    for _ in range(epochs):
-        track(some_training_function())
-    print('Training complete')
-
-async with run(), track as callback:
-    await train(25, callback)
-```
-
-Read about how it works in [doc/hither-thither.md](doc/hither-thither.md).
-
-[^recording-correction]: The recording contained a mistake: it assigned the return value of `train()` to a variable called `model`, but the function doesn't actually return anything! It could, though; see [the Getting Started notebook][getting-started].
-</details>
-
-<details><summary>More cool features</summary>
-
-- [Dev container][dc] for a consistent environment, both locally and in [Codespaces][codespaces]
-- ML stack ([PyTorch, Polars, etc.](pyproject.toml))
-- Modern package management with [uv]
-- Pre-configured for good engineering practices: tests, linting, type-checking (optional!)
-</details>
-
-[^modal]: [Modal] is used for remote compute. They charge per-second, billed for the duration of your function.
-
-
-## Getting started
-
-First, [open in GitHub Codespaces](https://codespaces.new/z0u/mi-ni). Then:
-
-```bash
-./go install cpu  # CPU deps for local venv
-./go auth         # Authenticate with Modal for remote compute
-```
-
-Open the [Getting Started notebook][getting-started] and try it out (choose `.venv/bin/python3` as the kernel). For a more complete example, have a look at the [nanoGPT notebook](nanogpt.ipynb).
-
-[getting-started]: getting-started.ipynb
-[codespaces]: https://github.com/features/codespaces
-
-
-<details><summary>Virtual environment</summary>
-
-The Python environment is configured when the dev container is created.
-
-Use [uv] to add and remove packages, and to run scripts:
-
-```bash
-uv add plotly --group local
-uv run python example.py
-```
-</details>
-
-<details>
-<summary>Restarting the language server (VS Code)</summary>
-
-If you open a Python file before the setup is complete, you may need to restart the Python language server.
-
-- Open a `.py` or `.ipynb` file
-- Open the command pallette with <kbd>⇧</kbd><kbd>⌘</kbd><kbd>P</kbd> or <kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>P</kbd>
-- Run _Python: Restart Language Server_.
-</details>
-
-[dc]: https://containers.dev
-[Modal]: https://modal.com
-[uv]: https://astral.sh/uv
-
-
-## Contributing & licence
-
-This project is dedicated to the public domain [^unlicense][^attrib]. In your own experiments, there's no need to contribute back! The code is yours to modify as you please.
-
-If you do want to contribute to _this template_, then fork it as usual. Before making a pull request, run:
-
-```bash
-./go check
-```
-
-[^not-fork]: Since your project isn't a fork, you don't need to worry about keeping the code in sync, and you can add and remove Python packages as you wish.
-
-[^unlicense]: Technically, the licence is the [Unlicense](https://unlicense.org), which is about as close as you can get to "do whatever you want".
-
-[^attrib]: Exception: Code in `src/experiment` is derived from [nanoGPT](https://github.com/karpathy/nanoGPT) by Andrej Karpathy and is subject to MIT license terms. See the [LICENSE](LICENSE) file for details.
+- Demonstrate intervention at inference time, showing that some colors can be reliably muted without affecting those that are not "close". For example, cause the network to fail to reconstruct _red_ and colors close to red, but allow _orange_.
+- Demonstrate that the latent space can be further manipulated to completely remove a representation. For example, pressure the network to reconfigure the space so that _only_ red colors are on one particular embedding dimension, and then _delete_ that dimension from the network. Hopefully, this would make it difficult to fine-tune the model later to restore the deleted capability.
+- Demonstrate a proof-of-concept transformer network with similar latent space structure. It could be a very small transfomer that can perform simple color operations, such as mixing colors.
