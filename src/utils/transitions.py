@@ -12,10 +12,11 @@ class MinimumJerkTimingFunction:
 
     def __init__(
         self,
-        initial_value: float = 0.0,
-        initial_velocity: float = 0.0,
-        initial_acceleration: float = 0.0,
-        final_value: float | None = None,
+        initial_value: float,
+        initial_velocity: float,
+        initial_acceleration: float,
+        final_value: float,
+        duration: float,
     ):
         """
         Initialize the interpolator with starting conditions.
@@ -23,14 +24,16 @@ class MinimumJerkTimingFunction:
         Args:
             initial_value: Starting value
             initial_velocity: Starting velocity (rate of change)
-            initial_acceleration: Starting acceleration (optional, default 0)
-            final_value: Target final value (optional, default None)
+            initial_acceleration: Starting acceleration
+            final_value: Target final value
+            duration: Duration of the transition (unitless)
         """
         self.initial_value = initial_value
         self.initial_velocity = initial_velocity
         self.initial_acceleration = initial_acceleration
 
-        self.final_value = final_value if final_value is not None else self.initial_value
+        self.final_value = final_value
+        self.duration = duration
         self.coeffs = self._calculate_coefficients(
             y0=self.initial_value,
             v0=self.initial_velocity,
@@ -38,7 +41,7 @@ class MinimumJerkTimingFunction:
             y1=self.final_value,
             v1=0.0,  # Target velocity (typically zero)
             a1=0.0,  # Target acceleration (typically zero)
-            T=1.0,  # Duration (normalized to 1.0)
+            T=self.duration,
         )
 
     def _calculate_coefficients(self, y0, v0, a0, y1, v1, a1, T):
@@ -92,33 +95,33 @@ class MinimumJerkTimingFunction:
 
         return [c0, c1, c2, c3, c4, c5]
 
-    def __call__(self, frac: float):
+    def __call__(self, t: float):
         """
         Get the interpolated value at a specific time without changing internal state.
 
         Args:
-            frac: Fraction of the total duration to evaluate (0 to 1)
+            t: Time to evaluate (0 to duration)
 
         Returns:
             The value at time t
         """
         # Clamp to duration
-        if frac >= 1.0:
+        if t >= self.duration:
             return self.final_value
 
         # Calculate using the polynomial
         c0, c1, c2, c3, c4, c5 = self.coeffs
-        return c0 + c1 * frac + c2 * frac**2 + c3 * frac**3 + c4 * frac**4 + c5 * frac**5
+        return c0 + c1 * t + c2 * t**2 + c3 * t**3 + c4 * t**4 + c5 * t**5
 
-    def get_state(self, frac: float = 0.0):
+    def get_state(self, t: float):
         c0, c1, c2, c3, c4, c5 = self.coeffs
-        value = c0 + c1 * frac + c2 * frac**2 + c3 * frac**3 + c4 * frac**4 + c5 * frac**5
+        value = c0 + c1 * t + c2 * t**2 + c3 * t**3 + c4 * t**4 + c5 * t**5
 
         # Calculate velocity (first derivative)
-        velocity = c1 + 2 * c2 * frac + 3 * c3 * frac**2 + 4 * c4 * frac**3 + 5 * c5 * frac**4
+        velocity = c1 + 2 * c2 * t + 3 * c3 * t**2 + 4 * c4 * t**3 + 5 * c5 * t**4
 
         # Calculate acceleration (second derivative)
-        acceleration = 2 * c2 + 6 * c3 * frac + 12 * c4 * frac**2 + 20 * c5 * frac**3
+        acceleration = 2 * c2 + 6 * c3 * t + 12 * c4 * t**2 + 20 * c5 * t**3
 
         return value, velocity, acceleration
 
@@ -126,65 +129,100 @@ class MinimumJerkTimingFunction:
 class SmoothProp:
     """Stores a value, and smoothly transitions new value on change."""
 
-    interpolator: MinimumJerkTimingFunction | None
+    _interpolator: MinimumJerkTimingFunction | None
+    _ctime: float
+    """The number of steps that have been taken since the last set() call."""
+    _duration: float
+    """The number of steps to take to reach the target value."""
+    _value: float
+    """The target value"""
 
-    def __init__(self, value: float, transition_duration: float = 0.0):
-        self.transition_duration = transition_duration
+    def __init__(self, value: float, duration: float = 0.0):
+        """
+        Initialize the SmoothProp with a starting value and optional duration.
+
+        Args:
+            value: Initial value
+            duration: Duration of the transition (unitless; see `step()`)
+        """
+        self._duration = duration
         self._value = float(value)
-        self.interpolator = None
-        self.ctime = 0.0
+        self._interpolator = None
+        self._ctime = 0.0
 
     def step(self, n=1.0):
-        self.ctime += float(n)
+        """
+        Progress the internal clock forward.
+
+        Args:
+            n: Amount to step the clock forward. This is a unitless value, and could
+            mean "frames" or some real amount of time. For example, if called with the
+            elapsed real time in seconds, the duration would be in seconds.
+        """
+        self._ctime += float(n)
+        # Clear the interpolator if we've reached or exceeded the duration
+        if self._interpolator is not None and (np.isclose(self._ctime, self.duration) or self._ctime > self.duration):
+            self._interpolator = None
+
+    def set(self, value: float | None = None, duration: float | None = None):
+        """
+        Set a new target value and/or duration for the transition.
+
+        Args:
+            value: Target value to transition to. If `None`, keeps the current value.
+            duration: Duration of the transition. If `None`, keeps the current duration.
+
+        Always resets the internal clock, therefore, the target value may only be
+        reached after the specified duration — even if the current value is close.
+        Depending on the current velocity, it may also overshoot (and come back).
+        """
+        value = value if value is not None else self._value
+        duration = duration if duration is not None else self._duration
+
+        if duration <= 0.0:
+            # If duration is 0, just set the value immediately
+            self._value = float(value)
+            self._interpolator = None
+            self._ctime = 0.0
+            return
+
+        if self._interpolator is not None:
+            current_value, current_velocity, current_acceleration = self._interpolator.get_state(self._ctime)
+        else:
+            current_value, current_velocity, current_acceleration = self._value, 0.0, 0.0
+
+        if current_value == value and current_velocity == 0.0 and current_acceleration == 0.0:
+            # Already reached steady state
+            return
+
+        self._interpolator = MinimumJerkTimingFunction(
+            initial_value=current_value,
+            initial_velocity=current_velocity,
+            initial_acceleration=current_acceleration,
+            final_value=value,
+            duration=duration,
+        )
+        self._ctime = 0.0
+        self._value = float(value)
 
     @property
-    def transition_duration(self):
-        return self._transition_duration
+    def duration(self):
+        """
+        Get the duration of the transition.
 
-    @transition_duration.setter
-    def transition_duration(self, duration: float):
-        """Set the transition duration."""
-        if np.isclose(duration, 0.0):
-            duration = 0.0
-        if duration < 0.0:
-            raise ValueError("Transition duration must be non-negative.")
-        self._transition_duration = duration
-
-    @property
-    def frac(self):
-        # Return 1.0 when transition_duration is 0 to avoid division by zero
-        if np.isclose(self.transition_duration, 0.0):
-            return 1.0
-
-        frac = self.ctime / self.transition_duration
-        if np.isclose(frac, 1.0) or frac > 1.0:
-            return 1.0
-        if np.isclose(frac, 0.0) or frac < 0.0:
-            return 0.0
-        return frac
+        This is a unitless value. The actual time it takes depends on how `step()` is
+        called.
+        """
+        return self._duration
 
     @property
     def value(self):
         """Get the smoothed value, according to the timing function."""
-        if self.frac >= 1.0:
-            self.interpolator = None
-        if not self.interpolator:
+        if self._interpolator is None:
             return self._value
-        return self.interpolator(self.frac)
 
-    @value.setter
-    def value(self, new_value: float):
-        """Set the target value."""
-        if new_value != self._value and self.transition_duration > 0:
-            if self.interpolator is None:
-                value, velocity, acceleration = self._value, 0.0, 0.0
-            else:
-                value, velocity, acceleration = self.interpolator.get_state(self.frac)
-            self.interpolator = MinimumJerkTimingFunction(
-                initial_value=value,
-                initial_velocity=velocity,
-                initial_acceleration=acceleration,
-                final_value=new_value,
-            )
-        self.ctime = 0.0
-        self._value = new_value
+        # Clamp time to duration
+        if np.isclose(self._ctime, self.duration) or self._ctime > self.duration:
+            return self._value
+
+        return self._interpolator(self._ctime)
