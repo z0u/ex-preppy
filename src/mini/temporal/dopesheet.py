@@ -164,7 +164,6 @@ class Dopesheet:
         return mdtable
 
 
-
 def style_dopesheet(df: pd.DataFrame) -> Styler:
     import pandas as pd
 

@@ -11,4 +11,5 @@ class Timeline:
     def add_action(self, action: str, t: int):
         """Add an action to the timeline."""
 
-    def add_prop(self, name: str, )
+    def add_prop(self, name: str):
+        pass
