@@ -1,5 +1,5 @@
 import pytest
-from src.utils.transitions import MinimumJerkTimingFunction, SmoothProp
+from mini.temporal.transitions import MinimumJerkTimingFunction, SmoothProp
 
 
 class TestMinimumJerkTimingFunction:

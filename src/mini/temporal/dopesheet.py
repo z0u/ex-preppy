@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import logging
-from typing import Literal, cast, overload
+import re
+from typing import Literal, overload
 
 import pandas as pd
 from pandas.io.formats.style import Styler
@@ -44,18 +45,49 @@ class Step:
 
 
 class Dopesheet:
+    """
+    A class to represent a dope sheet for parameter keyframes.
+
+    ## Background
+    A dope sheet (or exposure sheet) is a tool used in animation to organize and plan
+    the timing of keyframes and actions. It typically helps animators visualize the
+    sequence of events and manage the timing of actions effectively. It consists of a
+    grid, where each row is a step in the animation, and each column represents a
+    different property or action.
+
+    ## Structure
+    Dope sheets as defined by this class have the following columns:
+    - STEP: The step/frame/epoch number
+    - PHASE: The name of the phase of the curriculum (optional)
+    - ACTION: The action to take (event to emit) (optional)
+    - *: Other columns are interpreted as parameters to set
+
+    https://en.m.wikipedia.org/wiki/Exposure_sheet
+    """
+
     _df: pd.DataFrame
 
     def __init__(self, df: pd.DataFrame):
         self._df = resolve(df.copy())
 
     def __len__(self):
+        """Get the number of steps in the dope sheet."""
         return self._df['STEP'].max()
 
     def __getitem__(self, step: int) -> Step:
+        """
+        Get the step details for the given step number.
+
+        The sheet may not contain a keyframe for the given step. In that case, the
+        current phase details will be returned without any keyed properties.
+        """
         # Get the index of the nearest step that is less than or equal to `step`
-        idx: int = self._df[self._df['STEP'] <= step].index.max() or 0
-        phase: str = self._df['PHASE'][idx] or ''
+        idx = self._df[self._df['STEP'] <= step].last_valid_index() or 0
+
+        # Find the most recent phase before or at this step
+        phase_idx = self._df[self._df['STEP'] <= step]['PHASE'].last_valid_index() or 0
+        phase = self._df['PHASE'][phase_idx] or ''
+        phase_start = self._df['STEP'][phase_idx] == step
 
         _t: int = self._df['STEP'][idx]
         if _t != step:
@@ -85,7 +117,7 @@ class Dopesheet:
             )
             keyed_props.append(k)
 
-        return Step(t=step, phase=phase, phase_start=True, actions=actions, keyed_props=keyed_props)
+        return Step(t=step, phase=phase, phase_start=phase_start, actions=actions, keyed_props=keyed_props)
 
     @property
     def props(self) -> list[str]:
@@ -123,6 +155,14 @@ class Dopesheet:
         if styled:
             df = style_dopesheet(df)
         return df
+
+    def to_markdown(self) -> str:
+        mdtable = self._df.to_markdown(index=False, tablefmt='pipe')
+        # Run twice to account for overlapping matches
+        mdtable = re.sub(r'(\|\s*)nan(\s*\|)', r'\1   \2', mdtable, flags=re.IGNORECASE)
+        mdtable = re.sub(r'(\|\s*)nan(\s*\|)', r'\1   \2', mdtable, flags=re.IGNORECASE)
+        return mdtable
+
 
 
 def style_dopesheet(df: pd.DataFrame) -> Styler:
@@ -176,7 +216,6 @@ def style_dopesheet(df: pd.DataFrame) -> Styler:
 def resolve(df: pd.DataFrame) -> pd.DataFrame:
     df['STEP'] = resolve_timesteps(df['STEP'])
     df = df.sort_values(by='STEP', ignore_index=True).reset_index(drop=True)
-    df['PHASE'] = df['PHASE'].ffill()
     return df
 
 
