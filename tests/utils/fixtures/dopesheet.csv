@@ -1,0 +1,5 @@
+STEP,PHASE,ACTION,x,y,z
+0,One,,0.01,,1
++0.4,,foo,,0.8,2
+10,Two,,0.001,,3
+11,Fin,,,0,4
