@@ -10,6 +10,9 @@ from pandas.io.formats.style import Styler
 log = logging.getLogger(__name__)
 
 
+RESERVED_COLS = ('STEP', 'PHASE', 'ACTION')
+
+
 @dataclass
 class Key:
     prop: str

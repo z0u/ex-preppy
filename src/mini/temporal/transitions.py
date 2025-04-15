@@ -34,19 +34,24 @@ class MinimumJerkTimingFunction:
 
         self.final_value = final_value
         self.duration = duration
-        self.coeffs = self._calculate_coefficients(
-            y0=self.initial_value,
-            v0=self.initial_velocity,
-            a0=self.initial_acceleration,
-            y1=self.final_value,
-            v1=0.0,  # Target velocity (typically zero)
-            a1=0.0,  # Target acceleration (typically zero)
-            T=self.duration,
-        )
+        # Handle zero duration case to avoid division by zero
+        if np.isclose(duration, 0.0):
+            self.coeffs = [initial_value, 0.0, 0.0, 0.0, 0.0, 0.0]
+            self.final_value = initial_value
+        else:
+            self.coeffs = self._calculate_coefficients(
+                y0=self.initial_value,
+                v0=self.initial_velocity,
+                a0=self.initial_acceleration,
+                y1=self.final_value,
+                v1=0.0,  # Target velocity (typically zero)
+                a1=0.0,  # Target acceleration (typically zero)
+                T=self.duration,
+            )
 
     def _calculate_coefficients(self, y0, v0, a0, y1, v1, a1, T):
         """
-        Calculate the coefficients for the 5th-degree polynomial.
+        Calculate the coefficients for the 5th-degree polynomial using normalized time tau = t / T.
 
         Args:
             y0: Initial position
@@ -58,46 +63,47 @@ class MinimumJerkTimingFunction:
             T: Duration
 
         Returns:
-            List of 6 coefficients [c0, c1, c2, c3, c4, c5]
+            List of 6 coefficients [c0, c1, c2, c3, c4, c5] for y(tau)
         """
-        # First 3 coefficients are determined by initial conditions
+        # Coefficients based on initial conditions at tau = 0
         c0 = y0
-        c1 = v0
-        c2 = a0 / 2.0
+        c1 = v0 * T  # Scaled initial velocity: dy/dtau = dy/dt * dt/dtau = v0 * T
+        c2 = a0 * T**2 / 2.0  # Scaled initial acceleration: d^2y/dtau^2 = d^2y/dt^2 * (dt/dtau)^2 = a0 * T^2
 
-        # Set up the system of equations for the remaining coefficients
-        T2 = T * T
-        T3 = T2 * T
-        T4 = T3 * T
-        T5 = T4 * T
-
-        # Right-hand side of the equation
-        b1 = y1 - y0 - v0 * T - (a0 / 2.0) * T2
-        b2 = v1 - v0 - a0 * T
-        b3 = a1 - a0
-
-        # Coefficient matrix
+        # System of equations for c3, c4, c5 based on final conditions at tau = 1
+        # Matrix A is constant for the normalized system
         A = np.array(
             [
-                [T3, T4, T5],
-                [3 * T2, 4 * T3, 5 * T4],
-                [6 * T, 12 * T2, 20 * T3],
+                [1.0, 1.0, 1.0],
+                [3.0, 4.0, 5.0],
+                [6.0, 12.0, 20.0],
             ],
         )
 
+        # Right-hand side vector b, incorporating scaled target velocity and acceleration
+        b1 = y1 - c0 - c1 - c2
+        b2 = v1 * T - c1 - 2 * c2  # Scaled target velocity
+        b3 = a1 * T**2 - 2 * c2  # Scaled target acceleration
+
         b = np.array([b1, b2, b3])
 
-        # Solve the system of equations
-        x = np.linalg.solve(A, b)
+        # Solve the system A * x = b for x = [c3, c4, c5]
+        try:
+            x = np.linalg.solve(A, b)
+        except np.linalg.LinAlgError:
+            print(f'Warning: Linear algebra solver failed for T={T}. Using fallback coefficients.')  # noqa: T201
+            c3 = y1 - c0 - c1 - c2
+            c4 = 0.0
+            c5 = 0.0
+            x = np.array([c3, c4, c5])
 
-        # Extract the coefficients
         c3, c4, c5 = x
 
         return [c0, c1, c2, c3, c4, c5]
 
     def __call__(self, t: float):
         """
-        Get the interpolated value at a specific time without changing internal state.
+        Get the interpolated value at a specific time t.
 
         Args:
             t: Time to evaluate (0 to duration)
@@ -105,23 +111,53 @@ class MinimumJerkTimingFunction:
         Returns:
             The value at time t
         """
-        # Clamp to duration
-        if t >= self.duration:
+        if np.isclose(self.duration, 0.0):
             return self.final_value
 
-        # Calculate using the polynomial
+        # Normalize time
+        tau = t / self.duration
+
+        # Clamp tau to [0, 1]
+        tau = np.clip(tau, 0.0, 1.0)
+
+        # If tau is 1 (or very close), ensure final value is exactly reached
+        if np.isclose(tau, 1.0):
+            return self.final_value
+
+        # Calculate using the polynomial in tau
         c0, c1, c2, c3, c4, c5 = self.coeffs
-        return c0 + c1 * t + c2 * t**2 + c3 * t**3 + c4 * t**4 + c5 * t**5
+        return c0 + c1 * tau + c2 * tau**2 + c3 * tau**3 + c4 * tau**4 + c5 * tau**5
 
     def get_state(self, t: float):
+        """Get the value, velocity, and acceleration at time t."""
+        if np.isclose(self.duration, 0.0):
+            return self.initial_value, 0.0, 0.0
+
+        # Normalize time
+        tau = t / self.duration
+        # Clamp tau to [0, 1]
+        tau = np.clip(tau, 0.0, 1.0)
+
         c0, c1, c2, c3, c4, c5 = self.coeffs
-        value = c0 + c1 * t + c2 * t**2 + c3 * t**3 + c4 * t**4 + c5 * t**5
 
-        # Calculate velocity (first derivative)
-        velocity = c1 + 2 * c2 * t + 3 * c3 * t**2 + 4 * c4 * t**3 + 5 * c5 * t**4
+        # Calculate value y(tau)
+        value = c0 + c1 * tau + c2 * tau**2 + c3 * tau**3 + c4 * tau**4 + c5 * tau**5
 
-        # Calculate acceleration (second derivative)
-        acceleration = 2 * c2 + 6 * c3 * t + 12 * c4 * t**2 + 20 * c5 * t**3
+        # Calculate derivative w.r.t. tau: y'(tau)
+        dydtau = c1 + 2 * c2 * tau + 3 * c3 * tau**2 + 4 * c4 * tau**3 + 5 * c5 * tau**4
+
+        # Calculate second derivative w.r.t. tau: y''(tau)
+        d2ydtau2 = 2 * c2 + 6 * c3 * tau + 12 * c4 * tau**2 + 20 * c5 * tau**3
+
+        # Scale derivatives back to be w.r.t. t
+        velocity = dydtau / self.duration
+        acceleration = d2ydtau2 / (self.duration**2)
+
+        # If tau is 1 (or very close), ensure final state is exactly reached
+        if np.isclose(tau, 1.0):
+            value = self.final_value
+            velocity = 0.0
+            acceleration = 0.0
 
         return value, velocity, acceleration
 
@@ -162,7 +198,9 @@ class SmoothProp:
         self._ctime += float(n)
         # Clear the interpolator if we've reached or exceeded the duration
         if self._interpolator is not None and (np.isclose(self._ctime, self.duration) or self._ctime > self.duration):
+            self._value = self._interpolator.final_value
             self._interpolator = None
+            self._ctime = self.duration
 
     def set(self, value: float | None = None, duration: float | None = None):
         """
@@ -179,11 +217,11 @@ class SmoothProp:
         value = value if value is not None else self._value
         duration = duration if duration is not None else self._duration
 
-        if duration <= 0.0:
-            # If duration is 0, just set the value immediately
+        if np.isclose(duration, 0.0):
             self._value = float(value)
             self._interpolator = None
             self._ctime = 0.0
+            self._duration = 0.0  # Update the duration to be exactly 0.0
             return
 
         if self._interpolator is not None:
@@ -191,9 +229,13 @@ class SmoothProp:
         else:
             current_value, current_velocity, current_acceleration = self._value, 0.0, 0.0
 
-        if current_value == value and current_velocity == 0.0 and current_acceleration == 0.0:
-            # Already reached steady state
-            return
+        if (
+            np.isclose(current_value, value)
+            and np.isclose(current_velocity, 0.0)
+            and np.isclose(current_acceleration, 0.0)
+        ):
+            if self._value == value:
+                return
 
         self._interpolator = MinimumJerkTimingFunction(
             initial_value=current_value,
@@ -222,8 +264,7 @@ class SmoothProp:
         if self._interpolator is None:
             return self._value
 
-        # Clamp time to duration
         if np.isclose(self._ctime, self.duration) or self._ctime > self.duration:
-            return self._value
+            return self._interpolator.final_value
 
         return self._interpolator(self._ctime)

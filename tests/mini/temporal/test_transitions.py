@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 from mini.temporal.transitions import MinimumJerkTimingFunction, SmoothProp
 
@@ -57,6 +58,67 @@ class TestMinimumJerkTimingFunction:
         assert 0.0 < value < 1.0
         assert isinstance(velocity, float)
         assert isinstance(acceleration, float)
+
+    def test_long_duration(self):
+        """Test interpolation with a very long duration to check for overflow."""
+        long_duration = 20000.0
+        mjf = MinimumJerkTimingFunction(
+            initial_value=0.0,
+            final_value=1.0,
+            duration=long_duration,
+            initial_velocity=0.0,
+            initial_acceleration=0.0,
+        )
+
+        # Check initial state
+        assert mjf(0.0) == 0.0
+        value, velocity, acceleration = mjf.get_state(0.0)
+        assert value == 0.0
+        assert velocity == 0.0
+        assert acceleration == 0.0
+
+        # Check intermediate state (should not be NaN or inf)
+        mid_value = mjf(long_duration / 2)
+        assert np.isfinite(mid_value)
+        assert 0.0 < mid_value < 1.0
+
+        # Check final state
+        assert pytest.approx(mjf(long_duration), abs=1e-9) == 1.0
+        value, velocity, acceleration = mjf.get_state(long_duration)
+        assert pytest.approx(value, abs=1e-9) == 1.0
+        assert pytest.approx(velocity, abs=1e-9) == 0.0
+        assert pytest.approx(acceleration, abs=1e-9) == 0.0
+
+    def test_zero_duration(self):
+        """Test behavior when duration is zero."""
+        initial_val = 5.0
+        final_val = 10.0  # This should be ignored, final = initial if duration is 0
+
+        mjf = MinimumJerkTimingFunction(
+            initial_value=initial_val,
+            final_value=final_val,
+            duration=0.0,
+            initial_velocity=1.0,  # Should be ignored
+            initial_acceleration=2.0,  # Should be ignored
+        )
+
+        # Value should immediately be the initial value
+        assert mjf(0.0) == initial_val
+        assert mjf(10.0) == initial_val  # Any time t should return initial_val
+
+        # State should be constant
+        value, velocity, acceleration = mjf.get_state(0.0)
+        assert value == initial_val
+        assert velocity == 0.0
+        assert acceleration == 0.0
+
+        value, velocity, acceleration = mjf.get_state(100.0)
+        assert value == initial_val
+        assert velocity == 0.0
+        assert acceleration == 0.0
+
+        # Check final_value was updated
+        assert mjf.final_value == initial_val
 
 
 class TestSmoothProp:
@@ -223,3 +285,50 @@ class TestSmoothProp:
         # Complete the transition
         prop.step(5.0)
         assert pytest.approx(prop.value, abs=1e-10) == 2.0
+
+    def test_zero_duration_initialization(self):
+        """Test SmoothProp initialization with zero duration."""
+        prop = SmoothProp(5.0, duration=0.0)
+        assert prop.value == 5.0
+        assert prop.duration == 0.0
+        prop.set(10.0)  # Should be immediate
+        assert prop.value == 10.0
+        prop.step()
+        assert prop.value == 10.0
+
+    def test_zero_duration_set(self):
+        """Test setting SmoothProp with zero duration."""
+        prop = SmoothProp(0.0, duration=10.0)  # Start with non-zero duration
+        prop.set(1.0)  # Start transition
+        prop.step(5.0)
+        assert 0.0 < prop.value < 1.0
+
+        # Set with zero duration - should jump immediately
+        prop.set(20.0, duration=0.0)
+        assert prop.value == 20.0
+        assert prop.duration == 0.0
+        assert prop._interpolator is None
+        prop.step()
+        assert prop.value == 20.0  # Should remain 20.0
+
+    def test_exact_completion(self):
+        """Test that the value is exactly the final value upon completion."""
+        duration = 10.0
+        target_value = 1.0
+        prop = SmoothProp(0.0, duration=duration)
+        prop.set(target_value)
+
+        # Step almost to the end
+        prop.step(duration - 0.001)
+        assert prop.value != target_value  # Should not be exactly there yet
+
+        # Step exactly to the end
+        prop.step(0.001)
+        assert prop._ctime == pytest.approx(duration)
+        # Due to the logic in step(), the interpolator might be cleared *after* this step,
+        # but the value property should return the final_value correctly.
+        assert prop.value == target_value  # Should be exactly the target value
+        # Verify interpolator is cleared after accessing value or stepping again
+        prop.step(0.001)  # Step slightly past
+        assert prop._interpolator is None
+        assert prop.value == target_value  # Should remain at target
