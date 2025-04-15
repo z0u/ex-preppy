@@ -21,11 +21,16 @@
     "github.copilot.chat.testGeneration.instructions": [
         {
             "language": "python",
-            "text": "Use pytest"
+            "file": ".github/copilot-python-gen.md"
         },
         {
             "language": "python",
-            "file": ".github/copilot-python-gen.md"
+            "file": ".github/copilot-python-test-gen.md"
+        }
+    ],
+    "github.copilot.chat.commitMessageGeneration.instructions": [
+        {
+            "file": ".github/copilot-commit-msg-gen.md"
         }
     ],
     "github.copilot.chat.codeGeneration.useInstructionFiles": true,
