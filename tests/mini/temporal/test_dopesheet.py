@@ -46,7 +46,7 @@ class TestDopesheet:
             t=0,
             phase='One',
             phase_start=True,
-            actions=[''],
+            actions=[],
             keyed_props=[
                 Key(prop='x', t=0, value=0.01, next_t=10, next_value=0.001),
                 Key(prop='z', t=0, value=1, next_t=4, next_value=2),
@@ -70,7 +70,7 @@ class TestDopesheet:
             t=10,
             phase='Two',
             phase_start=True,
-            actions=[''],
+            actions=[],
             keyed_props=[
                 Key(prop='x', t=10, value=0.001, next_t=None, next_value=None),
                 Key(prop='z', t=10, value=3, next_t=11, next_value=4),
@@ -82,7 +82,7 @@ class TestDopesheet:
             t=11,
             phase='Fin',
             phase_start=True,
-            actions=[''],
+            actions=[],
             keyed_props=[
                 Key(prop='y', t=11, value=0.0, next_t=None, next_value=None),
                 Key(prop='z', t=11, value=4, next_t=None, next_value=None),
@@ -108,3 +108,13 @@ class TestDopesheet:
             actions=[],
             keyed_props=[],
         )
+
+    def test_get_initial_values(self, dopesheet):
+        """Test the get_initial_values method."""
+        initial_values = dopesheet.get_initial_values()
+
+        # Based on our fixture CSV:
+        # - 'x' first appears at step 0 with value 0.01
+        # - 'y' first appears at step 4 with value 0.8
+        # - 'z' first appears at step 0 with value 1
+        assert initial_values == {'x': 0.01, 'y': 0.8, 'z': 1}

@@ -96,8 +96,8 @@ class Dopesheet:
 
         # Handle NaN values in the ACTION column
         action_value = self._df['ACTION'][idx]
-        if pd.isna(action_value):
-            actions = ['']
+        if pd.isna(action_value) or action_value == '':
+            actions = []
         else:
             actions = str(action_value).split(',')
 
@@ -123,6 +123,25 @@ class Dopesheet:
     def props(self) -> list[str]:
         """List of all properties in the dopesheet."""
         return [col for col in self._df.columns if col not in ['STEP', 'PHASE', 'ACTION']]
+
+    def get_initial_values(self) -> dict[str, float]:
+        """
+        Get the initial value for each property in the dopesheet.
+
+        For each property, finds the first non-NaN value in the timeline.
+        If a property has no values, it will not be included in the result.
+
+        Returns:
+            A dictionary mapping property names to their initial values.
+        """
+        initial_values = {}
+        for prop in self.props:
+            # Find the first non-NaN value for this property
+            series = self._df[prop]
+            first_valid_idx = series.first_valid_index()
+            if first_valid_idx is not None:
+                initial_values[prop] = float(series[first_valid_idx])
+        return initial_values
 
     @classmethod
     def from_csv(cls, path: str):

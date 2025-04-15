@@ -204,6 +204,7 @@ class SmoothProp:
         )
         self._ctime = 0.0
         self._value = float(value)
+        self._duration = float(duration)
 
     @property
     def duration(self):
