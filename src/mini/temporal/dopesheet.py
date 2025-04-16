@@ -40,8 +40,10 @@ class Step:
     t: int
     phase: str
     """The current phase active *at* this step."""
-    phase_start: bool
-    """Whether the phase is starting on this step."""
+    is_phase_start: bool
+    """Whether this is the first step of the phase."""
+    is_phase_end: bool
+    """Whether this is the last step of the phase."""
     actions: list[str]
     """Actions listed at this step."""
     keyed_props: list[Key]
@@ -117,10 +119,31 @@ class Dopesheet:
         phase = self._df['PHASE'][phase_idx] or ''
         phase_start = steps_col[phase_idx] == step  # Check if the step where phase was defined IS the current step
 
+        # --- Calculate Phase End ---
+        if phase_insertion_point < len(self._phase_indices):
+            # There is a next phase defined. Find its start step.
+            next_phase_df_idx = self._phase_indices[phase_insertion_point]
+            next_phase_start_step = steps_col[next_phase_df_idx]
+            # The current phase ends one step before the next one starts
+            current_phase_end_step = next_phase_start_step - 1
+        else:
+            # This is the last phase, it ends at the last step of the dopesheet
+            current_phase_end_step = steps_col.max()  # Get the maximum step value
+
+        is_phase_end = step == current_phase_end_step
+        # --- End Calculate Phase End ---
+
         _t: int = steps_col[idx]
         if _t != step:
             # Not a keyframe; just return current phase details
-            return Step(t=step, phase=phase, phase_start=False, actions=[], keyed_props=[])
+            return Step(
+                t=step,
+                phase=phase,
+                is_phase_start=False,
+                is_phase_end=is_phase_end,
+                actions=[],
+                keyed_props=[],
+            )
 
         # Handle NaN values in the ACTION column
         action_value = self._df['ACTION'][idx]
@@ -145,12 +168,24 @@ class Dopesheet:
             )
             keyed_props.append(k)
 
-        return Step(t=step, phase=phase, phase_start=phase_start, actions=actions, keyed_props=keyed_props)
+        return Step(
+            t=step,
+            phase=phase,
+            is_phase_start=phase_start,
+            is_phase_end=is_phase_end,
+            actions=actions,
+            keyed_props=keyed_props,
+        )
 
     @property
     def props(self) -> list[str]:
         """List of all properties in the dopesheet."""
-        return [col for col in self._df.columns if col not in ['STEP', 'PHASE', 'ACTION']]
+        return [col for col in self._df.columns if col not in RESERVED_COLS]
+
+    @property
+    def phases(self) -> set[str]:  # Added phases property
+        """Return a set of unique phase names defined in the dopesheet."""
+        return set(self._df['PHASE'].unique())
 
     def get_initial_values(self) -> dict[str, float]:
         """

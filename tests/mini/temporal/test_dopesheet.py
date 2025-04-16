@@ -28,7 +28,7 @@ class TestDopesheet:
         assert len(df) == 4  # Four rows in the fixture
 
         # Check that steps were resolved correctly
-        assert list(df['STEP']) == [0, 4, 10, 11]  # +0.4 should become 4
+        assert list(df['STEP']) == [0, 4, 10, 11]  # +0.4 should resolve to 4
 
     def test_len(self, dopesheet):
         """Test the __len__ method."""
@@ -45,7 +45,8 @@ class TestDopesheet:
         assert dopesheet[0] == Step(
             t=0,
             phase='One',
-            phase_start=True,
+            is_phase_start=True,
+            is_phase_end=False,
             actions=[],
             keyed_props=[
                 Key(prop='x', t=0, value=0.01, next_t=10, next_value=0.001),
@@ -57,7 +58,8 @@ class TestDopesheet:
         assert dopesheet[4] == Step(
             t=4,
             phase='One',  # Phase is carried forward
-            phase_start=False,
+            is_phase_start=False,
+            is_phase_end=False,
             actions=['foo'],
             keyed_props=[
                 Key(prop='y', t=4, value=0.8, next_t=11, next_value=0),
@@ -69,7 +71,8 @@ class TestDopesheet:
         assert dopesheet[10] == Step(
             t=10,
             phase='Two',
-            phase_start=True,
+            is_phase_start=True,
+            is_phase_end=True,  # End of phase "Two" (since phase "Fin" starts at step 11)
             actions=[],
             keyed_props=[
                 Key(prop='x', t=10, value=0.001, next_t=None, next_value=None),
@@ -81,7 +84,8 @@ class TestDopesheet:
         assert dopesheet[11] == Step(
             t=11,
             phase='Fin',
-            phase_start=True,
+            is_phase_start=True,
+            is_phase_end=True,
             actions=[],
             keyed_props=[
                 Key(prop='y', t=11, value=0.0, next_t=None, next_value=None),
@@ -95,7 +99,8 @@ class TestDopesheet:
         assert dopesheet[2] == Step(
             t=2,
             phase='One',
-            phase_start=False,
+            is_phase_start=False,
+            is_phase_end=False,
             actions=[],
             keyed_props=[],
         )
@@ -104,7 +109,8 @@ class TestDopesheet:
         assert dopesheet[5] == Step(
             t=5,
             phase='One',
-            phase_start=False,
+            is_phase_start=False,
+            is_phase_end=False,
             actions=[],
             keyed_props=[],
         )

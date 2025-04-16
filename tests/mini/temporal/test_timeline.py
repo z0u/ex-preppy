@@ -51,7 +51,14 @@ def test_timeline_step_progression(timeline):
     # Step forward
     state = timeline.step()
     assert timeline._step == 1
-    assert state == State(step=1, phase='One', actions=[], props={'x': ANY, 'y': ANY, 'z': ANY})
+    assert state == State(
+        step=1,
+        phase='One',
+        actions=[],
+        props={'x': ANY, 'y': ANY, 'z': ANY},
+        is_phase_start=False,
+        is_phase_end=False,
+    )
 
 
 def test_timeline_property_transitions(timeline):
@@ -112,3 +119,68 @@ def test_timeline_phase_and_actions(timeline):
     assert state.step == 11
     assert state.phase == 'Fin'
     assert state.actions == []
+
+
+def test_timeline_phase_transitions(timeline):
+    """Test that phase transitions are correctly identified with is_phase_start and is_phase_end flags."""
+    # Define expected phases structure based on our fixture:
+    # - "One": steps 0-9
+    # - "Two": step 10
+    # - "Fin": step 11
+
+    # Check initial state (step 0)
+    state = timeline.state
+    assert state == State(
+        step=0,
+        phase='One',
+        actions=ANY,
+        props=ANY,
+        is_phase_start=True,
+        is_phase_end=False,
+    )
+
+    # Step to 1 (middle of phase "One")
+    state = timeline.step()
+    assert state == State(
+        step=1,
+        phase='One',
+        actions=ANY,
+        props=ANY,
+        is_phase_start=False,
+        is_phase_end=False,
+    )
+
+    # Step to 9 (end of phase "One")
+    for _ in range(8):  # Already at step 1, need 8 more steps to get to 9
+        timeline.step()
+    state = timeline.state
+    assert state == State(
+        step=9,
+        phase='One',
+        actions=ANY,
+        props=ANY,
+        is_phase_start=False,
+        is_phase_end=True,
+    )
+
+    # Step to 10 (both start and end of phase "Two")
+    state = timeline.step()
+    assert state == State(
+        step=10,
+        phase='Two',
+        actions=ANY,
+        props=ANY,
+        is_phase_start=True,
+        is_phase_end=True,
+    )
+
+    # Step to 11 (start and end of phase "Fin" - final step)
+    state = timeline.step()
+    assert state == State(
+        step=11,
+        phase='Fin',
+        actions=ANY,
+        props=ANY,
+        is_phase_start=True,
+        is_phase_end=True,
+    )

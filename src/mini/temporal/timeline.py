@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from mini.temporal.dopesheet import Dopesheet
+from mini.temporal.dopesheet import Dopesheet, Step
 from mini.temporal.transitions import SmoothProp
 
 
@@ -10,6 +10,8 @@ class State:
     phase: str
     actions: list[str]
     props: dict[str, float]
+    is_phase_start: bool
+    is_phase_end: bool
 
 
 class Timeline:
@@ -23,10 +25,12 @@ class Timeline:
 
     props: dict[str, SmoothProp]
     _step: int
+    _max_steps: int
 
     def __init__(self, dopesheet: Dopesheet):
         """Initialize the timeline."""
         self.dopesheet = dopesheet
+        self._max_steps = len(self.dopesheet)
 
         # Get the initial values for each property from the dopesheet
         initial_values = dopesheet.get_initial_values()
@@ -42,19 +46,21 @@ class Timeline:
         # Set things in motion
         self._process_keyframes()
 
-    def _process_keyframes(self) -> set[str]:
+    def __len__(self) -> int:
+        return self._max_steps
+
+    def _process_keyframes(self) -> None:
         """Process keyframes at the current step."""
-        current_step = self.dopesheet[self._step]
-        keyed = set()
+        current_step: Step = self.dopesheet[self._step]
         for key in current_step.keyed_props:
             # Update the property with the new target value and duration. These may be None if there are no more keyframes, but that's fine because SmoothProp will interpret that as "no change".
             self.props[key.prop].set(value=key.next_value, duration=key.duration)
-            keyed.add(key.prop)
-
-        return keyed
 
     def step(self) -> State:
         """Advance the timeline by one step."""
+        if self._step >= self._max_steps:
+             raise IndexError("Timeline has reached the end.")
+
         self._step += 1
         for prop in self.props.values():
             prop.step(1.0)
@@ -71,4 +77,6 @@ class Timeline:
             phase=static_info.phase,
             actions=static_info.actions,
             props=props,
+            is_phase_start=static_info.is_phase_start,
+            is_phase_end=static_info.is_phase_end,
         )
