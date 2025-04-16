@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+
 from mini.temporal.dopesheet import Dopesheet
 from mini.temporal.transitions import SmoothProp
 

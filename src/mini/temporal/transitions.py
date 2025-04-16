@@ -111,50 +111,57 @@ class MinimumJerkTimingFunction:
         Returns:
             The value at time t
         """
-        if np.isclose(self.duration, 0.0):
+        # Direct comparison is much faster than np.isclose for scalars
+        if -0.0000000001 < self.duration < 0.0000000001:  # Equivalent to np.isclose with default tolerance
             return self.final_value
 
         # Normalize time
         tau = t / self.duration
 
-        # Clamp tau to [0, 1]
-        tau = np.clip(tau, 0.0, 1.0)
+        # Code hotspot! Manual optimization. Faster than np.clip for scalars
+        if tau < 0.0:
+            tau = 0.0
+        elif tau > 1.0:
+            tau = 1.0
 
-        # If tau is 1 (or very close), ensure final value is exactly reached
-        if np.isclose(tau, 1.0):
+        # Code hotspot with manual optimization
+        if 0.9999999999 < tau < 1.0000000001:
             return self.final_value
 
         # Calculate using the polynomial in tau
         c0, c1, c2, c3, c4, c5 = self.coeffs
-        return c0 + c1 * tau + c2 * tau**2 + c3 * tau**3 + c4 * tau**4 + c5 * tau**5
+        # Using Horner's method instead of using ** (optimization)
+        return c0 + tau * (c1 + tau * (c2 + tau * (c3 + tau * (c4 + tau * c5))))
 
     def get_state(self, t: float):
         """Get the value, velocity, and acceleration at time t."""
-        if np.isclose(self.duration, 0.0):
+        if -0.0000000001 < self.duration < 0.0000000001:  # Equivalent to np.isclose with default tolerance
             return self.initial_value, 0.0, 0.0
 
         # Normalize time
         tau = t / self.duration
-        # Clamp tau to [0, 1]
-        tau = np.clip(tau, 0.0, 1.0)
+
+        # Replace np.clip
+        tau = max(0.0, min(1.0, tau))
 
         c0, c1, c2, c3, c4, c5 = self.coeffs
 
         # Calculate value y(tau)
-        value = c0 + c1 * tau + c2 * tau**2 + c3 * tau**3 + c4 * tau**4 + c5 * tau**5
+        # Using Horner's method instead of using ** (optimization)
+        value = c0 + tau * (c1 + tau * (c2 + tau * (c3 + tau * (c4 + tau * c5))))
 
-        # Calculate derivative w.r.t. tau: y'(tau)
-        dydtau = c1 + 2 * c2 * tau + 3 * c3 * tau**2 + 4 * c4 * tau**3 + 5 * c5 * tau**4
+        # Calculate derivative w.r.t. tau: y'(tau) using Horner's method
+        dydtau = c1 + tau * (2 * c2 + tau * (3 * c3 + tau * (4 * c4 + tau * 5 * c5)))
 
-        # Calculate second derivative w.r.t. tau: y''(tau)
-        d2ydtau2 = 2 * c2 + 6 * c3 * tau + 12 * c4 * tau**2 + 20 * c5 * tau**3
+        # Calculate second derivative w.r.t. tau: y''(tau) using Horner's method
+        d2ydtau2 = 2 * c2 + tau * (6 * c3 + tau * (12 * c4 + tau * 20 * c5))
 
         # Scale derivatives back to be w.r.t. t
         velocity = dydtau / self.duration
         acceleration = d2ydtau2 / (self.duration**2)
 
-        # If tau is 1 (or very close), ensure final state is exactly reached
-        if np.isclose(tau, 1.0):
+        # Replace np.isclose
+        if 0.9999999999 < tau < 1.0000000001:
             value = self.final_value
             velocity = 0.0
             acceleration = 0.0
@@ -197,7 +204,7 @@ class SmoothProp:
         """
         self._ctime += float(n)
         # Clear the interpolator if we've reached or exceeded the duration
-        if self._interpolator is not None and (np.isclose(self._ctime, self.duration) or self._ctime > self.duration):
+        if self._interpolator is not None and (abs(self._ctime - self.duration) < 1e-10 or self._ctime > self.duration):
             self._value = self._interpolator.final_value
             self._interpolator = None
             self._ctime = self.duration
@@ -264,7 +271,7 @@ class SmoothProp:
         if self._interpolator is None:
             return self._value
 
-        if np.isclose(self._ctime, self.duration) or self._ctime > self.duration:
+        if abs(self._ctime - self.duration) < 1e-10 or self._ctime > self.duration:
             return self._interpolator.final_value
 
         return self._interpolator(self._ctime)

@@ -1,11 +1,12 @@
-from dataclasses import dataclass
 import logging
 import re
+from dataclasses import dataclass
+from io import BytesIO, StringIO
 from typing import Literal, overload
 
+import numpy as np
 import pandas as pd
 from pandas.io.formats.style import Styler
-
 
 log = logging.getLogger(__name__)
 
@@ -63,15 +64,22 @@ class Dopesheet:
     - STEP: The step/frame/epoch number
     - PHASE: The name of the phase of the curriculum (optional)
     - ACTION: The action to take (event to emit) (optional)
-    - *: Other columns are interpreted as parameters to set
+    - *: Other columns are interpreted as parameters to vary over time.
 
     https://en.m.wikipedia.org/wiki/Exposure_sheet
     """
 
     _df: pd.DataFrame
+    _phase_indices: np.ndarray
 
     def __init__(self, df: pd.DataFrame):
+        """
+        Initialize the Dopesheet with a DataFrame.
+
+        See `from_csv`.
+        """
         self._df = resolve(df.copy())
+        self._phase_indices = self._df['PHASE'].dropna().index.to_numpy()
 
     def __len__(self):
         """Get the number of steps in the dope sheet."""
@@ -84,15 +92,32 @@ class Dopesheet:
         The sheet may not contain a keyframe for the given step. In that case, the
         current phase details will be returned without any keyed properties.
         """
-        # Get the index of the nearest step that is less than or equal to `step`
-        idx = self._df[self._df['STEP'] <= step].last_valid_index() or 0
+        steps_col = self._df['STEP']
 
-        # Find the most recent phase before or at this step
-        phase_idx = self._df[self._df['STEP'] <= step]['PHASE'].last_valid_index() or 0
+        # Use binary search (searchsorted) to find the index of the latest step <= input step
+        # 'right' side gives the insertion point index `i`. The index we want is `i-1`.
+        insertion_point = steps_col.searchsorted(step, side='right')
+        idx = max(0, insertion_point - 1)
+
+        # --- OPTIMIZED PHASE LOOKUP ---
+        # Find the most recent phase index using binary search on precomputed indices
+        phase_insertion_point = np.searchsorted(self._phase_indices, idx, side='right')
+
+        if phase_insertion_point == 0:
+            # No phase definition found at or before idx in our precomputed list.
+            # Mimic original fallback to index 0. A clearer default might be better,
+            # but this maintains existing behavior.
+            phase_idx = 0
+        else:
+            # Get the index from our precomputed list (index before insertion point)
+            phase_idx = self._phase_indices[phase_insertion_point - 1]
+        # --- END OPTIMIZED PHASE LOOKUP ---
+
+        # Now get the phase value and check start using the efficiently found phase_idx
         phase = self._df['PHASE'][phase_idx] or ''
-        phase_start = self._df['STEP'][phase_idx] == step
+        phase_start = steps_col[phase_idx] == step  # Check if the step where phase was defined IS the current step
 
-        _t: int = self._df['STEP'][idx]
+        _t: int = steps_col[idx]
         if _t != step:
             # Not a keyframe; just return current phase details
             return Step(t=step, phase=phase, phase_start=False, actions=[], keyed_props=[])
@@ -147,7 +172,7 @@ class Dopesheet:
         return initial_values
 
     @classmethod
-    def from_csv(cls, path: str):
+    def from_csv(cls, path: str | BytesIO | StringIO) -> 'Dopesheet':
         """
         Load a dopesheet from a CSV file.
 

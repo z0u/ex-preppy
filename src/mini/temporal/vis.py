@@ -4,20 +4,16 @@ from typing import Sequence
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
 
 from mini.temporal.dopesheet import RESERVED_COLS
 from mini.temporal.timeline import Timeline
 
 
-def realize_timeline(timeline: Timeline, progress=False) -> pd.DataFrame:
+def realize_timeline(timeline: Timeline) -> pd.DataFrame:
     # Collect data by stepping through the timeline
     history = []
     max_steps = len(timeline.dopesheet)
-    steps = range(max_steps + 1)
-    if progress:
-        steps = tqdm(steps, desc='Stepping through timeline', total=max_steps + 1, leave=False)
-    for _ in steps:
+    for _ in range(max_steps + 1):
         state = timeline.state
         history.append({'STEP': state.step, 'PHASE': state.phase, 'ACTION': state.actions, **state.props})
         if state.step < max_steps:
