@@ -174,7 +174,7 @@ def test_timeline_phase_transitions(timeline):
         is_phase_end=True,
     )
 
-    # Step to 11 (start and end of phase "Fin" - final step)
+    # Step to 11 (start of phase "Fin" - final step)
     state = timeline.step()
     assert state == State(
         step=11,
@@ -182,5 +182,16 @@ def test_timeline_phase_transitions(timeline):
         actions=ANY,
         props=ANY,
         is_phase_start=True,
+        is_phase_end=False,
+    )
+
+    # Step to 12 (start and end of phase "Fin" - final step)
+    state = timeline.step()
+    assert state == State(
+        step=12,
+        phase='Fin',
+        actions=ANY,
+        props=ANY,
+        is_phase_start=False,
         is_phase_end=True,
     )

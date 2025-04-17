@@ -85,7 +85,7 @@ class Dopesheet:
 
     def __len__(self):
         """Get the number of steps in the dope sheet."""
-        return self._df['STEP'].max()
+        return self._df['STEP'].max() + 1
 
     def __getitem__(self, step: int) -> Step:
         """
@@ -185,7 +185,7 @@ class Dopesheet:
     @property
     def phases(self) -> set[str]:  # Added phases property
         """Return a set of unique phase names defined in the dopesheet."""
-        return set(self._df['PHASE'].unique())
+        return set(self._df['PHASE'].dropna().unique())
 
     def get_initial_values(self) -> dict[str, float]:
         """

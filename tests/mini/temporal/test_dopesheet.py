@@ -17,7 +17,7 @@ def dopesheet(fixture_path) -> Dopesheet:
 
 
 class TestDopesheet:
-    def test_init_from_csv(self, fixture_path):
+    def test_init_from_csv(self, fixture_path: Path):
         """Test that we can initialize a Dopesheet from a CSV file."""
         ds = Dopesheet.from_csv(str(fixture_path))
         assert isinstance(ds, Dopesheet)
@@ -25,21 +25,25 @@ class TestDopesheet:
         # Check that the dataframe was loaded correctly
         df = ds._df
         assert list(df.columns) == ['STEP', 'PHASE', 'ACTION', 'x', 'y', 'z']
-        assert len(df) == 4  # Four rows in the fixture
+        assert len(df) == 5  # Five rows in the fixture
 
         # Check that steps were resolved correctly
-        assert list(df['STEP']) == [0, 4, 10, 11]  # +0.4 should resolve to 4
+        assert list(df['STEP']) == [0, 4, 10, 11, 12]  # +0.4 should resolve to 4
 
-    def test_len(self, dopesheet):
+    def test_len(self, dopesheet: Dopesheet):
         """Test the __len__ method."""
-        # Length should be the max step value
-        assert len(dopesheet) == 11
+        # Length should be the max step value plus one because the first step is numbered 0
+        assert len(dopesheet) == 13
 
-    def test_props(self, dopesheet):
+    def test_phases(self, dopesheet: Dopesheet):
+        """Test the phases property."""
+        assert dopesheet.phases == {'One', 'Two', 'Fin'}
+
+    def test_props(self, dopesheet: Dopesheet):
         """Test the props property."""
         assert dopesheet.props == ['x', 'y', 'z']
 
-    def test_get_keyframe_steps(self, dopesheet):
+    def test_get_keyframe_steps(self, dopesheet: Dopesheet):
         """Test __getitem__ for steps that are keyframes."""
         # Step 0
         assert dopesheet[0] == Step(
@@ -85,7 +89,7 @@ class TestDopesheet:
             t=11,
             phase='Fin',
             is_phase_start=True,
-            is_phase_end=True,
+            is_phase_end=False,
             actions=[],
             keyed_props=[
                 Key(prop='y', t=11, value=0.0, next_t=None, next_value=None),
@@ -93,7 +97,17 @@ class TestDopesheet:
             ],
         )
 
-    def test_get_non_keyframe_steps(self, dopesheet):
+        # Step 12
+        assert dopesheet[12] == Step(
+            t=12,
+            phase='Fin',
+            is_phase_start=False,
+            is_phase_end=True,
+            actions=[],
+            keyed_props=[],
+        )
+
+    def test_get_non_keyframe_steps(self, dopesheet: Dopesheet):
         """Test __getitem__ for steps that are not keyframes."""
         # Step 2 (between 0 and 4)
         assert dopesheet[2] == Step(
@@ -115,7 +129,7 @@ class TestDopesheet:
             keyed_props=[],
         )
 
-    def test_get_initial_values(self, dopesheet):
+    def test_get_initial_values(self, dopesheet: Dopesheet):
         """Test the get_initial_values method."""
         initial_values = dopesheet.get_initial_values()
 
