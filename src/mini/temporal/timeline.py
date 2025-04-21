@@ -59,7 +59,7 @@ class Timeline:
     def step(self) -> State:
         """Advance the timeline by one step."""
         if self._step >= self._max_steps:
-             raise IndexError("Timeline has reached the end.")
+            raise IndexError('Timeline has reached the end.')
 
         self._step += 1
         for prop in self.props.values():

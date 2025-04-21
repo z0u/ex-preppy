@@ -128,7 +128,7 @@ def plot_timeline(history_df: pd.DataFrame, keyframes_df: pd.DataFrame, groups: 
     action_steps = history_df[history_df['ACTION'].apply(lambda x: bool(x))]  # Filter steps with non-empty action lists
     if not action_steps.empty:
         # Calculate a Y position slightly above the bottom of the plot for visibility
-        y_min, y_max = top_ax.get_ylim()
+        y_min, _y_max = top_ax.get_ylim()
         marker_y_pos = y_min
 
         # Plot a marker for each step with an action

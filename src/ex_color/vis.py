@@ -1,4 +1,4 @@
-from ex_color.data import ColorCube
+from ex_color.data.color_cube import ColorCube
 
 
 def plot_colors(
