@@ -1,7 +1,12 @@
+from typing import TypeAlias
+
 import numpy as np
+import numpy.typing as npt
+
+CoordinateAxis: TypeAlias = np.ndarray[tuple[int], np.dtype[np.floating]]
 
 
-def coordinate_grid(*coordinates: list | np.ndarray) -> np.ndarray:
+def coordinate_grid(*coordinates: CoordinateAxis) -> npt.NDArray[np.floating]:
     """
     Create a coordinate grid for n-dimensional space.
 

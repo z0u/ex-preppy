@@ -38,7 +38,7 @@ def arange_cyclic(
     step_size: float = 1 / 12,
     period: float = 1.0,
     inclusive: bool = False,
-) -> np.ndarray:
+) -> np.ndarray[tuple[int], np.dtype[np.floating]]:
     """Generate an array of values over a periodic range."""
     lower = lower % period
     if upper is None:
@@ -49,4 +49,4 @@ def arange_cyclic(
         upper += period
     if inclusive:
         upper += step_size / 2
-    return np.arange(lower, upper, step_size) % period
+    return np.arange(lower, upper, step_size) % period  # type: ignore[no-untyped-call]

@@ -1,3 +1,4 @@
+from __future__ import annotations
 import numpy as np
 
 from ex_color.data.grid import coordinate_grid
@@ -41,6 +42,11 @@ class ColorCube:
         self.coordinates = coordinates
         self.rgb_grid = rgb_grid
         self.bias = bias
+
+    @property
+    def shape(self) -> tuple[int, ...]:
+        """The shape of the cube grid (excluding the channel dimension)."""
+        return self.bias.shape
 
     @classmethod
     def from_hsv(cls, h: np.ndarray, s: np.ndarray, v: np.ndarray):
