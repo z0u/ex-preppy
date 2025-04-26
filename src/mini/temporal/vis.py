@@ -60,6 +60,7 @@ def plot_timeline(history_df: pd.DataFrame, keyframes_df: pd.DataFrame, groups: 
     figsize = (15, 3.5 * len(groups))
 
     # Create figure and axes
+    plt.style.use('dark_background')
     fig, axes = plt.subplots(
         len(groups),
         1,
@@ -68,12 +69,14 @@ def plot_timeline(history_df: pd.DataFrame, keyframes_df: pd.DataFrame, groups: 
         gridspec_kw={'height_ratios': height_ratios},
         squeeze=False,  # Always return a 2D array
     )
+    fig.set_facecolor('#333')
 
     # Plot each group on its corresponding axis
     for group, ax in zip(groups, axes.flatten(), strict=True):
         for prop in group.params:
             # Ensure the property exists in the history dataframe before plotting
             if prop in history_df.columns:
+                ax.set_facecolor('#222')
                 (line,) = ax.plot(history_df['STEP'], history_df[prop], label=f'{prop}')
 
                 # Add markers for keyframes if the property exists in keyframes
@@ -84,7 +87,7 @@ def plot_timeline(history_df: pd.DataFrame, keyframes_df: pd.DataFrame, groups: 
                             prop_keyframes['STEP'],
                             prop_keyframes[prop],
                             marker='o',
-                            facecolor='white',
+                            facecolor='black',
                             s=25,
                             zorder=5,
                             color=line.get_color(),
@@ -101,7 +104,7 @@ def plot_timeline(history_df: pd.DataFrame, keyframes_df: pd.DataFrame, groups: 
             step = row['STEP']
             # Draw vertical line on all axes
             for ax in axes.flatten():
-                ax.axvline(step, color='grey', alpha=0.3)
+                ax.axvline(step, color='grey', alpha=0.2)
             phase_boundaries.append({'STEP': step, 'PHASE': row['PHASE']})
             last_phase = row['PHASE']
 
@@ -121,7 +124,7 @@ def plot_timeline(history_df: pd.DataFrame, keyframes_df: pd.DataFrame, groups: 
             va='bottom',  # Align bottom of text to top of plot
             fontweight='bold',
             fontsize=10,
-            bbox=dict(boxstyle='round,pad=0.3', fc='white', alpha=0.7, ec='none'),
+            bbox=dict(boxstyle='round,pad=0.3', fc='#222', alpha=0.7, ec='none'),
         )
 
     # Add action markers only to the top plot (axes[0, 0])
@@ -136,7 +139,7 @@ def plot_timeline(history_df: pd.DataFrame, keyframes_df: pd.DataFrame, groups: 
             action_steps['STEP'].unique(),
             [marker_y_pos] * len(action_steps['STEP'].unique()),
             marker='^',
-            color='black',
+            color='#aaa',
             s=40,
             zorder=10,
             label='Action Triggered',
@@ -168,7 +171,7 @@ def plot_timeline(history_df: pd.DataFrame, keyframes_df: pd.DataFrame, groups: 
 
     # Add grid to allow key values to be compared
     for ax in axes.flatten():
-        ax.grid(True, which='major', axis='both', linestyle=':', alpha=0.3)
+        ax.grid(True, which='major', axis='both', linestyle=':', alpha=0.1)
         ax.margins(y=0.15)
     plt.tight_layout()
     return fig, axes

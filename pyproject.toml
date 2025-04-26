@@ -35,6 +35,7 @@ dev = [
     "vulture>=2.14",
 ]
 local = [
+    "imageio-ffmpeg>=0.6.0",
     "ipykernel>=6.29.5",
     "ipywidgets>=8.1.5",
     "matplotlib>=3.10.0",
