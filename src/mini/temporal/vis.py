@@ -4,6 +4,9 @@ from typing import Sequence
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from pandas.api.types import is_numeric_dtype  # Import the type checker
+from matplotlib.axes import Axes  # Import Axes type
+from matplotlib.lines import Line2D  # Import Line2D
 
 from mini.temporal.dopesheet import RESERVED_COLS
 from mini.temporal.timeline import Timeline
@@ -34,56 +37,93 @@ class ParamGroup:
 
 def group_properties_by_scale(df: pd.DataFrame) -> tuple[ParamGroup, ParamGroup]:
     """Group properties by their scale for better visualization."""
-    # Calculate statistics for each property
+    # Filter for numeric columns first!
+    numeric_cols = [col for col in df.columns if is_numeric_dtype(df[col])]
+    if not numeric_cols:
+        # Handle case where there are no numeric columns
+        return ParamGroup(name='', params=[], height_ratio=2.0), ParamGroup(name='', params=[], height_ratio=1.0)
+
+    # Calculate statistics only for numeric properties
     prop_stats = {
-        prop: {'max': df[prop].max(), 'median': df[prop].median(), 'min': df[prop].min()}  #
-        for prop in df.columns
+        prop: {'max': df[prop].max(), 'median': df[prop].median(), 'min': df[prop].min()}
+        for prop in numeric_cols  # Use the filtered list
     }
 
-    # Calculate median of medians as a representative scale
-    median_of_medians = np.median([stats['median'] for stats in prop_stats.values()])
+    # Calculate median of medians using only numeric stats
+    median_values = [stats['median'] for stats in prop_stats.values() if pd.notna(stats['median'])]  # Ensure median is not NaN
+    if not median_values:
+        # Handle case where all medians are NaN (e.g., all columns are empty or NaN)
+        median_of_medians = 0
+    else:
+        median_of_medians = np.median(median_values)
 
     # Group properties - those with much smaller medians go to group 2
     # Handle cases where median_of_medians might be zero or very small
     threshold = median_of_medians * 0.2 if median_of_medians > 1e-9 else 1e-9
-    group1 = [prop for prop in df.columns if prop_stats[prop]['max'] >= threshold]
-    group2 = [prop for prop in df.columns if prop_stats[prop]['max'] < threshold]
+    group1 = [prop for prop in numeric_cols if prop_stats[prop]['max'] >= threshold]
+    group2 = [prop for prop in numeric_cols if prop_stats[prop]['max'] < threshold]
 
     return ParamGroup(name='', params=group1, height_ratio=2.0), ParamGroup(name='', params=group2, height_ratio=1.0)
 
 
-def plot_timeline(history_df: pd.DataFrame, keyframes_df: pd.DataFrame, groups: Sequence[ParamGroup] | None = None):  # noqa: C901
+def plot_timeline(  # noqa: C901
+    history_df: pd.DataFrame,
+    keyframes_df: pd.DataFrame,
+    groups: Sequence[ParamGroup] | None = None,
+    ax: Axes | None = None,  # Add optional ax parameter
+    show_legend: bool = True,  # Add show_legend parameter
+):
     if groups is None:
         cols = [col for col in history_df.columns if col not in RESERVED_COLS]
         groups = [ParamGroup(name='', params=cols, height_ratio=1.0)]
-    height_ratios = [g.height_ratio for g in groups]
-    figsize = (15, 3.5 * len(groups))
 
-    # Create figure and axes
-    plt.style.use('dark_background')
-    fig, axes = plt.subplots(
-        len(groups),
-        1,
-        figsize=figsize,
-        sharex=True,
-        gridspec_kw={'height_ratios': height_ratios},
-        squeeze=False,  # Always return a 2D array
-    )
-    fig.set_facecolor('#333')
+    # --- Figure/Axes Setup ---
+    if ax is None:
+        # If no axis provided, create a new figure and axes based on groups
+        height_ratios = [g.height_ratio for g in groups]
+        figsize = (15, 3.5 * len(groups))
+        plt.style.use('dark_background')
+        fig, axes_list = plt.subplots(
+            len(groups),
+            1,
+            figsize=figsize,
+            sharex=True,
+            gridspec_kw={'height_ratios': height_ratios},
+            squeeze=False,  # Always return a 2D array
+        )
+        fig.set_facecolor('#333')
+        # Use the first axis from the created list if multiple groups, else the single axis
+        main_ax = axes_list[0, 0]
+        axes_to_plot_on = axes_list.flatten()
+    else:
+        # If an axis is provided, use it. Assume only one group can be plotted.
+        if len(groups) > 1:
+            print("Warning: Multiple groups provided but only one axis given. Plotting only the first group.")
+        fig = ax.get_figure()
+        main_ax = ax  # The main axis is the one provided
+        axes_to_plot_on = [ax]  # Plot only on the provided axis
+        groups = [groups[0]]  # Use only the first group
 
-    # Plot each group on its corresponding axis
-    for group, ax in zip(groups, axes.flatten(), strict=True):
+    # --- Plotting Data ---
+    # Plot each group on its corresponding axis (or the single provided axis)
+    for group, current_ax in zip(groups, axes_to_plot_on, strict=True):
+        if current_ax.get_figure() is None:  # Check if axis belongs to a figure
+            raise ValueError("Provided axis does not belong to a figure.")
+        current_ax.set_facecolor('#222')  # Set facecolor for the axis we are plotting on
+        lines_plotted = []
+        labels_plotted = []
         for prop in group.params:
             # Ensure the property exists in the history dataframe before plotting
             if prop in history_df.columns:
-                ax.set_facecolor('#222')
-                (line,) = ax.plot(history_df['STEP'], history_df[prop], label=f'{prop}')
+                (line,) = current_ax.plot(history_df['STEP'], history_df[prop], label=f'{prop}')
+                lines_plotted.append(line)
+                labels_plotted.append(f'{prop}')
 
                 # Add markers for keyframes if the property exists in keyframes
                 if prop in keyframes_df.columns:
                     prop_keyframes = keyframes_df.dropna(subset=[prop])
                     if not prop_keyframes.empty:
-                        ax.scatter(
+                        current_ax.scatter(
                             prop_keyframes['STEP'],
                             prop_keyframes[prop],
                             marker='o',
@@ -95,30 +135,28 @@ def plot_timeline(history_df: pd.DataFrame, keyframes_df: pd.DataFrame, groups: 
             else:
                 print(f"Warning: Property '{prop}' specified in group '{group.name}' not found in history_df.")
 
-    # Indicate phase changes and add labels (only on the top plot)
+    # --- Phase Changes and Labels (Plot only on main_ax) ---
     phase_changes = keyframes_df.dropna(subset=['PHASE'])
     last_phase = None
     phase_boundaries = []
     for _, row in phase_changes.iterrows():
         if row['PHASE'] != last_phase:
             step = row['STEP']
-            # Draw vertical line on all axes
-            for ax in axes.flatten():
-                ax.axvline(step, color='grey', alpha=0.2)
+            # Draw vertical line only on the main axis
+            main_ax.axvline(step, color='grey', alpha=0.2)
             phase_boundaries.append({'STEP': step, 'PHASE': row['PHASE']})
             last_phase = row['PHASE']
 
-    # Add phase labels only to the top plot (axes[0, 0])
-    top_ax = axes[0, 0]
+    # Add phase labels only to the main plot (main_ax)
     for i, pb in enumerate(phase_boundaries):
         mid_point = (
             (phase_boundaries[i + 1]['STEP'] + pb['STEP']) / 2
             if i + 1 < len(phase_boundaries)
-            else (len(history_df) + pb['STEP']) / 2
+            else (history_df['STEP'].max() + pb['STEP']) / 2  # Use max step from history
         )
-        top_ax.text(
+        main_ax.text(
             mid_point,
-            top_ax.get_ylim()[1],  # Position at the top
+            main_ax.get_ylim()[1],  # Position at the top
             pb['PHASE'],
             ha='center',
             va='bottom',  # Align bottom of text to top of plot
@@ -127,51 +165,52 @@ def plot_timeline(history_df: pd.DataFrame, keyframes_df: pd.DataFrame, groups: 
             bbox=dict(boxstyle='round,pad=0.3', fc='#222', alpha=0.7, ec='none'),
         )
 
-    # Add action markers only to the top plot (axes[0, 0])
+    # --- Action Markers (Plot only on main_ax) ---
     action_steps = history_df[history_df['ACTION'].apply(lambda x: bool(x))]  # Filter steps with non-empty action lists
     if not action_steps.empty:
-        # Calculate a Y position slightly above the bottom of the plot for visibility
-        y_min, _y_max = top_ax.get_ylim()
+        y_min, _y_max = main_ax.get_ylim()
         marker_y_pos = y_min
-
-        # Plot a marker for each step with an action
-        top_ax.scatter(
+        main_ax.scatter(
             action_steps['STEP'].unique(),
             [marker_y_pos] * len(action_steps['STEP'].unique()),
             marker='^',
             color='#aaa',
             s=40,
             zorder=10,
-            label='Action Triggered',
+            label='Action Triggered',  # Add label for legend
         )
+        # Add 'Action Triggered' to lines/labels if actions exist
+        action_handle = Line2D(
+            [0],
+            [0],
+            marker='^',
+            color='w',
+            label='Action Triggered',
+            linestyle='',
+            markersize=7,
+            markerfacecolor='#aaa',
+            markeredgecolor='#aaa',
+        )
+        if 'Action Triggered' not in labels_plotted:
+            lines_plotted.append(action_handle)
+            labels_plotted.append('Action Triggered')
 
-    # --- Update Legends ---
-    # Add legend to each subplot
-    for ax in axes.flatten():
-        handles, labels = ax.get_legend_handles_labels()
-        # Add the 'Action Triggered' marker to the top plot's legend if it exists
-        if ax == top_ax and 'Action Triggered' in [h.get_label() for h in handles]:
-            # Ensure 'Action Triggered' is handled correctly if present
-            pass  # Already handled by get_legend_handles_labels
-        elif 'Action Triggered' in labels:
-            # Remove 'Action Triggered' from other plots if somehow added
-            idx = labels.index('Action Triggered')
-            handles.pop(idx)
-            labels.pop(idx)
+    # --- Legend (Plot only on main_ax if show_legend is True) ---
+    if show_legend and lines_plotted:
+        by_label = dict(zip(labels_plotted, lines_plotted, strict=True))
+        main_ax.legend(by_label.values(), by_label.keys(), loc='upper right')
 
-        if handles:  # Only add legend if there are items to show
-            by_label = dict(zip(labels, handles, strict=True))
-            ax.legend(by_label.values(), by_label.keys(), loc='upper right')
+    # --- Labels, Title, Grid (Apply to main_ax) ---
+    if ax is None:  # Only set title if we created the figure
+        main_ax.set_title('Timeline Property Evolution', fontsize=14)
+    main_ax.set_ylabel('Property value', fontsize=12)
+    main_ax.set_xlabel('Step', fontsize=12)
+    main_ax.grid(True, which='major', axis='both', linestyle=':', alpha=0.1)
+    main_ax.margins(y=0.15)
 
-    # Set labels and title
-    axes[0, 0].set_title('Timeline Property Evolution', fontsize=14)
-    for ax in axes.flatten():
-        ax.set_ylabel('Property value', fontsize=12)
-    axes[-1, 0].set_xlabel('Step', fontsize=12)  # Set x-label only on the bottom plot
+    # --- Final Adjustments ---
+    if ax is None:  # Only call tight_layout if we created the figure
+        plt.tight_layout()
 
-    # Add grid to allow key values to be compared
-    for ax in axes.flatten():
-        ax.grid(True, which='major', axis='both', linestyle=':', alpha=0.1)
-        ax.margins(y=0.15)
-    plt.tight_layout()
-    return fig, axes
+    # Return the figure and the main axis (or list of axes if created internally)
+    return fig, main_ax if ax is not None else axes_to_plot_on
