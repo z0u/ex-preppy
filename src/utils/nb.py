@@ -23,16 +23,17 @@ def show(ob, handle: str):
 
 
 def displayer():
-    handle: str | None = None
+    from uuid import uuid4 as uuid
+
+    handle = f'displayer-{uuid()}'
+    first = True
 
     def show(ob):
-        nonlocal handle
-        from uuid import uuid4 as uuid
-
+        nonlocal handle, first
         from IPython.display import display, update_display
 
-        if handle is None:
-            handle = f'displayer-{uuid().hex[:12]}'
+        if first:
+            first = False
             display(ob, display_id=handle)
         else:
             update_display(ob, display_id=handle)
