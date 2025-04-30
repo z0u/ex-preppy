@@ -5,6 +5,8 @@
 # Pipeline fails if any command fails.
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Function to prepare directories
 prepare_dirs() {
     rm -rf _site
@@ -64,7 +66,7 @@ convert_markdown_to_ipynb() {
 # Function to convert ALL notebooks (original + generated from md)
 convert_notebooks() {
     # Use uv run to execute jupyter within the project environment
-    find _site -name '*.ipynb' -exec uv run -- jupyter nbconvert --to html {} +
+    find _site -name '*.ipynb' -exec uv run -- jupyter nbconvert --config "$SCRIPT_DIR/build-site-config.py" --to html {} +
     # Delete the intermediate ipynb files (original and generated)
     find _site -name '*.ipynb' -delete
 }
@@ -86,6 +88,56 @@ add_nojekyll() {
     touch _site/.nojekyll
 }
 
+# Function to inject custom CSS into HTML files
+inject_css() {
+    echo "Injecting custom CSS..."
+    # Define the CSS rules using cat and a heredoc
+    css_rules=$(cat "$SCRIPT_DIR/build-site-nb.css")
+    css_rules="<style>$css_rules</style>"
+
+    # Escape backslashes and ampersands for awk's -v variable assignment
+    # Preserve newlines within the variable
+    escaped_css_for_awk=$(printf '%s' "$css_rules" | sed -e 's/\\/\\\\/g' -e 's/&/\\&/g')
+
+    # Create a temporary file safely
+    temp_file=$(mktemp) || { echo "Error: Failed to create temporary file" >&2; exit 1; }
+    # Ensure temp file is cleaned up on exit, error, or interrupt
+    trap 'rm -f "$temp_file"' EXIT HUP INT QUIT TERM
+
+    # Find all HTML files in _site and inject the CSS before </head>
+    # Add error handling to the loop and awk/mv commands
+    find _site -name '*.html' -print0 | while IFS= read -r -d $'\0' html_file; do
+        # Check if CSS is already injected to avoid duplicates
+        # Use -F for fixed string search (safer and potentially faster)
+        if ! grep -qF '/* Custom styles for prose width */' "$html_file"; then
+            echo "  Injecting CSS into $html_file..."
+            # Use awk to insert the CSS block before the closing </head> tag
+            # If awk fails or mv fails, the '&&' will short-circuit and the '||' part will execute
+            awk -v css="$escaped_css_for_awk" '
+            /<\/head>/ { print css }
+            { print }
+            ' "$html_file" > "$temp_file" && mv "$temp_file" "$html_file" || {
+                echo "Error: Failed to process or move file for $html_file" >&2
+                # temp_file will be removed by trap
+                exit 1 # Exit script due to error
+            }
+            # Recreate temp file for the next iteration if mv succeeded
+            # (Alternatively, create temp file inside the loop, but mktemp in a loop can be slow)
+            # Let's stick with one temp file and ensure it's empty/truncated before next use by awk's > redirection.
+        else
+            echo "    Skipping $html_file, custom CSS already present."
+        fi
+    done || {
+        # This catches errors from 'find' or if the 'while' loop body exits with non-zero status (like our exit 1 above)
+        echo "Error: find command or processing loop failed." >&2
+        # temp_file will be removed by trap
+        exit 1 # Exit script
+    }
+
+    # Trap will clean up the temp file on normal exit too
+    echo "CSS injection complete."
+}
+
 # Main script execution
 echo "Preparing directories..."
 prepare_dirs
@@ -104,5 +156,8 @@ fix_links
 
 echo "Adding .nojekyll file..."
 add_nojekyll
+
+echo "Injecting custom CSS into HTML files..."
+inject_css
 
 echo "Site build complete."
