@@ -36,9 +36,6 @@ jobs:
       - name: Install Dependencies (for docs build)
         run: uv sync --only-group pages
 
-      - name: Install Pandoc
-        run: sudo apt-get update && sudo apt-get install -y pandoc
-
       - name: Build Site
         run: bash scripts/build-site.sh
 
