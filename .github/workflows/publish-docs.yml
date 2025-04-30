@@ -30,11 +30,8 @@ jobs:
         with:
           lfs: true # Large files are stored outside the main history
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-
       - name: Install uv
-        uses: astral-sh/setup-uv@v1
+        uses: astral-sh/setup-uv@v6
 
       - name: Install Dependencies (for docs build)
         run: uv sync --only-group pages
