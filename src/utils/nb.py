@@ -10,18 +10,6 @@ if typing.TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 
-def show(ob, handle: str):
-    from IPython.display import display, update_display
-
-    if not hasattr(show, 'handles'):
-        show.handles = set()
-    if handle in show.handles:
-        update_display(ob, display_id=handle)
-    else:
-        display(ob, display_id=handle)
-        show.handles.add(handle)
-
-
 def displayer():
     from uuid import uuid4 as uuid
 

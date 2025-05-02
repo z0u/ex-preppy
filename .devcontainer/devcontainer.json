@@ -22,6 +22,7 @@
       "extensions": [
         "bierner.github-markdown-preview",
         "charliermarsh.ruff",
+        "detachhead.basedpyright",
         "esbenp.prettier-vscode",
         "GitHub.copilot-chat",
         "GitHub.copilot",

@@ -19,20 +19,23 @@ dependencies = [
 [project.optional-dependencies]
 # define an extra for CPU-only torch, for Codespaces
 torch-cpu = [
-  "torch>=2.6.0",
+  "torch~=2.6.0",
 ]
 # Include the default one too, so that `uv tree` includes cuda packages
 torch = [
-  "torch>=2.6.0",
+  "torch~=2.6.0",
 ]
 
 [dependency-groups]
 dev = [
+    "basedpyright>=1.29.1",
+    "pandas-stubs",
     "pyright>=1.1.396",
-    "pytest>=8.3.5",
     "pytest-asyncio>=0.25.3",
+    "pytest>=8.3.5",
     "ruff>=0.9.7",
     "vulture>=2.14",
+    "scipy-stubs>=1.15.2.2",
 ]
 local = [
     "imageio-ffmpeg>=0.6.0",
@@ -113,10 +116,15 @@ ignore = [
     "D",
 ]
 
-[tool.pyright]
+[tool.basedpyright]
 venvPath = "."
 venv = ".venv"
-typeCheckingMode = "basic"
+typeCheckingMode = "standard"
+include = [
+    "src",
+    "tests",
+    "docs",
+]
 
 
 [tool.pytest.ini_options]

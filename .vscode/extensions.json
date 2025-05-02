@@ -2,5 +2,8 @@
     "recommendations": [
         "ms-vscode-remote.remote-containers",
         "ms-toolsai.jupyter-keymap"
+    ],
+    "unwantedRecommendations": [
+        "ms-python.vscode-pylance",
     ]
 }

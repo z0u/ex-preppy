@@ -4,9 +4,10 @@ from typing import Sequence
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_numeric_dtype  # Import the type checker
-from matplotlib.axes import Axes  # Import Axes type
-from matplotlib.lines import Line2D  # Import Line2D
+from matplotlib.artist import Artist
+from matplotlib.axes import Axes
+from matplotlib.lines import Line2D
+from pandas.api.types import is_numeric_dtype
 
 from mini.temporal.dopesheet import RESERVED_COLS
 from mini.temporal.timeline import Timeline
@@ -107,19 +108,21 @@ def plot_timeline(  # noqa: C901
         groups = [groups[0]]  # Use only the first group
 
     # --- Plotting Data ---
+    # Refs for the legend
+    all_lines_plotted: list[Artist] = []
+    all_labels_plotted: list[str] = []
+
     # Plot each group on its corresponding axis (or the single provided axis)
     for group, current_ax in zip(groups, axes_to_plot_on, strict=True):
         if current_ax.get_figure() is None:  # Check if axis belongs to a figure
             raise ValueError('Provided axis does not belong to a figure.')
-        current_ax.set_facecolor('#222')  # Set facecolor for the axis we are plotting on
-        lines_plotted = []
-        labels_plotted = []
+        current_ax.set_facecolor('#222')
         for prop in group.params:
             # Ensure the property exists in the history dataframe before plotting
             if prop in history_df.columns:
                 (line,) = current_ax.plot(history_df['STEP'], history_df[prop], label=f'{prop}')
-                lines_plotted.append(line)
-                labels_plotted.append(f'{prop}')
+                all_lines_plotted.append(line)
+                all_labels_plotted.append(f'{prop}')
 
                 # Add markers for keyframes if the property exists in keyframes
                 if prop in keyframes_df.columns:
@@ -187,19 +190,21 @@ def plot_timeline(  # noqa: C901
             [0],
             marker='^',
             color='w',
-            label='Action Triggered',
-            linestyle='',
-            markersize=7,
-            markerfacecolor='#aaa',
             markeredgecolor='#aaa',
         )
-        if 'Action Triggered' not in labels_plotted:
-            lines_plotted.append(action_handle)
-            labels_plotted.append('Action Triggered')
+        # Check the accumulated list
+        if 'Action Triggered' not in all_labels_plotted:
+            all_lines_plotted.append(action_handle)
+            all_labels_plotted.append('Action Triggered')
 
     # --- Legend (Plot only on main_ax if show_legend is True) ---
-    if show_legend and lines_plotted:
-        by_label = dict(zip(labels_plotted, lines_plotted, strict=True))
+    # Use the accumulated lists for the legend
+    if show_legend and all_lines_plotted:
+        by_label = dict(zip(all_labels_plotted, all_lines_plotted, strict=True))
+        main_ax.legend(by_label.values(), by_label.keys(), loc='upper right')
+
+        # --- Labels, Title, Grid (Apply to main_ax) ---
+        by_label = dict(zip(all_labels_plotted, all_lines_plotted, strict=True))
         main_ax.legend(by_label.values(), by_label.keys(), loc='upper right')
 
     # --- Labels, Title, Grid (Apply to main_ax) ---
