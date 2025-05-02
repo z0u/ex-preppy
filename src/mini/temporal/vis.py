@@ -50,7 +50,9 @@ def group_properties_by_scale(df: pd.DataFrame) -> tuple[ParamGroup, ParamGroup]
     }
 
     # Calculate median of medians using only numeric stats
-    median_values = [stats['median'] for stats in prop_stats.values() if pd.notna(stats['median'])]  # Ensure median is not NaN
+    median_values = [
+        stats['median'] for stats in prop_stats.values() if pd.notna(stats['median'])
+    ]  # Ensure median is not NaN
     if not median_values:
         # Handle case where all medians are NaN (e.g., all columns are empty or NaN)
         median_of_medians = 0
@@ -98,7 +100,7 @@ def plot_timeline(  # noqa: C901
     else:
         # If an axis is provided, use it. Assume only one group can be plotted.
         if len(groups) > 1:
-            print("Warning: Multiple groups provided but only one axis given. Plotting only the first group.")
+            print('Warning: Multiple groups provided but only one axis given. Plotting only the first group.')
         fig = ax.get_figure()
         main_ax = ax  # The main axis is the one provided
         axes_to_plot_on = [ax]  # Plot only on the provided axis
@@ -108,7 +110,7 @@ def plot_timeline(  # noqa: C901
     # Plot each group on its corresponding axis (or the single provided axis)
     for group, current_ax in zip(groups, axes_to_plot_on, strict=True):
         if current_ax.get_figure() is None:  # Check if axis belongs to a figure
-            raise ValueError("Provided axis does not belong to a figure.")
+            raise ValueError('Provided axis does not belong to a figure.')
         current_ax.set_facecolor('#222')  # Set facecolor for the axis we are plotting on
         lines_plotted = []
         labels_plotted = []
