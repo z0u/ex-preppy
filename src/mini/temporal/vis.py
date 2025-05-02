@@ -108,12 +108,12 @@ def plot_timeline(  # noqa: C901
         groups = [groups[0]]  # Use only the first group
 
     # --- Plotting Data ---
-    # Refs for the legend
-    all_lines_plotted: list[Artist] = []
-    all_labels_plotted: list[str] = []
-
     # Plot each group on its corresponding axis (or the single provided axis)
     for group, current_ax in zip(groups, axes_to_plot_on, strict=True):
+        # Initialize legend items for the current axis
+        lines_for_current_ax: list[Artist] = []
+        labels_for_current_ax: list[str] = []
+
         if current_ax.get_figure() is None:  # Check if axis belongs to a figure
             raise ValueError('Provided axis does not belong to a figure.')
         current_ax.set_facecolor('#222')
@@ -121,8 +121,9 @@ def plot_timeline(  # noqa: C901
             # Ensure the property exists in the history dataframe before plotting
             if prop in history_df.columns:
                 (line,) = current_ax.plot(history_df['STEP'], history_df[prop], label=f'{prop}')
-                all_lines_plotted.append(line)
-                all_labels_plotted.append(f'{prop}')
+                # Add to the current axis's legend items
+                lines_for_current_ax.append(line)
+                labels_for_current_ax.append(f'{prop}')
 
                 # Add markers for keyframes if the property exists in keyframes
                 if prop in keyframes_df.columns:
@@ -139,6 +140,31 @@ def plot_timeline(  # noqa: C901
                         )
             else:
                 print(f"Warning: Property '{prop}' specified in group '{group.name}' not found in history_df.")
+
+        # --- Legend (Create legend for the current axis if show_legend is True) ---
+        if show_legend and lines_for_current_ax:
+            # Special handling for the main_ax to potentially include 'Action Triggered'
+            if current_ax == main_ax:
+                # Check if actions exist and add the handle if needed
+                action_steps = history_df[history_df['ACTION'].apply(lambda x: bool(x))]
+                if not action_steps.empty:
+                    action_handle = Line2D(
+                        [0],
+                        [0],
+                        marker='^',
+                        color='#aaa',  # Match marker color
+                        linestyle='None',  # No line for marker-only legend entry
+                        markersize=8,  # Adjust size if needed
+                        label='Action Triggered',
+                    )
+                    # Avoid duplicates if somehow already added (shouldn't happen now)
+                    if 'Action Triggered' not in labels_for_current_ax:
+                        lines_for_current_ax.append(action_handle)
+                        labels_for_current_ax.append('Action Triggered')
+
+            # Create the legend for the current axis
+            by_label = dict(zip(labels_for_current_ax, lines_for_current_ax, strict=True))
+            current_ax.legend(by_label.values(), by_label.keys(), loc='upper right')
 
     # --- Phase Changes and Labels (Plot only on main_ax) ---
     phase_changes = keyframes_df.dropna(subset=['PHASE'])
@@ -182,30 +208,7 @@ def plot_timeline(  # noqa: C901
             color='#aaa',
             s=40,
             zorder=10,
-            label='Action Triggered',  # Add label for legend
         )
-        # Add 'Action Triggered' to lines/labels if actions exist
-        action_handle = Line2D(
-            [0],
-            [0],
-            marker='^',
-            color='w',
-            markeredgecolor='#aaa',
-        )
-        # Check the accumulated list
-        if 'Action Triggered' not in all_labels_plotted:
-            all_lines_plotted.append(action_handle)
-            all_labels_plotted.append('Action Triggered')
-
-    # --- Legend (Plot only on main_ax if show_legend is True) ---
-    # Use the accumulated lists for the legend
-    if show_legend and all_lines_plotted:
-        by_label = dict(zip(all_labels_plotted, all_lines_plotted, strict=True))
-        main_ax.legend(by_label.values(), by_label.keys(), loc='upper right')
-
-        # --- Labels, Title, Grid (Apply to main_ax) ---
-        by_label = dict(zip(all_labels_plotted, all_lines_plotted, strict=True))
-        main_ax.legend(by_label.values(), by_label.keys(), loc='upper right')
 
     # --- Labels, Title, Grid (Apply to main_ax) ---
     if ax is None:  # Only set title if we created the figure
