@@ -54,7 +54,7 @@ case "${1:-all}" in
 			  lint   [...args]:  run linters (ruff check)
 			  types  [...args]:  check types (pyright)
 			  tests  [...args]:  run tests (pytest)
-			  build:             build static site
+			  build  [...args]:  build static site
 			EOF
         exit 1
         ;;

@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+import argparse
 
 # --- Configuration ---
 # Use pathlib for robust path handling
@@ -31,7 +32,6 @@ def run_command(cmd_list, check=True, cwd=None, capture_output=False):
             cwd=cwd,
             text=True,
             capture_output=capture_output,
-            # Pass environment variables to ensure uv finds its context
             env=os.environ,
         )
         if capture_output:
@@ -63,17 +63,10 @@ def prepare_dirs():
 def copy_content():
     """Copy content from docs and the root README into the site directory."""
     print('Copying content...')
-    # Copy README.md to _site/index.md
     target_readme = SITE_DIR / 'index.md'
     print(f'  Copying {README_FILE} to {target_readme}')
     shutil.copy(README_FILE, target_readme)
 
-    # Copy everything from docs/* to _site/
-    # Use copytree for directories, handle files separately if needed,
-    # or iterate and copy individually if more control is required.
-    # shutil.copytree needs the destination *not* to exist, or dirs_exist_ok=True (Python 3.8+)
-    # Since SITE_DIR is fresh, we can copy contents item by item or use copytree carefully.
-    # Let's iterate to mimic the `cp -r docs/* _site/` behavior more closely.
     print(f'  Copying contents of {DOCS_DIR} to {SITE_DIR}')
     if DOCS_DIR.is_dir():
         for item in DOCS_DIR.iterdir():
@@ -81,7 +74,7 @@ def copy_content():
             if item.is_dir():
                 shutil.copytree(item, target_item, dirs_exist_ok=True)
             else:
-                shutil.copy2(item, target_item)  # copy2 preserves metadata like cp -p
+                shutil.copy2(item, target_item)
     else:
         print(f'Warning: Docs directory {DOCS_DIR} not found.', file=sys.stderr)
 
@@ -89,7 +82,7 @@ def copy_content():
 def convert_markdown_to_ipynb():
     """Find Markdown files in _site, converts them to Jupyter notebooks."""
     print('Converting Markdown files to temporary Notebooks...')
-    md_files = list(SITE_DIR.rglob('*.md'))  # Use rglob for recursive search
+    md_files = list(SITE_DIR.rglob('*.md'))
     if not md_files:
         print('  No markdown files found to convert.')
         return
@@ -99,10 +92,8 @@ def convert_markdown_to_ipynb():
         print(f'  Converting {md_file.relative_to(WORKSPACE_ROOT)} to {ipynb_file.relative_to(WORKSPACE_ROOT)}...')
 
         try:
-            # Read markdown content, handling potential encoding issues
             md_content = md_file.read_text(encoding='utf-8').splitlines(keepends=True)
 
-            # Construct the notebook JSON structure
             notebook_json = {
                 'cells': [{'cell_type': 'markdown', 'metadata': {}, 'source': md_content}],
                 'metadata': {
@@ -113,15 +104,12 @@ def convert_markdown_to_ipynb():
                 'nbformat_minor': 5,
             }
 
-            # Write the JSON to the .ipynb file
             with open(ipynb_file, 'w', encoding='utf-8') as f:
-                json.dump(notebook_json, f, indent=1)  # Use indent for readability
+                json.dump(notebook_json, f, indent=1)
 
-            # Check if the file was created and is not empty
             if not ipynb_file.exists() or ipynb_file.stat().st_size == 0:
                 raise IOError(f'Failed to create or write to {ipynb_file}')
 
-            # Remove original markdown file after successful conversion
             print(f'  Removing original markdown file: {md_file.relative_to(WORKSPACE_ROOT)}')
             md_file.unlink()
 
@@ -130,22 +118,24 @@ def convert_markdown_to_ipynb():
             sys.exit(1)
 
 
-def convert_notebooks():
-    """Convert all .ipynb files in _site to HTML using nbconvert."""
-    print('Converting all Notebooks to HTML...')
-    notebook_files = list(SITE_DIR.rglob('*.ipynb'))  # Use rglob for recursive search
+def convert_notebooks(no_code: bool = False, output_format: str = 'html'):
+    """Convert all .ipynb files in _site using nbconvert."""
+    print(f'Converting all Notebooks to {output_format.upper()}...')
+    notebook_files = list(SITE_DIR.rglob('*.ipynb'))
     if not notebook_files:
         print('  No notebooks found to convert.')
         return
 
-    # We need to run nbconvert via uv to ensure it uses the correct environment
-    # Build the command list
-    cmd = ['uv', 'run', '--', 'jupyter', 'nbconvert', '--config', str(NBCONVERT_CONFIG), '--to', 'html']
-    cmd.extend(map(str, notebook_files))  # Add all notebook paths to the command
+    cmd = ['uv', 'run', '--', 'jupyter', 'nbconvert', '--config', str(NBCONVERT_CONFIG), '--to', output_format]
 
-    run_command(cmd, cwd=WORKSPACE_ROOT)  # Run from workspace root
+    if no_code:
+        print('  Excluding code input cells (--no-input).')
+        cmd.append('--no-input')
 
-    # Delete the intermediate ipynb files
+    cmd.extend(map(str, notebook_files))
+
+    run_command(cmd, cwd=WORKSPACE_ROOT)
+
     print('  Deleting intermediate notebook files...')
     for ipynb_file in notebook_files:
         try:
@@ -153,59 +143,55 @@ def convert_notebooks():
             ipynb_file.unlink()
         except OSError as e:
             print(f'Error deleting file {ipynb_file}: {e}', file=sys.stderr)
-            # Decide if this is fatal or just a warning
-            # sys.exit(1)
 
 
-def fix_links():
-    """Adjust links in generated HTML files."""
-    print('Fixing internal links in HTML files...')
-    html_files = list(SITE_DIR.rglob('*.html'))
-    if not html_files:
-        print('  No HTML files found to fix links in.')
+def fix_links(output_format: str = 'html'):
+    """Adjust links in generated output files."""
+    if output_format == 'markdown':
+        target_ext = '.md'
+    else:
+        target_ext = '.html'
+
+    print(f'Fixing internal links in {target_ext} files...')
+    output_files = list(SITE_DIR.rglob(f'*{target_ext}'))
+    if not output_files:
+        print(f'  No {target_ext} files found to fix links in.')
         return
 
-    # Regex to find hrefs like "docs/something.ipynb" or just "something.ipynb"
-    # and convert them to "something.html"
-    # 1. Remove 'docs/' prefix if present: href="docs/([^"]*)" -> href="\1"
-    # 2. Change '.ipynb' extension to '.html': href="([^"#?]*)\.ipynb([^"]*)" -> href="\1.html\2"
-    # Combine into one pass if possible, or two sequential replacements.
-    # Let's do two sequential replacements for clarity, mimicking the sed approach.
-
-    # Pattern 1: Remove 'docs/' prefix from hrefs
     docs_prefix_pattern = re.compile(r'href="docs/([^"]*)"')
-    # Pattern 2: Replace .ipynb with .html in hrefs, handling anchors and query params
-    ipynb_ext_pattern = re.compile(r'href="([^"#?]+)\.ipynb(#|\?|")')
+    md_link_prefix_pattern = re.compile(r'\]\(docs/([^)]*)\)')
+    ipynb_ext_pattern_html = re.compile(r'href="([^"#?]+)\.ipynb(#|\?|")')
+    ipynb_ext_pattern_md = re.compile(r'\]\(([^)#?]+)\.ipynb(#|\?|\))')
 
-    for html_file in html_files:
-        print(f'  Processing links in {html_file.relative_to(WORKSPACE_ROOT)}...')
+    for file_path in output_files:
+        print(f'  Processing links in {file_path.relative_to(WORKSPACE_ROOT)}...')
         try:
-            content = html_file.read_text(encoding='utf-8')
-            original_content = content  # Keep a copy for comparison
+            content = file_path.read_text(encoding='utf-8')
+            original_content = content
 
-            # Step 1: Remove 'docs/' prefix
-            content = docs_prefix_pattern.sub(r'href="\1"', content)
+            if output_format == 'html':
+                content = docs_prefix_pattern.sub(r'href="\1"', content)
+                def replace_ipynb_html(match):
+                    base_link = match.group(1)
+                    trailing_char = match.group(2)
+                    return f'href="{base_link}{target_ext}{trailing_char}'
+                content = ipynb_ext_pattern_html.sub(replace_ipynb_html, content)
+            elif output_format == 'markdown':
+                content = md_link_prefix_pattern.sub(r'](\1)', content)
+                def replace_ipynb_md(match):
+                    base_link = match.group(1)
+                    trailing_char = match.group(2)
+                    return f']({base_link}{target_ext}{trailing_char}'
+                content = ipynb_ext_pattern_md.sub(replace_ipynb_md, content)
 
-            # Step 2: Replace .ipynb with .html
-            # We need a function for replacement to correctly handle the trailing character (#, ?, or ")
-            def replace_ipynb(match):
-                base_link = match.group(1)
-                trailing_char = match.group(2)
-                return f'href="{base_link}.html{trailing_char}'
-
-            content = ipynb_ext_pattern.sub(replace_ipynb, content)
-
-            # Only write back if changes were made
             if content != original_content:
-                print(f'    Links updated in {html_file.relative_to(WORKSPACE_ROOT)}')
-                html_file.write_text(content, encoding='utf-8')
+                print(f'    Links updated in {file_path.relative_to(WORKSPACE_ROOT)}')
+                file_path.write_text(content, encoding='utf-8')
             else:
-                print(f'    No link changes needed for {html_file.relative_to(WORKSPACE_ROOT)}')
+                print(f'    No link changes needed for {file_path.relative_to(WORKSPACE_ROOT)}')
 
         except Exception as e:
-            print(f'Error processing links in {html_file}: {e}', file=sys.stderr)
-            # Decide whether to continue or exit
-            # sys.exit(1)
+            print(f'Error processing links in {file_path}: {e}', file=sys.stderr)
 
 
 def add_nojekyll():
@@ -220,9 +206,13 @@ def add_nojekyll():
         sys.exit(1)
 
 
-def inject_css():
+def inject_css(output_format: str = 'html'):
     """Inject custom CSS into the head of HTML files."""
-    print('Injecting custom CSS...')
+    if output_format != 'html':
+        print(f'Skipping CSS injection for {output_format.upper()} format.')
+        return
+
+    print('Injecting custom CSS into HTML files...')
     if not CSS_FILE.is_file():
         print(f'Error: CSS file not found at {CSS_FILE}', file=sys.stderr)
         sys.exit(1)
@@ -239,7 +229,6 @@ def inject_css():
         print('  No HTML files found to inject CSS into.')
         return
 
-    # Pattern to find the closing </head> tag (case-insensitive)
     head_end_pattern = re.compile(r'</head>', re.IGNORECASE)
 
     for html_file in html_files:
@@ -247,12 +236,10 @@ def inject_css():
         try:
             content = html_file.read_text(encoding='utf-8')
 
-            # Check if CSS marker is already present
             if CSS_MARKER in content:
                 print(f'    Skipping {html_file.relative_to(WORKSPACE_ROOT)}, custom CSS already present.')
                 continue
 
-            # Find the position to insert the CSS
             match = head_end_pattern.search(content)
             if match:
                 insert_pos = match.start()
@@ -267,8 +254,6 @@ def inject_css():
 
         except Exception as e:
             print(f'Error injecting CSS into {html_file}: {e}', file=sys.stderr)
-            # Decide whether to continue or exit
-            # sys.exit(1)
 
     print('CSS injection complete.')
 
@@ -277,14 +262,28 @@ def inject_css():
 
 
 def main():
+    parser = argparse.ArgumentParser(description='Build the project website.')
+    parser.add_argument(
+        '--no-code',
+        action='store_true',
+        help='Exclude code input cells from the generated output files.',
+    )
+    parser.add_argument(
+        '--format',
+        choices=['html', 'markdown'],
+        default='html',
+        help='Output format for converted notebooks (default: html).',
+    )
+    args = parser.parse_args()
+
     prepare_dirs()
     copy_content()
     convert_markdown_to_ipynb()
-    convert_notebooks()
-    fix_links()
+    convert_notebooks(no_code=args.no_code, output_format=args.format)
+    fix_links(output_format=args.format)
     add_nojekyll()
-    inject_css()
-    print(f'\nSite build complete. Wrote to {SITE_DIR.relative_to(os.getcwd())}/')
+    inject_css(output_format=args.format)
+    print(f'\nSite build complete ({args.format.upper()} format). Wrote to {SITE_DIR.relative_to(os.getcwd())}/')
 
 
 if __name__ == '__main__':
