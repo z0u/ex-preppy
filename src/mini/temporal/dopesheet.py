@@ -104,7 +104,7 @@ class Dopesheet:
         """Parse property configurations from DataFrame headers."""
         prop_configs = {}
         rename_map = {}
-        pattern = re.compile(r'^(?P<prop>[^:]+)(?::(?P<space>[^:]+))?(?::(?P<interpolator>[^:]+))?$')
+        pattern = re.compile(r'^(?P<prop>[^:]+)(?::(?P<space>[^:]*))?(?::(?P<interpolator>[^:]*))?$')
 
         for col in df.columns:
             if col in RESERVED_COLS:
@@ -276,14 +276,19 @@ class Dopesheet:
         - PHASE: The phase of the curriculum (optional)
         - ACTION: The action to take (event to emit) (optional)
         - *: Other columns are interpreted as parameters to set.
-             These can be in the format 'prop:space:interpolator' (e.g., 'lr:log:minjerk')
-             or just 'prop' (e.g., 'momentum'), which implies defaults ('linear', 'minjerk').
+             These can be in the following formats:
+             - 'prop' (e.g., 'momentum') - Uses defaults for space and interpolator
+             - 'prop:space' (e.g., 'lr:log') - Customizes space, uses default interpolator
+             - 'prop::interpolator' (e.g., 'z::step-end') - Uses default space, customizes interpolator
+             - 'prop:space:interpolator' (e.g., 'lr:log:minjerk') - Customizes both space and interpolator
+
+             Default values: space='linear', interpolator='minjerk'
 
         Example:
-            STEP,PHASE,ACTION,lr:log:minjerk,momentum
-            0,Basic,,0.01,0.9
-            +0.5,,snapshot,0.005,
-            1000,,,0.001,0.99
+            STEP,PHASE,ACTION,lr:log,momentum,z::step-end
+            0,Basic,,0.01,0.9,1
+            +0.5,,snapshot,0.005,,2
+            1000,,,0.001,0.99,3
         """
         # Assuming header=0 works correctly even with complex names
         df = pd.read_csv(path, dtype={'STEP': str, 'PHASE': str, 'ACTION': str}, header=0)

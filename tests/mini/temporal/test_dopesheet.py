@@ -140,25 +140,32 @@ class TestDopesheet:
         assert initial_values == {'x': 0.01, 'y': 0.8, 'z': 1}
 
     def test_prop_config_parsing(self, dopesheet: Dopesheet):
-        """Test that property configurations are parsed correctly from column headers."""
+        """
+        Test that property configurations are correctly parsed from column headers.
+
+        Tests the new position-based syntax for header formats:
+        - 'prop' (e.g., 'y') - Uses defaults for both space and interpolator
+        - 'prop:space' (e.g., 'x:log') - Customizes space, uses default interpolator
+        - 'prop::interpolator' (e.g., 'z::step-end') - Uses default space, customizes interpolator
+        """
         # Check that the configs were stored correctly
         assert dopesheet._prop_configs.keys() == {'x', 'y', 'z'}
 
-        # Check x config (log:minjerk)
+        # Check x config (x:log - space only)
         x_config = dopesheet.get_prop_config('x')
         assert isinstance(x_config, PropConfig)
         assert x_config.prop == 'x'
         assert x_config.space == 'log'
-        assert x_config.interpolator_name == 'minjerk'
+        assert x_config.interpolator_name == 'minjerk'  # Default
 
-        # Check y config (defaults)
+        # Check y config (no configs - all defaults)
         y_config = dopesheet.get_prop_config('y')
         assert y_config.prop == 'y'
         assert y_config.space == 'linear'  # Default
         assert y_config.interpolator_name == 'minjerk'  # Default
 
-        # Check z config (linear:step-end)
+        # Check z config (z::step-end - interpolator only)
         z_config = dopesheet.get_prop_config('z')
         assert z_config.prop == 'z'
-        assert z_config.space == 'linear'
+        assert z_config.space == 'linear'  # Default
         assert z_config.interpolator_name == 'step-end'
