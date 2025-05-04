@@ -1,4 +1,42 @@
 import numpy as np
+from typing import Protocol, Type
+from dataclasses import dataclass
+import math
+
+
+@dataclass
+class TimingState:
+    """Represents the state of a property at a given time."""
+    value: float
+    velocity: float
+    acceleration: float
+
+
+class TimingFunction(Protocol):
+    """Protocol for timing functions used by SmoothProp."""
+
+    initial_value: float
+    final_value: float
+    duration: float
+
+    def __init__(
+        self,
+        initial_value: float,
+        initial_velocity: float,
+        initial_acceleration: float,
+        final_value: float,
+        duration: float,
+    ):
+        """Initialize the timing function with initial state and target."""
+        ...
+
+    def __call__(self, t: float) -> float:
+        """Get the interpolated value at time t."""
+        ...
+
+    def get_state(self, t: float) -> TimingState:
+        """Get the value, velocity, and acceleration at time t."""
+        ...
 
 
 class MinimumJerkTimingFunction:
@@ -133,10 +171,10 @@ class MinimumJerkTimingFunction:
         # Using Horner's method instead of using ** (optimization)
         return c0 + tau * (c1 + tau * (c2 + tau * (c3 + tau * (c4 + tau * c5))))
 
-    def get_state(self, t: float):
+    def get_state(self, t: float) -> TimingState:
         """Get the value, velocity, and acceleration at time t."""
         if -0.0000000001 < self.duration < 0.0000000001:  # Equivalent to np.isclose with default tolerance
-            return self.initial_value, 0.0, 0.0
+            return TimingState(value=self.initial_value, velocity=0.0, acceleration=0.0)
 
         # Normalize time
         tau = t / self.duration
@@ -157,8 +195,12 @@ class MinimumJerkTimingFunction:
         d2ydtau2 = 2 * c2 + tau * (6 * c3 + tau * (12 * c4 + tau * 20 * c5))
 
         # Scale derivatives back to be w.r.t. t
-        velocity = dydtau / self.duration
-        acceleration = d2ydtau2 / (self.duration**2)
+        if abs(self.duration) < 1e-12:
+            velocity = 0.0
+            acceleration = 0.0
+        else:
+            velocity = dydtau / self.duration
+            acceleration = d2ydtau2 / (self.duration**2)
 
         # Replace np.isclose
         if 0.9999999999 < tau < 1.0000000001:
@@ -166,13 +208,103 @@ class MinimumJerkTimingFunction:
             velocity = 0.0
             acceleration = 0.0
 
-        return value, velocity, acceleration
+        return TimingState(value=value, velocity=velocity, acceleration=acceleration)
+
+
+class LinearTimingFunction:
+    """Implements simple linear interpolation."""
+    initial_value: float
+    final_value: float
+    duration: float
+    _velocity: float
+
+    def __init__(
+        self,
+        initial_value: float,
+        initial_velocity: float,  # Ignored
+        initial_acceleration: float,  # Ignored
+        final_value: float,
+        duration: float,
+    ):
+        self.initial_value = initial_value
+        self.duration = duration
+
+        if np.isclose(duration, 0.0):
+            self.final_value = initial_value  # Jump immediately
+            self._velocity = 0.0
+        else:
+            self.final_value = final_value
+            self._velocity = (final_value - initial_value) / duration
+
+    def __call__(self, t: float) -> float:
+        if np.isclose(self.duration, 0.0):
+            return self.initial_value
+
+        # Clamp time
+        t = max(0.0, min(self.duration, t))
+
+        # Linear interpolation formula: y = y0 + t * (y1 - y0) / T
+        # Simplified: y = y0 + t * velocity
+        return self.initial_value + t * self._velocity
+
+    def get_state(self, t: float) -> TimingState:
+        value = self(t)  # Calculate value using __call__
+        # Clamp state at the end
+        if t >= self.duration and not np.isclose(self.duration, 0.0):
+            return TimingState(value=self.final_value, velocity=self._velocity, acceleration=0.0)
+        # Clamp state at the beginning
+        if t < 0.0:
+            return TimingState(value=self.initial_value, velocity=self._velocity, acceleration=0.0)
+
+        # For zero duration, state is fixed at initial
+        if np.isclose(self.duration, 0.0):
+            return TimingState(value=self.initial_value, velocity=0.0, acceleration=0.0)
+
+        return TimingState(value=value, velocity=self._velocity, acceleration=0.0)
+
+
+class StepEndTimingFunction:
+    """Holds the initial value until the duration is reached, then jumps to the final value."""
+    initial_value: float
+    final_value: float
+    duration: float
+
+    def __init__(
+        self,
+        initial_value: float,
+        initial_velocity: float,  # Ignored
+        initial_acceleration: float,  # Ignored
+        final_value: float,
+        duration: float,
+    ):
+        self.initial_value = initial_value
+        self.duration = duration
+        # If duration is zero, the "final" value is actually the initial one
+        self.final_value = initial_value if np.isclose(duration, 0.0) else final_value
+
+    def __call__(self, t: float) -> float:
+        if np.isclose(self.duration, 0.0):
+            return self.initial_value  # Always initial if duration is zero
+
+        # Use >= for step-end behavior (jump happens *at* t == duration)
+        if t >= self.duration:
+            return self.final_value
+        elif t < 0.0:
+            return self.initial_value
+        else:
+            return self.initial_value
+
+    def get_state(self, t: float) -> TimingState:
+        value = self(t)
+        # Velocity and acceleration are always zero for step functions
+        return TimingState(value=value, velocity=0.0, acceleration=0.0)
 
 
 class SmoothProp:
     """Stores a value, and smoothly transitions new value on change."""
 
-    _interpolator: MinimumJerkTimingFunction | None
+    _interpolator: TimingFunction | None
+    _timing_function_cls: Type[TimingFunction]
     _ctime: float
     """The number of steps that have been taken since the last set() call."""
     _duration: float
@@ -180,18 +312,33 @@ class SmoothProp:
     _value: float
     """The target value"""
 
-    def __init__(self, value: float, duration: float = 0.0):
+    def __init__(
+        self,
+        value: float,
+        duration: float = 0.0,
+        timing_function_cls: Type[TimingFunction] = MinimumJerkTimingFunction,
+    ):
         """
         Initialize the SmoothProp with a starting value and optional duration.
 
         Args:
             value: Initial value
             duration: Duration of the transition (unitless; see `step()`)
+            timing_function_cls: The class to use for interpolation.
         """
+        self._timing_function_cls = timing_function_cls
         self._duration = duration
         self._value = float(value)
         self._interpolator = None
         self._ctime = 0.0
+        if not np.isclose(duration, 0.0):
+            self._interpolator = self._timing_function_cls(
+                initial_value=value,
+                initial_velocity=0.0,
+                initial_acceleration=0.0,
+                final_value=value,
+                duration=duration,
+            )
 
     def step(self, n=1.0):
         """
@@ -202,11 +349,14 @@ class SmoothProp:
             mean "frames" or some real amount of time. For example, if called with the
             elapsed real time in seconds, the duration would be in seconds.
         """
+        if self._interpolator is None:
+            return
+
         self._ctime += float(n)
-        # Clear the interpolator if we've reached or exceeded the duration
-        if self._interpolator is not None and (abs(self._ctime - self.duration) < 1e-10 or self._ctime > self.duration):
-            self._value = self._interpolator.final_value
+        if abs(self._ctime - self.duration) < 1e-10 or self._ctime > self.duration:
+            final_val = self._interpolator.final_value
             self._interpolator = None
+            self._value = final_val
             self._ctime = self.duration
 
     def set(self, value: float | None = None, duration: float | None = None):
@@ -214,46 +364,68 @@ class SmoothProp:
         Set a new target value and/or duration for the transition.
 
         Args:
-            value: Target value to transition to. If `None`, keeps the current value.
+            value: Target value to transition to. If `None`, keeps the current target value.
             duration: Duration of the transition. If `None`, keeps the current duration.
 
-        Always resets the internal clock, therefore, the target value may only be
-        reached after the specified duration — even if the current value is close.
-        Depending on the current velocity, it may also overshoot (and come back).
+        Starts a new transition from the current state (value, velocity, acceleration)
+        towards the new target value over the specified duration, using the configured
+        timing function. Resets the internal clock `_ctime`.
         """
-        value = value if value is not None else self._value
-        duration = duration if duration is not None else self._duration
+        new_target_value = value if value is not None else (self._interpolator.final_value if self._interpolator else self._value)
+        new_duration = duration if duration is not None else self._duration
 
-        if np.isclose(duration, 0.0):
-            self._value = float(value)
+        # Get current state before potentially overwriting interpolator
+        if self._interpolator is not None:
+            # Ensure ctime is clamped before getting state if it overshot
+            clamped_ctime = max(0.0, min(self._interpolator.duration, self._ctime))
+            current_state = self._interpolator.get_state(clamped_ctime) # Get TimingState object
+        else:
+            # If no interpolator, assume we are at rest at the last set value
+            current_state = TimingState(value=self._value, velocity=0.0, acceleration=0.0) # Create TimingState
+
+        # Handle immediate jump (zero duration)
+        if np.isclose(new_duration, 0.0):
+            self._value = float(new_target_value)
             self._interpolator = None
             self._ctime = 0.0
-            self._duration = 0.0  # Update the duration to be exactly 0.0
+            self._duration = 0.0
             return
 
-        if self._interpolator is not None:
-            current_value, current_velocity, current_acceleration = self._interpolator.get_state(self._ctime)
-        else:
-            current_value, current_velocity, current_acceleration = self._value, 0.0, 0.0
-
+        # Avoid creating a new interpolator if the target hasn't changed
+        # and we are already at rest at the target.
         if (
-            np.isclose(current_value, value)
-            and np.isclose(current_velocity, 0.0)
-            and np.isclose(current_acceleration, 0.0)
+            self._interpolator is None # Already at rest
+            and np.isclose(current_state.value, new_target_value) # Check value from state
         ):
-            if self._value == value:
-                return
+             if not np.isclose(self._duration, new_duration):
+                 self._duration = float(new_duration)
+             return # No change needed
 
-        self._interpolator = MinimumJerkTimingFunction(
-            initial_value=current_value,
-            initial_velocity=current_velocity,
-            initial_acceleration=current_acceleration,
-            final_value=value,
-            duration=duration,
+        # Avoid creating a new interpolator if target value and duration are identical to current transition
+        # This prevents redundant object creation if set() is called repeatedly with the same target.
+        if (
+            self._interpolator is not None
+            and np.isclose(self._interpolator.final_value, new_target_value)
+            and np.isclose(self._interpolator.duration, new_duration)
+        ):
+             # Update the internal target value and duration in case they were None
+             self._value = float(new_target_value)
+             self._duration = float(new_duration)
+             # Don't reset _ctime or create a new interpolator
+             return
+
+
+        # Create the new interpolator using the stored class
+        self._interpolator = self._timing_function_cls(
+            initial_value=current_state.value,         # Unpack from state
+            initial_velocity=current_state.velocity,   # Unpack from state
+            initial_acceleration=current_state.acceleration, # Unpack from state
+            final_value=new_target_value,
+            duration=new_duration,
         )
-        self._ctime = 0.0
-        self._value = float(value)
-        self._duration = float(duration)
+        self._ctime = 0.0 # Reset clock for new transition
+        self._value = float(new_target_value) # Update target value
+        self._duration = float(new_duration) # Update duration
 
     @property
     def duration(self):
@@ -263,7 +435,7 @@ class SmoothProp:
         This is a unitless value. The actual time it takes depends on how `step()` is
         called.
         """
-        return self._duration
+        return self._interpolator.duration if self._interpolator is not None else self._duration
 
     @property
     def value(self):
@@ -275,3 +447,48 @@ class SmoothProp:
             return self._interpolator.final_value
 
         return self._interpolator(self._ctime)
+
+
+class LogSpaceSmoothProp(SmoothProp):
+    """A wrapper for SmoothProp that operates in logarithmic space."""
+
+    def __init__(
+        self,
+        value: float,
+        duration: float = 0.0,
+        timing_function_cls: Type[TimingFunction] = MinimumJerkTimingFunction,
+    ):
+        """Initialize with a value in normal space and convert to log space internally."""
+        # Ensure value is positive for log space
+        safe_value = max(value, 1e-10)
+        log_value = math.log(safe_value)
+
+        # Initialize the parent SmoothProp in log space
+        super().__init__(
+            value=log_value,
+            duration=duration,
+            timing_function_cls=timing_function_cls,
+        )
+
+    def step(self, n=1.0):
+        """Progress the internal clock forward."""
+        super().step(n)
+
+    def set(self, value: float | None = None, duration: float | None = None):
+        """Set a new target value and/or duration for the transition."""
+        # If value is provided, convert to log space
+        if value is not None:
+            # Ensure value is positive for log space
+            safe_value = max(value, 1e-10)
+            log_value = math.log(safe_value)
+            super().set(value=log_value, duration=duration)
+        else:
+            super().set(value=None, duration=duration)
+
+    @property
+    def value(self):
+        """Get the current value, transformed back from log space."""
+        # Get the log-space value from the parent class
+        log_value = super().value
+        # Transform back to normal space
+        return math.exp(log_value)

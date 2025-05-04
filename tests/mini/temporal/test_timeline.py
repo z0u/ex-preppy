@@ -38,9 +38,9 @@ def test_timeline_initialization(dopesheet):
 
     # Verify initial values match the dopesheet's initial values
     initial_values = dopesheet.get_initial_values()
-    assert timeline.props['x'].value == initial_values['x']
-    assert timeline.props['y'].value == initial_values['y']
-    assert timeline.props['z'].value == initial_values['z']
+    assert timeline.props['x'].value == approx(initial_values['x'])
+    assert timeline.props['y'].value == approx(initial_values['y'])
+    assert timeline.props['z'].value == approx(initial_values['z'])
 
 
 def test_timeline_step_progression(timeline):
@@ -62,14 +62,16 @@ def test_timeline_step_progression(timeline):
 
 
 def test_timeline_property_transitions(timeline):
-    """Test that property values transition smoothly between keyframes."""
+    """Test that property values transition appropriately between keyframes."""
     # Step to 1 - values should start moving towards the next keyframe
     state = timeline.step()
     assert timeline._step == 1
 
-    # Check that z is changing gradually towards 2.0 (step 4 value)
-    # The exact value depends on the interpolation function, but it should be between 1.0 and 2.0
-    assert 1.0 < state.props['z'] < 2.0
+    # x should be transitioning with minjerk (log space)
+    assert state.props['x'] != approx(0.01)
+
+    # z should stay at 1.0 until we reach step 4, since it uses step-end
+    assert state.props['z'] == approx(1.0)
 
     # Step to 4 (where y and z have keyframes)
     for _ in range(3):
@@ -195,3 +197,52 @@ def test_timeline_phase_transitions(timeline):
         is_phase_start=False,
         is_phase_end=True,
     )
+
+
+def test_interpolation_functions(timeline):
+    """Test that different interpolation functions are correctly applied to properties."""
+    # Our test fixture has:
+    # - x: log:minjerk
+    # - y: linear:minjerk (default)
+    # - z: linear:step-end
+
+    # Step to 2 (halfway between 0 and 4)
+    timeline.step()
+    timeline.step()
+    state = timeline.state
+    assert state.step == 2
+
+    # Check that z uses step-end behavior (should remain at 1.0 until we reach step 4)
+    # Since we're using StepEndTimingFunction, it should stay at exactly 1.0
+    assert state.props['z'] == approx(1.0)
+
+    # x should be changing (using minjerk in log space)
+    assert state.props['x'] != approx(0.01)
+
+    # y doesn't have a key at step 0, so it won't start changing until step 4
+    # It should still be at its initial value
+    assert state.props['y'] == approx(0.8)
+
+    # Step to 5 (one step after z's first keyframe)
+    timeline.step()
+    timeline.step()
+    timeline.step()
+    state = timeline.state
+    assert state.step == 5
+
+    # z should now be at 2.0 because of step-end
+    assert state.props['z'] == approx(2.0)
+
+    # Step to 6 - y should now be changing
+    timeline.step()
+    state = timeline.state
+    assert state.props['y'] != approx(0.8)  # Now it should be changing
+
+    # Step to 8 (halfway to step 10)
+    timeline.step()
+    timeline.step()
+    state = timeline.state
+    assert state.step == 8
+
+    # z should still be at 2.0 because of step-end (won't change until step 10)
+    assert state.props['z'] == approx(2.0)

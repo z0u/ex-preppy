@@ -1,7 +1,7 @@
 import pytest
 from pathlib import Path
 
-from mini.temporal.dopesheet import Dopesheet, Key, Step
+from mini.temporal.dopesheet import Dopesheet, Key, Step, PropConfig
 
 
 @pytest.fixture
@@ -138,3 +138,27 @@ class TestDopesheet:
         # - 'y' first appears at step 4 with value 0.8
         # - 'z' first appears at step 0 with value 1
         assert initial_values == {'x': 0.01, 'y': 0.8, 'z': 1}
+
+    def test_prop_config_parsing(self, dopesheet: Dopesheet):
+        """Test that property configurations are parsed correctly from column headers."""
+        # Check that the configs were stored correctly
+        assert dopesheet._prop_configs.keys() == {'x', 'y', 'z'}
+
+        # Check x config (log:minjerk)
+        x_config = dopesheet.get_prop_config('x')
+        assert isinstance(x_config, PropConfig)
+        assert x_config.prop == 'x'
+        assert x_config.space == 'log'
+        assert x_config.interpolator_name == 'minjerk'
+
+        # Check y config (defaults)
+        y_config = dopesheet.get_prop_config('y')
+        assert y_config.prop == 'y'
+        assert y_config.space == 'linear'  # Default
+        assert y_config.interpolator_name == 'minjerk'  # Default
+
+        # Check z config (linear:step-end)
+        z_config = dopesheet.get_prop_config('z')
+        assert z_config.prop == 'z'
+        assert z_config.space == 'linear'
+        assert z_config.interpolator_name == 'step-end'

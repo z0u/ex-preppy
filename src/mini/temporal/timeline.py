@@ -1,7 +1,24 @@
 from dataclasses import dataclass
+from typing import Type
 
 from mini.temporal.dopesheet import Dopesheet, Step
-from mini.temporal.transitions import SmoothProp
+from mini.temporal.transitions import (
+    LinearTimingFunction,
+    LogSpaceSmoothProp,
+    MinimumJerkTimingFunction,
+    SmoothProp,
+    StepEndTimingFunction,
+    TimingFunction,
+)
+
+# Map interpolator names to classes
+INTERPOLATOR_MAP: dict[str, Type[TimingFunction]] = {
+    'minjerk': MinimumJerkTimingFunction,
+    'linear': LinearTimingFunction,
+    'step': StepEndTimingFunction,  # Allow 'step' as alias for 'step-end'
+    'step-end': StepEndTimingFunction,
+}
+DEFAULT_TIMING_FUNCTION = MinimumJerkTimingFunction
 
 
 @dataclass
@@ -35,12 +52,33 @@ class Timeline:
         # Get the initial values for each property from the dopesheet
         initial_values = dopesheet.get_initial_values()
 
-        # Create SmoothProp instances with appropriate initial values
+        # Create SmoothProp instances with appropriate initial values and timing functions
         self.props = {}
         for prop in dopesheet.props:
+            # Get the configuration for this property
+            prop_config = dopesheet.get_prop_config(prop)
+
+            # Look up the timing function class based on the config name
+            timing_function_cls = INTERPOLATOR_MAP.get(
+                prop_config.interpolator_name, DEFAULT_TIMING_FUNCTION
+            )
+
             # Use the initial value if available, otherwise default to 0.0
             initial_value = initial_values.get(prop, 0.0)
-            self.props[prop] = SmoothProp(value=initial_value)
+
+            # Create appropriate SmoothProp based on space setting
+            if prop_config.space == 'log':
+                # Use LogSpaceSmoothProp for logarithmic space
+                self.props[prop] = LogSpaceSmoothProp(
+                    value=initial_value,
+                    timing_function_cls=timing_function_cls,
+                )
+            else:
+                # Use regular SmoothProp for linear space (the default)
+                self.props[prop] = SmoothProp(
+                    value=initial_value,
+                    timing_function_cls=timing_function_cls,
+                )
 
         self._step = 0
         # Set things in motion
@@ -52,9 +90,18 @@ class Timeline:
     def _process_keyframes(self) -> None:
         """Process keyframes at the current step."""
         current_step: Step = self.dopesheet[self._step]
+
         for key in current_step.keyed_props:
-            # Update the property with the new target value and duration. These may be None if there are no more keyframes, but that's fine because SmoothProp will interpret that as "no change".
-            self.props[key.prop].set(value=key.next_value, duration=key.duration)
+            # Only proceed if we have a valid next target
+            if key.next_t is None or key.next_value is None:
+                continue
+
+            prop_name = key.prop
+            duration = key.duration
+
+            # Set the target value and duration
+            # The appropriate space transformation is handled by the SmoothProp or LogSpaceSmoothProp
+            self.props[prop_name].set(value=key.next_value, duration=duration)
 
     def step(self) -> State:
         """Advance the timeline by one step."""

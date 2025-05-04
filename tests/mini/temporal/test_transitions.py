@@ -1,6 +1,12 @@
 import numpy as np
 import pytest
-from mini.temporal.transitions import MinimumJerkTimingFunction, SmoothProp
+from mini.temporal.transitions import (
+    LinearTimingFunction,
+    MinimumJerkTimingFunction,
+    SmoothProp,
+    StepEndTimingFunction,
+    TimingState,
+)
 
 
 class TestMinimumJerkTimingFunction:
@@ -42,22 +48,17 @@ class TestMinimumJerkTimingFunction:
         )
 
         # Test initial state
-        value, velocity, acceleration = mjf.get_state(0.0)
-        assert value == 0.0
-        assert velocity == 0.0
-        assert acceleration == 0.0
+        assert mjf.get_state(0.0) == pytest.approx(TimingState(value=0.0, velocity=0.0, acceleration=0.0))
 
         # Test final state
-        value, velocity, acceleration = mjf.get_state(1.0)
-        assert pytest.approx(value, abs=1e-10) == 1.0
-        assert pytest.approx(velocity, abs=1e-10) == 0.0
-        assert pytest.approx(acceleration, abs=1e-10) == 0.0
+        assert mjf.get_state(1.0) == pytest.approx(TimingState(value=1.0, velocity=0.0, acceleration=0.0), abs=1e-9)
 
         # Test intermediate state - all values should exist
-        value, velocity, acceleration = mjf.get_state(0.5)
-        assert 0.0 < value < 1.0
-        assert isinstance(velocity, float)
-        assert isinstance(acceleration, float)
+        state = mjf.get_state(0.5)
+        assert isinstance(state, TimingState)
+        assert 0.0 < state.value < 1.0
+        assert isinstance(state.velocity, float)
+        assert isinstance(state.acceleration, float)
 
     def test_long_duration(self):
         """Test interpolation with a very long duration to check for overflow."""
@@ -72,10 +73,7 @@ class TestMinimumJerkTimingFunction:
 
         # Check initial state
         assert mjf(0.0) == 0.0
-        value, velocity, acceleration = mjf.get_state(0.0)
-        assert value == 0.0
-        assert velocity == 0.0
-        assert acceleration == 0.0
+        assert mjf.get_state(0.0) == pytest.approx(TimingState(value=0.0, velocity=0.0, acceleration=0.0))
 
         # Check intermediate state (should not be NaN or inf)
         mid_value = mjf(long_duration / 2)
@@ -84,10 +82,7 @@ class TestMinimumJerkTimingFunction:
 
         # Check final state
         assert pytest.approx(mjf(long_duration), abs=1e-9) == 1.0
-        value, velocity, acceleration = mjf.get_state(long_duration)
-        assert pytest.approx(value, abs=1e-9) == 1.0
-        assert pytest.approx(velocity, abs=1e-9) == 0.0
-        assert pytest.approx(acceleration, abs=1e-9) == 0.0
+        assert mjf.get_state(long_duration) == pytest.approx(TimingState(value=1.0, velocity=0.0, acceleration=0.0), abs=1e-9)
 
     def test_zero_duration(self):
         """Test behavior when duration is zero."""
@@ -107,18 +102,105 @@ class TestMinimumJerkTimingFunction:
         assert mjf(10.0) == initial_val  # Any time t should return initial_val
 
         # State should be constant
-        value, velocity, acceleration = mjf.get_state(0.0)
-        assert value == initial_val
-        assert velocity == 0.0
-        assert acceleration == 0.0
-
-        value, velocity, acceleration = mjf.get_state(100.0)
-        assert value == initial_val
-        assert velocity == 0.0
-        assert acceleration == 0.0
+        expected_state = TimingState(value=initial_val, velocity=0.0, acceleration=0.0)
+        assert mjf.get_state(0.0) == pytest.approx(expected_state)
+        assert mjf.get_state(100.0) == pytest.approx(expected_state)
 
         # Check final_value was updated
         assert mjf.final_value == initial_val
+
+
+class TestLinearTimingFunction:
+    def test_interpolation(self):
+        """Test basic linear interpolation."""
+        func = LinearTimingFunction(
+            initial_value=0.0, final_value=10.0, duration=10.0, initial_velocity=0, initial_acceleration=0
+        )
+        assert func(0.0) == pytest.approx(0.0)
+        assert func(5.0) == pytest.approx(5.0)
+        assert func(10.0) == pytest.approx(10.0)
+        assert func(11.0) == pytest.approx(10.0)  # Clamp past duration
+        assert func(-1.0) == pytest.approx(0.0)  # Clamp before start
+
+    def test_get_state(self):
+        """Test getting value, velocity, and acceleration."""
+        func = LinearTimingFunction(
+            initial_value=0.0, final_value=10.0, duration=10.0, initial_velocity=0, initial_acceleration=0
+        )
+        # Start
+        assert func.get_state(0.0) == pytest.approx(TimingState(value=0.0, velocity=1.0, acceleration=0.0))
+        # Mid
+        assert func.get_state(5.0) == pytest.approx(TimingState(value=5.0, velocity=1.0, acceleration=0.0))
+        # End
+        assert func.get_state(10.0) == pytest.approx(TimingState(value=10.0, velocity=1.0, acceleration=0.0))
+        # Past End (state clamps like value)
+        assert func.get_state(11.0) == pytest.approx(TimingState(value=10.0, velocity=1.0, acceleration=0.0))
+
+    def test_zero_duration(self):
+        """Test behavior with zero duration."""
+        func = LinearTimingFunction(
+            initial_value=5.0, final_value=10.0, duration=0.0, initial_velocity=1, initial_acceleration=1
+        )
+        assert func(0.0) == pytest.approx(5.0)
+        assert func(1.0) == pytest.approx(5.0)
+        expected_state = TimingState(value=5.0, velocity=0.0, acceleration=0.0)
+        assert func.get_state(0.0) == pytest.approx(expected_state)
+        assert func.final_value == pytest.approx(5.0)  # Final value updated
+
+    def test_ignores_initial_velocity_acceleration(self):
+        """Test that initial velocity/acceleration are ignored."""
+        func = LinearTimingFunction(
+            initial_value=0.0, final_value=10.0, duration=10.0, initial_velocity=100.0, initial_acceleration=100.0
+        )
+        # State should be the same as if initial vel/accel were 0
+        assert func.get_state(0.0) == pytest.approx(TimingState(value=0.0, velocity=1.0, acceleration=0.0))
+        assert func(5.0) == pytest.approx(5.0)  # Midpoint value unaffected
+
+
+class TestStepEndTimingFunction:
+    def test_interpolation(self):
+        """Test step-end interpolation."""
+        func = StepEndTimingFunction(
+            initial_value=0.0, final_value=10.0, duration=10.0, initial_velocity=0, initial_acceleration=0
+        )
+        assert func(-1.0) == pytest.approx(0.0)  # Clamp before start
+        assert func(0.0) == pytest.approx(0.0)
+        assert func(5.0) == pytest.approx(0.0)
+        assert func(9.999) == pytest.approx(0.0)
+        assert func(10.0) == pytest.approx(10.0)  # Jumps at t == duration
+        assert func(11.0) == pytest.approx(10.0)  # Stays at final value
+
+    def test_get_state(self):
+        """Test getting value, velocity, and acceleration."""
+        func = StepEndTimingFunction(
+            initial_value=0.0, final_value=10.0, duration=10.0, initial_velocity=0, initial_acceleration=0
+        )
+        # Before jump
+        assert func.get_state(5.0) == pytest.approx(TimingState(value=0.0, velocity=0.0, acceleration=0.0))
+        # At jump point (state reflects the *new* value)
+        assert func.get_state(10.0) == pytest.approx(TimingState(value=10.0, velocity=0.0, acceleration=0.0))
+        # After jump
+        assert func.get_state(11.0) == pytest.approx(TimingState(value=10.0, velocity=0.0, acceleration=0.0))
+
+    def test_zero_duration(self):
+        """Test behavior with zero duration."""
+        func = StepEndTimingFunction(
+            initial_value=5.0, final_value=10.0, duration=0.0, initial_velocity=1, initial_acceleration=1
+        )
+        assert func(0.0) == pytest.approx(5.0)  # Immediate jump to initial
+        assert func(1.0) == pytest.approx(5.0)
+        expected_state = TimingState(value=5.0, velocity=0.0, acceleration=0.0)
+        assert func.get_state(0.0) == pytest.approx(expected_state)
+        assert func.final_value == pytest.approx(5.0)  # Final value updated
+
+    def test_ignores_initial_velocity_acceleration(self):
+        """Test that initial velocity/acceleration are ignored."""
+        func = StepEndTimingFunction(
+            initial_value=0.0, final_value=10.0, duration=10.0, initial_velocity=100.0, initial_acceleration=100.0
+        )
+        # State should be the same as if initial vel/accel were 0
+        assert func.get_state(5.0) == pytest.approx(TimingState(value=0.0, velocity=0.0, acceleration=0.0))
+        assert func(10.0) == pytest.approx(10.0)  # Jump value unaffected
 
 
 class TestSmoothProp:
@@ -332,3 +414,69 @@ class TestSmoothProp:
         prop.step(0.001)  # Step slightly past
         assert prop._interpolator is None
         assert prop.value == target_value  # Should remain at target
+
+    def test_smooth_transition_linear(self):
+        """Test smooth transition using LinearTimingFunction."""
+        prop = SmoothProp(0.0, duration=10.0, timing_function_cls=LinearTimingFunction)
+        prop.set(1.0)
+        prop.step(5.0)
+        assert prop.value == pytest.approx(0.5)  # Exactly halfway
+        prop.step(5.0)
+        assert prop.value == pytest.approx(1.0)
+        assert prop._interpolator is None
+
+    def test_smooth_transition_step_end(self):
+        """Test smooth transition using StepEndTimingFunction."""
+        prop = SmoothProp(0.0, duration=10.0, timing_function_cls=StepEndTimingFunction)
+        prop.set(1.0)
+        prop.step(5.0)
+        assert prop.value == pytest.approx(0.0)  # Stays at initial
+        prop.step(4.999)
+        assert prop.value == pytest.approx(0.0)
+        prop.step(0.001)  # Step exactly to duration
+        assert prop.value == pytest.approx(1.0)  # Jumps to final
+        assert prop._interpolator is None
+        prop.step(1.0)
+        assert prop.value == pytest.approx(1.0)  # Stays at final
+
+    def test_changing_target_mid_transition_linear(self):
+        """Test changing target mid-transition with LinearTimingFunction."""
+        prop = SmoothProp(0.0, duration=10.0, timing_function_cls=LinearTimingFunction)
+        prop.set(1.0)
+        prop.step(5.0)  # Value is now 0.5
+        assert prop.value == pytest.approx(0.5)
+
+        prop.set(0.0, duration=5.0)  # New target 0.0, duration 5.0
+        assert prop.value == pytest.approx(0.5)  # Value doesn't change immediately
+        assert prop._ctime == 0.0
+        assert prop.duration == 5.0
+
+        prop.step(2.5)  # Halfway through new transition
+        # Should go from 0.5 to 0.0 over 5 steps. Halfway is 0.25
+        assert prop.value == pytest.approx(0.25)
+
+        prop.step(2.5)  # Complete transition
+        assert prop.value == pytest.approx(0.0)
+        assert prop._interpolator is None
+
+    def test_changing_target_mid_transition_step_end(self):
+        """Test changing target mid-transition with StepEndTimingFunction."""
+        prop = SmoothProp(0.0, duration=10.0, timing_function_cls=StepEndTimingFunction)
+        prop.set(1.0)
+        prop.step(5.0)  # Value is still 0.0
+        assert prop.value == pytest.approx(0.0)
+
+        prop.set(2.0, duration=8.0)  # New target 2.0, duration 8.0
+        assert prop.value == pytest.approx(0.0)  # Value doesn't change immediately
+        assert prop._ctime == 0.0
+        assert prop.duration == 8.0
+
+        prop.step(7.999)  # Just before the jump
+        assert prop.value == pytest.approx(0.0)
+
+        prop.step(0.001)  # Exactly at the jump
+        assert prop.value == pytest.approx(2.0)
+        assert prop._interpolator is None
+
+        prop.step(1.0)
+        assert prop.value == pytest.approx(2.0)

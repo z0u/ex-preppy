@@ -171,17 +171,21 @@ def fix_links(output_format: str = 'html'):
 
             if output_format == 'html':
                 content = docs_prefix_pattern.sub(r'href="\1"', content)
+
                 def replace_ipynb_html(match):
                     base_link = match.group(1)
                     trailing_char = match.group(2)
                     return f'href="{base_link}{target_ext}{trailing_char}'
+
                 content = ipynb_ext_pattern_html.sub(replace_ipynb_html, content)
             elif output_format == 'markdown':
                 content = md_link_prefix_pattern.sub(r'](\1)', content)
+
                 def replace_ipynb_md(match):
                     base_link = match.group(1)
                     trailing_char = match.group(2)
                     return f']({base_link}{target_ext}{trailing_char}'
+
                 content = ipynb_ext_pattern_md.sub(replace_ipynb_md, content)
 
             if content != original_content:

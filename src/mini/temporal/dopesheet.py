@@ -1,7 +1,8 @@
 import logging
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from io import BytesIO, StringIO
+from pathlib import Path
 from typing import Literal, overload
 
 import numpy as np
@@ -10,8 +11,17 @@ from pandas.io.formats.style import Styler
 
 log = logging.getLogger(__name__)
 
-
 RESERVED_COLS = ('STEP', 'PHASE', 'ACTION')
+DEFAULT_SPACE = 'linear'
+DEFAULT_INTERPOLATOR = 'minjerk'
+
+
+@dataclass
+class PropConfig:
+    """Configuration for a single property column."""
+    prop: str  # Base name, e.g., 'x'
+    space: str = DEFAULT_SPACE
+    interpolator_name: str = DEFAULT_INTERPOLATOR
 
 
 @dataclass
@@ -72,16 +82,61 @@ class Dopesheet:
     """
 
     _df: pd.DataFrame
+    _prop_configs: dict[str, PropConfig] = field(default_factory=dict)
     _phase_indices: np.ndarray
 
     def __init__(self, df: pd.DataFrame):
         """
         Initialize the Dopesheet with a DataFrame.
 
+        Parses column headers for property configurations (e.g., 'x:log:minjerk')
+        and resolves relative timesteps.
+
         See `from_csv`.
         """
-        self._df = resolve(df.copy())
+        parsed_df, prop_configs = self._parse_header(df.copy())
+        self._prop_configs = prop_configs
+        self._df = resolve(parsed_df)
         self._phase_indices = self._df['PHASE'].dropna().index.to_numpy()
+
+    @staticmethod
+    def _parse_header(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, PropConfig]]:
+        """Parse property configurations from DataFrame headers."""
+        prop_configs = {}
+        rename_map = {}
+        pattern = re.compile(r'^(?P<prop>[^:]+)(?::(?P<space>[^:]+))?(?::(?P<interpolator>[^:]+))?$')
+
+        for col in df.columns:
+            if col in RESERVED_COLS:
+                continue
+
+            match = pattern.match(col)
+            if match:
+                parts = match.groupdict()
+                prop_name = parts['prop']
+                config = PropConfig(
+                    prop=prop_name,
+                    space=parts.get('space') or DEFAULT_SPACE,
+                    interpolator_name=parts.get('interpolator') or DEFAULT_INTERPOLATOR,
+                )
+                prop_configs[prop_name] = config
+                if col != prop_name:
+                    rename_map[col] = prop_name
+            else:
+                # Assume default config if no pattern matches but not reserved
+                prop_configs[col] = PropConfig(prop=col)
+                log.warning(f"Column '{col}' doesn't match 'prop:space:interpolator' format. Assuming defaults.")
+
+        if rename_map:
+            df = df.rename(columns=rename_map)
+
+        # Ensure all identified props exist in the final config dict
+        final_props = [c for c in df.columns if c not in RESERVED_COLS]
+        for prop in final_props:
+            if prop not in prop_configs:
+                prop_configs[prop] = PropConfig(prop=prop)  # Add with defaults if missed
+
+        return df, prop_configs
 
     def __len__(self):
         """Get the number of steps in the dope sheet."""
@@ -179,11 +234,16 @@ class Dopesheet:
 
     @property
     def props(self) -> list[str]:
-        """List of all properties in the dopesheet."""
+        """List of all base property names in the dopesheet."""
         return [col for col in self._df.columns if col not in RESERVED_COLS]
 
+    def get_prop_config(self, prop_name: str) -> PropConfig:
+        """Get the parsed configuration for a specific property."""
+        # Return the stored config, defaulting to a default PropConfig if somehow missed
+        return self._prop_configs.get(prop_name, PropConfig(prop=prop_name))
+
     @property
-    def phases(self) -> set[str]:  # Added phases property
+    def phases(self) -> set[str]:
         """Return a set of unique phase names defined in the dopesheet."""
         return set(self._df['PHASE'].dropna().unique())
 
@@ -207,7 +267,7 @@ class Dopesheet:
         return initial_values
 
     @classmethod
-    def from_csv(cls, path: str | BytesIO | StringIO) -> 'Dopesheet':
+    def from_csv(cls, path: Path | str | BytesIO | StringIO) -> 'Dopesheet':
         """
         Load a dopesheet from a CSV file.
 
@@ -215,15 +275,18 @@ class Dopesheet:
         - STEP: The step number (can be relative, e.g., +0.5)
         - PHASE: The phase of the curriculum (optional)
         - ACTION: The action to take (event to emit) (optional)
-        - *: Other columns are interpreted as parameters to set
+        - *: Other columns are interpreted as parameters to set.
+             These can be in the format 'prop:space:interpolator' (e.g., 'lr:log:minjerk')
+             or just 'prop' (e.g., 'momentum'), which implies defaults ('linear', 'minjerk').
 
         Example:
-            STEP,PHASE,ACTION,lr
-            0,Basic,,0.0
-            +0.5,,snapshot,0.01
-            1000,,,0.001
+            STEP,PHASE,ACTION,lr:log:minjerk,momentum
+            0,Basic,,0.01,0.9
+            +0.5,,snapshot,0.005,
+            1000,,,0.001,0.99
         """
-        df = pd.read_csv(path, dtype={'STEP': str, 'PHASE': str, 'ACTION': str})
+        # Assuming header=0 works correctly even with complex names
+        df = pd.read_csv(path, dtype={'STEP': str, 'PHASE': str, 'ACTION': str}, header=0)
         return cls(df)
 
     @overload

@@ -1,4 +1,4 @@
-STEP,PHASE,ACTION,x,y,z
+STEP,PHASE,ACTION,x:log:minjerk,y,z:linear:step-end
 0,One,,0.01,,1
 +0.4,,foo,,0.8,2
 10,Two,,0.001,,3
