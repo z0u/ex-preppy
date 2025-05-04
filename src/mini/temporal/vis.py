@@ -75,6 +75,7 @@ def plot_timeline(  # noqa: C901
     groups: Sequence[ParamGroup] | None = None,
     ax: Axes | None = None,  # Add optional ax parameter
     show_legend: bool = True,  # Add show_legend parameter
+    title: str = 'Timeline property evolution',
 ):
     if groups is None:
         cols = [col for col in history_df.columns if col not in RESERVED_COLS]
@@ -212,7 +213,7 @@ def plot_timeline(  # noqa: C901
 
     # --- Labels, Title, Grid (Apply to main_ax) ---
     if ax is None:  # Only set title if we created the figure
-        main_ax.set_title('Timeline Property Evolution', fontsize=14)
+        main_ax.set_title(title, fontsize=14)
     main_ax.set_ylabel('Property value', fontsize=12)
     main_ax.set_xlabel('Step', fontsize=12)
     main_ax.grid(True, which='major', axis='both', linestyle=':', alpha=0.1)
