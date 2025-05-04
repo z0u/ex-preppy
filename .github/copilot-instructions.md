@@ -21,7 +21,7 @@ Remember: Keep the tone friendly but focused. You're collaborating with someone 
 Tools:
 - `uv` for Python environment management. Dependency groups: `dev`, `local`; see `pyproject.toml` for others.
 - `uv run pytest [opts]` for tests.
-- `uv run basedpyright [opts]` for type-checking. This is a fork of pyright that produces identical reports on the CLI and in the IDE.
+- `uv run basedpyright [opts]` for type-checking. This is a fork of pyright that produces identical reports on the CLI and in the IDE. It works with both .py and .ipynb files.
 - `uv run ruff format [opts]` for code formatting.
 - `uv run ruff check [--fix] [opts]` for linting.
 
