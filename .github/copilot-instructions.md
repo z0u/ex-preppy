@@ -82,7 +82,7 @@ This project uses `uv` for package management. Dependency groups: `dev`, `local`
 When possible, use the built-in IDE tools rather than CLI commands:
 - Use `get_errors` to check files for type and lint errors
 - Use `insert_edit_into_file` to make changes (preserving unchanged code with `// ...existing code...`)
-- Use non-CLI test runners when available
+- use `run_tests` to run tests
 
 Under the hood, these tools leverage ruff (formatting/linting), basedpyright (type-checking), and pytest (testing) — but the IDE integration is preferred over direct CLI calls.
 
