@@ -82,7 +82,9 @@ class TestMinimumJerkTimingFunction:
 
         # Check final state
         assert pytest.approx(mjf(long_duration), abs=1e-9) == 1.0
-        assert mjf.get_state(long_duration) == pytest.approx(TimingState(value=1.0, velocity=0.0, acceleration=0.0), abs=1e-9)
+        assert mjf.get_state(long_duration) == pytest.approx(
+            TimingState(value=1.0, velocity=0.0, acceleration=0.0), abs=1e-9
+        )
 
     def test_zero_duration(self):
         """Test behavior when duration is zero."""

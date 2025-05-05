@@ -7,6 +7,7 @@ import math
 @dataclass
 class TimingState:
     """Represents the state of a property at a given time."""
+
     value: float
     velocity: float
     acceleration: float
@@ -213,6 +214,7 @@ class MinimumJerkTimingFunction:
 
 class LinearTimingFunction:
     """Implements simple linear interpolation."""
+
     initial_value: float
     final_value: float
     duration: float
@@ -265,6 +267,7 @@ class LinearTimingFunction:
 
 class StepEndTimingFunction:
     """Holds the initial value until the duration is reached, then jumps to the final value."""
+
     initial_value: float
     final_value: float
     duration: float
@@ -371,17 +374,19 @@ class SmoothProp:
         towards the new target value over the specified duration, using the configured
         timing function. Resets the internal clock `_ctime`.
         """
-        new_target_value = value if value is not None else (self._interpolator.final_value if self._interpolator else self._value)
+        new_target_value = (
+            value if value is not None else (self._interpolator.final_value if self._interpolator else self._value)
+        )
         new_duration = duration if duration is not None else self._duration
 
         # Get current state before potentially overwriting interpolator
         if self._interpolator is not None:
             # Ensure ctime is clamped before getting state if it overshot
             clamped_ctime = max(0.0, min(self._interpolator.duration, self._ctime))
-            current_state = self._interpolator.get_state(clamped_ctime) # Get TimingState object
+            current_state = self._interpolator.get_state(clamped_ctime)  # Get TimingState object
         else:
             # If no interpolator, assume we are at rest at the last set value
-            current_state = TimingState(value=self._value, velocity=0.0, acceleration=0.0) # Create TimingState
+            current_state = TimingState(value=self._value, velocity=0.0, acceleration=0.0)  # Create TimingState
 
         # Handle immediate jump (zero duration)
         if np.isclose(new_duration, 0.0):
@@ -394,12 +399,12 @@ class SmoothProp:
         # Avoid creating a new interpolator if the target hasn't changed
         # and we are already at rest at the target.
         if (
-            self._interpolator is None # Already at rest
-            and np.isclose(current_state.value, new_target_value) # Check value from state
+            self._interpolator is None  # Already at rest
+            and np.isclose(current_state.value, new_target_value)  # Check value from state
         ):
-             if not np.isclose(self._duration, new_duration):
-                 self._duration = float(new_duration)
-             return # No change needed
+            if not np.isclose(self._duration, new_duration):
+                self._duration = float(new_duration)
+            return  # No change needed
 
         # Avoid creating a new interpolator if target value and duration are identical to current transition
         # This prevents redundant object creation if set() is called repeatedly with the same target.
@@ -408,24 +413,23 @@ class SmoothProp:
             and np.isclose(self._interpolator.final_value, new_target_value)
             and np.isclose(self._interpolator.duration, new_duration)
         ):
-             # Update the internal target value and duration in case they were None
-             self._value = float(new_target_value)
-             self._duration = float(new_duration)
-             # Don't reset _ctime or create a new interpolator
-             return
-
+            # Update the internal target value and duration in case they were None
+            self._value = float(new_target_value)
+            self._duration = float(new_duration)
+            # Don't reset _ctime or create a new interpolator
+            return
 
         # Create the new interpolator using the stored class
         self._interpolator = self._timing_function_cls(
-            initial_value=current_state.value,         # Unpack from state
-            initial_velocity=current_state.velocity,   # Unpack from state
-            initial_acceleration=current_state.acceleration, # Unpack from state
+            initial_value=current_state.value,  # Unpack from state
+            initial_velocity=current_state.velocity,  # Unpack from state
+            initial_acceleration=current_state.acceleration,  # Unpack from state
             final_value=new_target_value,
             duration=new_duration,
         )
-        self._ctime = 0.0 # Reset clock for new transition
-        self._value = float(new_target_value) # Update target value
-        self._duration = float(new_duration) # Update duration
+        self._ctime = 0.0  # Reset clock for new transition
+        self._value = float(new_target_value)  # Update target value
+        self._duration = float(new_duration)  # Update duration
 
     @property
     def duration(self):

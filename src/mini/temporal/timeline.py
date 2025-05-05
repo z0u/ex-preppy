@@ -59,9 +59,7 @@ class Timeline:
             prop_config = dopesheet.get_prop_config(prop)
 
             # Look up the timing function class based on the config name
-            timing_function_cls = INTERPOLATOR_MAP.get(
-                prop_config.interpolator_name, DEFAULT_TIMING_FUNCTION
-            )
+            timing_function_cls = INTERPOLATOR_MAP.get(prop_config.interpolator_name, DEFAULT_TIMING_FUNCTION)
 
             # Use the initial value if available, otherwise default to 0.0
             initial_value = initial_values.get(prop, 0.0)

@@ -19,6 +19,7 @@ DEFAULT_INTERPOLATOR = 'minjerk'
 @dataclass
 class PropConfig:
     """Configuration for a single property column."""
+
     prop: str  # Base name, e.g., 'x'
     space: str = DEFAULT_SPACE
     interpolator_name: str = DEFAULT_INTERPOLATOR
@@ -123,18 +124,16 @@ class Dopesheet:
                 if col != prop_name:
                     rename_map[col] = prop_name
             else:
-                # Assume default config if no pattern matches but not reserved
                 prop_configs[col] = PropConfig(prop=col)
                 log.warning(f"Column '{col}' doesn't match 'prop:space:interpolator' format. Assuming defaults.")
 
         if rename_map:
             df = df.rename(columns=rename_map)
 
-        # Ensure all identified props exist in the final config dict
         final_props = [c for c in df.columns if c not in RESERVED_COLS]
         for prop in final_props:
             if prop not in prop_configs:
-                prop_configs[prop] = PropConfig(prop=prop)  # Add with defaults if missed
+                prop_configs[prop] = PropConfig(prop=prop)
 
         return df, prop_configs
 
@@ -151,46 +150,30 @@ class Dopesheet:
         """
         steps_col = self._df['STEP']
 
-        # Use binary search (searchsorted) to find the index of the latest step <= input step
-        # 'right' side gives the insertion point index `i`. The index we want is `i-1`.
         insertion_point = steps_col.searchsorted(step, side='right')
         idx = max(0, insertion_point - 1)
 
-        # --- OPTIMIZED PHASE LOOKUP ---
-        # Find the most recent phase index using binary search on precomputed indices
         phase_insertion_point = np.searchsorted(self._phase_indices, idx, side='right')
 
         if phase_insertion_point == 0:
-            # No phase definition found at or before idx in our precomputed list.
-            # Mimic original fallback to index 0. A clearer default might be better,
-            # but this maintains existing behavior.
             phase_idx = 0
         else:
-            # Get the index from our precomputed list (index before insertion point)
             phase_idx = self._phase_indices[phase_insertion_point - 1]
-        # --- END OPTIMIZED PHASE LOOKUP ---
 
-        # Now get the phase value and check start using the efficiently found phase_idx
         phase = self._df['PHASE'][phase_idx] or ''
-        phase_start = steps_col[phase_idx] == step  # Check if the step where phase was defined IS the current step
+        phase_start = steps_col[phase_idx] == step
 
-        # --- Calculate Phase End ---
         if phase_insertion_point < len(self._phase_indices):
-            # There is a next phase defined. Find its start step.
             next_phase_df_idx = self._phase_indices[phase_insertion_point]
             next_phase_start_step = steps_col[next_phase_df_idx]
-            # The current phase ends one step before the next one starts
             current_phase_end_step = next_phase_start_step - 1
         else:
-            # This is the last phase, it ends at the last step of the dopesheet
-            current_phase_end_step = steps_col.max()  # Get the maximum step value
+            current_phase_end_step = steps_col.max()
 
         is_phase_end = step == current_phase_end_step
-        # --- End Calculate Phase End ---
 
         _t: int = steps_col[idx]
         if _t != step:
-            # Not a keyframe; just return current phase details
             return Step(
                 t=step,
                 phase=phase,
@@ -200,7 +183,6 @@ class Dopesheet:
                 keyed_props=[],
             )
 
-        # Handle NaN values in the ACTION column
         action_value = self._df['ACTION'][idx]
         if pd.isna(action_value) or action_value == '':
             actions = []
@@ -213,7 +195,7 @@ class Dopesheet:
             value = series[idx]
             if pd.isna(value):
                 continue
-            next_idx: int | None = series[series.index > idx].first_valid_index()  # type: ignore
+            next_idx: int | None = series[series.index > idx].first_valid_index()
             k = Key(
                 prop=prop,
                 t=step,
@@ -239,7 +221,6 @@ class Dopesheet:
 
     def get_prop_config(self, prop_name: str) -> PropConfig:
         """Get the parsed configuration for a specific property."""
-        # Return the stored config, defaulting to a default PropConfig if somehow missed
         return self._prop_configs.get(prop_name, PropConfig(prop=prop_name))
 
     @property
@@ -259,7 +240,6 @@ class Dopesheet:
         """
         initial_values = {}
         for prop in self.props:
-            # Find the first non-NaN value for this property
             series = self._df[prop]
             first_valid_idx = series.first_valid_index()
             if first_valid_idx is not None:
@@ -290,7 +270,6 @@ class Dopesheet:
             +0.5,,snapshot,0.005,,2
             1000,,,0.001,0.99,3
         """
-        # Assuming header=0 works correctly even with complex names
         df = pd.read_csv(path, dtype={'STEP': str, 'PHASE': str, 'ACTION': str}, header=0)
         return cls(df)
 
@@ -308,7 +287,6 @@ class Dopesheet:
 
     def to_markdown(self) -> str:
         mdtable = self._df.to_markdown(index=False, tablefmt='pipe')
-        # Run twice to account for overlapping matches
         mdtable = re.sub(r'(\|\s*)nan(\s*\|)', r'\1   \2', mdtable, flags=re.IGNORECASE)
         mdtable = re.sub(r'(\|\s*)nan(\s*\|)', r'\1   \2', mdtable, flags=re.IGNORECASE)
         return mdtable
@@ -321,23 +299,17 @@ def style_dopesheet(df: pd.DataFrame) -> Styler:
     non_numeric_cols: list[int] = []
 
     for i, col in enumerate(df.columns):
-        # Check if the column's dtype is a subtype of number
         if pd.api.types.is_numeric_dtype(df[col]):
-            # Drop NaNs for precision calculation
             col_no_na = df[col].dropna()
 
             if col_no_na.empty:
-                # Default to 2 if all are NaN
                 precision = 2
             else:
-                # Check if all numbers are essentially integers
                 is_integer = (col_no_na == col_no_na.round(0)).all()
                 if is_integer:
                     precision = 0
                 else:
-                    # Calculate max decimal places needed
                     precision = col_no_na.astype(str).str.split('.', expand=True)[1].str.len().max()
-                    # Handle cases where a column might have only integers after dropping NaNs
                     precision = int(precision) if pd.notna(precision) else 0
             decimal_places[col] = min(precision, 6)
         elif col == 'STEP':
@@ -348,11 +320,9 @@ def style_dopesheet(df: pd.DataFrame) -> Styler:
     log.info(f'Calculated decimal places: {decimal_places}')
     log.info(f'Non-numeric columns: {non_numeric_cols}')
 
-    # Let's refine the display style based on this
     style = df.style.set_table_styles(
         [
             {'selector': 'td,th', 'props': 'white-space: nowrap'},
-            # Left-align non-numeric columns
             *[{'selector': f'.col{i}', 'props': 'text-align: left'} for i in non_numeric_cols],
         ]
     ).format(na_rep='')
@@ -368,55 +338,155 @@ def resolve(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def resolve_timesteps(steps: pd.Series) -> pd.Series:
-    # Ensure steps exists and STEP is string
-    steps = steps.astype(str)
+def _identify_anchors(steps: pd.Series) -> tuple[pd.Index, dict[int, int], pd.Series]:
+    """Identify anchor steps (non-negative integers) and initialize resolved series."""
+    resolved_steps = pd.Series(pd.NA, index=steps.index, dtype='Int64')
+    anchor_indices_list = []
+    anchor_steps_dict = {}
 
-    # Initialize the new column with NaNs
-    _steps = pd.Series(pd.NA, index=steps.index)
+    for idx, step_str in steps.items():
+        if not step_str.startswith(('-', '+')):
+            try:
+                if not re.fullmatch(r'\d+', step_str):
+                    log.warning(
+                        f"Warning: Absolute step '{step_str}' at index {idx} is not a valid non-negative integer. Treating as invalid."
+                    )
+                    continue
 
-    # --- 1. Identify Anchors ---
-    anchor_indices = steps.index[~steps.str.startswith('+')]
-    anchor_steps = {}
-    for idx in anchor_indices:
+                step_val = int(step_str)
+                anchor_steps_dict[idx] = step_val
+                resolved_steps.loc[idx] = step_val
+                anchor_indices_list.append(idx)
+            except ValueError:
+                log.warning(f"Warning: Could not parse absolute step '{step_str}' at index {idx} as integer.")
+
+    anchor_indices = pd.Index(anchor_indices_list)
+    return anchor_indices, anchor_steps_dict, resolved_steps
+
+
+def _resolve_integer_offset(
+    prefix: str,
+    offset_int: int,
+    idx: int,
+    step_str: str,
+    prev_step: int | None,
+    next_step: int | None,
+) -> int | None:
+    """Resolve +N or -N relative steps."""
+    resolved_step: int | None = None
+    if prefix == '+':
+        if prev_step is not None:
+            resolved_step = prev_step + offset_int
+        else:
+            log.warning(f"Warning: Cannot resolve relative step '{step_str}' at index {idx}: No preceding anchor.")
+    elif prefix == '-':
+        if next_step is not None:
+            resolved_step = next_step - offset_int
+        else:
+            log.warning(f"Warning: Cannot resolve relative step '{step_str}' at index {idx}: No succeeding anchor.")
+    return resolved_step
+
+
+def _resolve_fractional_offset(
+    prefix: str,
+    fraction: float,
+    idx: int,
+    step_str: str,
+    prev_step: int | None,
+    next_step: int | None,
+) -> int | None:
+    """Resolve +F or -F relative steps."""
+    if prev_step is None or next_step is None:
+        log.warning(f"Warning: Cannot resolve fractional step '{step_str}' at index {idx}: Missing bracketing anchors.")
+        return None
+
+    interval = next_step - prev_step
+    resolved_step: int | None = None
+    if prefix == '+':
+        resolved_step = round(prev_step + fraction * interval)
+    elif prefix == '-':
+        resolved_step = round(next_step - fraction * interval)
+    return resolved_step
+
+
+def _resolve_single_relative(
+    step_str: str,
+    idx: int,
+    prev_anchor_idx: int,
+    next_anchor_idx: int,
+    anchor_steps: dict[int, int],
+) -> int | None:
+    """Resolve a single relative step string (+N, -N, +F, -F) by dispatching."""
+    prefix = step_str[0]
+    value_str = step_str[1:]
+    prev_step = anchor_steps.get(prev_anchor_idx)
+    next_step = anchor_steps.get(next_anchor_idx)
+
+    if re.fullmatch(r'[1-9]\d*', value_str):
         try:
-            step_val = int(steps.loc[idx])  # type: ignore
-            anchor_steps[idx] = step_val
-            # Assign anchor steps directly to the new column
-            _steps.loc[idx] = step_val
+            offset_int = int(value_str)
+            return _resolve_integer_offset(prefix, offset_int, idx, step_str, prev_step, next_step)
         except ValueError:
-            # Handle cases where a non-relative step isn't an integer (shouldn't happen here)
-            log.warning(f"Warning: Non-relative step '{steps.loc[idx]}' at index {idx} is not an integer.")
+            pass
 
-    # --- 2. Iterate and Interpolate ---
-    relative_indices = steps.index[steps.str.startswith('+')]
+    try:
+        if not re.fullmatch(r'\d*\.\d+', value_str) and not re.fullmatch(r'\.\d+', value_str):
+            raise ValueError('Not a float format for fractional step (missing decimal?).')
+
+        fraction = float(value_str)
+        if not (0 < fraction < 1):
+            log.warning(
+                f"Warning: Fractional step '{step_str}' at index {idx} must have value strictly between 0 and 1."
+            )
+            return None
+
+        return _resolve_fractional_offset(prefix, fraction, idx, step_str, prev_step, next_step)
+
+    except ValueError:
+        log.warning(
+            f"Warning: Could not parse value from relative step '{step_str}' at index {idx} as positive integer or 0<float<1."
+        )
+        return None
+
+
+def resolve_timesteps(steps: pd.Series) -> pd.Series:
+    """
+    Resolve absolute and relative timesteps in a dopesheet STEP column.
+
+    Handles:
+    - Absolute steps: Non-negative integers (e.g., '0', '10').
+    - Relative integer steps: '+N' (N steps after previous anchor),
+                              '-N' (N steps before next anchor). N must be positive.
+    - Relative fractional steps: '+F' (interpolate between prev/next anchors),
+                                 '-F' (interpolate backwards from next anchor). 0 < F < 1.
+    - Invalid formats result in pd.NA.
+    - Resolved negative steps are clamped to 0.
+    """
+    steps = steps.astype(str)
+    anchor_indices, anchor_steps_dict, resolved_steps = _identify_anchors(steps)
+
+    relative_indices = steps.index.difference(anchor_indices)
 
     for idx in relative_indices:
         step_str = steps.loc[idx]
-        try:
-            fraction = float(step_str[1:])  # type: ignore
-        except ValueError:
-            log.warning(f"Warning: Could not parse fraction from '{step_str}' at index {idx}.")
+
+        if not step_str.startswith(('-', '+')):
+            log.warning(
+                f"Warning: Step '{step_str}' at index {idx} is neither anchor nor relative. Treating as invalid."
+            )
             continue
 
-        # Find preceding anchor index (largest anchor index < current index)
         prev_anchor_idx = max((a_idx for a_idx in anchor_indices if a_idx < idx), default=-1)
-
-        # Find succeeding anchor index (smallest anchor index > current index)
         next_anchor_idx = min((a_idx for a_idx in anchor_indices if a_idx > idx), default=-1)
 
-        # Check if we found valid anchors
-        if prev_anchor_idx == -1 or next_anchor_idx == -1:
-            log.warning(f'Warning: Could not find bracketing anchor steps for relative step at index {idx}.')
-            continue
+        resolved_val = _resolve_single_relative(step_str, idx, prev_anchor_idx, next_anchor_idx, anchor_steps_dict)
 
-        # Get anchor step values
-        prev_step = anchor_steps[prev_anchor_idx]
-        next_step = anchor_steps[next_anchor_idx]
+        if resolved_val is not None:
+            if resolved_val < 0:
+                log.warning(
+                    f"Warning: Resolved step for '{step_str}' at index {idx} is negative ({resolved_val}). Clamping to 0."
+                )
+                resolved_val = 0
+            resolved_steps.loc[idx] = resolved_val
 
-        # Perform linear interpolation and round
-        interpolated_step = prev_step + fraction * (next_step - prev_step)
-        _steps.loc[idx] = round(interpolated_step)
-
-    # Convert the result to a nullable integer type
-    return _steps.astype('Int64')
+    return resolved_steps.astype('Int64')

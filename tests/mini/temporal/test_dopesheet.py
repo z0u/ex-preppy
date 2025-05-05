@@ -1,7 +1,9 @@
 import pytest
+import pandas as pd
+from pandas.testing import assert_series_equal
 from pathlib import Path
 
-from mini.temporal.dopesheet import Dopesheet, Key, Step, PropConfig
+from mini.temporal.dopesheet import Dopesheet, Key, Step, PropConfig, resolve_timesteps
 
 
 @pytest.fixture
@@ -14,6 +16,58 @@ def fixture_path() -> Path:
 def dopesheet(fixture_path) -> Dopesheet:
     """Return a Dopesheet loaded from the fixture file."""
     return Dopesheet.from_csv(str(fixture_path))
+
+
+@pytest.mark.parametrize(
+    'input_steps, expected_steps',
+    [
+        # Basic absolute
+        (['0', '10', '20'], [0, 10, 20]),
+        # Basic fractional (+0.x)
+        (['0', '+0.5', '10'], [0, 5, 10]),
+        # Positive integer offset (+N)
+        (['0', '+5', '10'], [0, 5, 10]),
+        (['10', '+2', '20'], [10, 12, 20]),
+        # Negative integer offset (-N)
+        (['0', '-3', '10'], [0, 7, 10]),
+        (['10', '-1', '20'], [10, 19, 20]),
+        # Negative fractional offset (-0.x)
+        (['0', '-0.5', '10'], [0, 5, 10]),  # 10 - 0.5 * (10 - 0) = 5
+        (['10', '-0.2', '20'], [10, 18, 20]),  # 20 - 0.2 * (20 - 10) = 18
+        # Mixed types
+        (['0', '+2', '+0.5', '-1', '10'], [0, 2, 5, 9, 10]),  # +2 -> 0+2=2; +0.5 -> 0+0.5*(10-0)=5; -1 -> 10-1=9
+        # Edge case: Clamping negative results
+        (['0', '-5', '3'], [0, 0, 3]),  # 3 - 5 = -2 -> 0
+        (['5', '-10', '8'], [5, 0, 8]),  # 8 - 10 = -2 -> 0
+        # Edge case: +N without preceding anchor (should be NaN/NA)
+        (['+5', '10'], [pd.NA, 10]),
+        # Edge case: -N without succeeding anchor (should be NaN/NA)
+        (['0', '-5'], [0, pd.NA]),
+        # Edge case: +0.x without bracketing anchors (should be NaN/NA)
+        (['+0.5', '10'], [pd.NA, 10]),
+        (['0', '+0.5'], [0, pd.NA]),
+        # Edge case: -0.x without bracketing anchors (should be NaN/NA)
+        (['-0.5', '10'], [pd.NA, 10]),
+        (['0', '-0.5'], [0, pd.NA]),
+        # Edge case: Invalid format (should be NaN/NA)
+        (['0', '+abc', '10'], [0, pd.NA, 10]),
+        (['0', '-xyz', '10'], [0, pd.NA, 10]),
+        (['0', '-', '10'], [0, pd.NA, 10]),
+        # Edge case: Negative step at start interpreted as relative (-N)
+        (['-5', '10'], [5, 10]),  # Resolves to 10 - 5 = 5
+        # Edge case: Fractional step outside (0, 1) (should be NaN/NA)
+        (['0', '+1.5', '10'], [0, pd.NA, 10]),
+        (['0', '-0.5', '10'], [0, 5, 10]),  # This one is valid now
+        (['0', '-1.5', '10'], [0, pd.NA, 10]),
+    ],
+)
+def test_resolve_timesteps_relative(input_steps, expected_steps):
+    """Test resolve_timesteps with various relative step formats."""
+    input_series = pd.Series(input_steps, dtype=str)
+    # Use Int64 for expected to handle pd.NA
+    expected_series = pd.Series(expected_steps, dtype='Int64')
+    resolved_series = resolve_timesteps(input_series)
+    assert_series_equal(resolved_series, expected_series, check_dtype=True)
 
 
 class TestDopesheet:
