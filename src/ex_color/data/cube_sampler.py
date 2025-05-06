@@ -11,6 +11,49 @@ from ex_color.data.grid import coordinate_grid
 log = logging.getLogger(__name__)
 
 
+def primary_secondary_focus(cube: ColorCube) -> npt.NDArray[np.float64]:
+    """
+    Create a weights array focusing on primary and secondary colors.
+
+    Weights are 1.0 for hues corresponding to primary (0, 120, 240 deg) and
+    secondary (60, 180, 300 deg) colors, falling off to 0.0 for tertiary
+    hues (halfway between primary/secondary). The calculation is based purely
+    on hue, ignoring saturation and value.
+
+    Args:
+        cube: An HSV ColorCube instance to create the focus weights for.
+
+    Returns:
+        An array with the same shape as the cube, with weights based on hue proximity
+        to primary/secondary colors.
+    """
+    if cube.canonical_space != 'hsv':
+        raise ValueError(f'Cannot create primary/secondary focus for non-HSV cube ({cube.canonical_space}).')
+
+    # Need the original grid shape to find H
+    grid = coordinate_grid(*cube.coordinates)
+
+    h_idx = cube.space.index('h')
+    H_grid = grid[..., h_idx] # Hue is normalized 0-1
+
+    # Convert normalized hue (0-1) to degrees (0-360)
+    H_degrees = H_grid * 360.0
+
+    # Calculate the angle modulo 60 degrees. Primary/secondary hues are at multiples of 60.
+    angle_mod_60 = H_degrees % 60.0
+
+    # Find the minimum angular distance to the nearest multiple of 60 degrees.
+    # This distance ranges from 0 (at a primary/secondary) to 30 (at a tertiary).
+    dist_to_nearest_60 = np.minimum(angle_mod_60, 60.0 - angle_mod_60)
+
+    # Map the distance (0-30) to a weight (1.0-0.0) using a cosine function.
+    # cos(0) = 1, cos(pi) = -1. We scale the distance to range 0 to pi.
+    # (cos(scaled_dist) + 1) / 2 maps [0, pi] -> [1, 0]
+    weights = (np.cos(dist_to_nearest_60 * np.pi / 30.0) + 1.0) / 2.0
+
+    return weights
+
+
 def vibrancy(cube: ColorCube) -> npt.NDArray[np.float64]:
     """
     Create a weights array focusing on vibrant colors (high S, high V).
@@ -131,6 +174,7 @@ class DynamicWeightedRandomBatchSampler(Sampler[List[int]]):
     _weights: Weights
     _effective_bias: Weights | None
     """The normalized bias used for sampling, or None if no points are available."""
+    _seed: int | None
     _rng: np.random.Generator  # Use a specific Generator instance
 
     def __init__(
@@ -164,9 +208,18 @@ class DynamicWeightedRandomBatchSampler(Sampler[List[int]]):
         self.batch_size = batch_size
         self.steps_per_epoch = steps_per_epoch
 
-        self._rng = np.random.default_rng(seed)
-
+        self.seed = seed
         self.weights = weights if weights is not None else np.ones_like(bias)
+
+    @property
+    def seed(self) -> int | None:
+        return self._seed
+
+    @seed.setter
+    def seed(self, seed: int | None):
+        """Reset the random number generator with the given seed."""
+        self._seed = seed
+        self._rng = np.random.default_rng(seed)
 
     @property
     def weights(self):

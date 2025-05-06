@@ -1,22 +1,22 @@
-STEP,PHASE,ACTION,lr,loss-recon::step-end,reg-separate::step-end,reg-planar::step-end,reg-norm::step-end,reg-anchor::step-end,data-fraction::step-end
-0,Primary & secondary,,1e-8,1.0,0.0,0.20,0.5,,
-+10,,,0.01,,,,,,
--10,,,0.01,,,,,,
-200,Primary & secondary,,1e-8,0.83,0.1,0.3,0.25,,
-+10,,,0.01,,,,,,
--10,,,0.01,,,,,,
-2000,Primary & secondary,,1e-8,,0.0,0.4,,,
-+10,,,0.01,,,,,,
--10,,,0.01,,,,,,
-3000,All hues,anchor,1e-8,0.8,,0.1,,0.0,0.0
-+10,,,0.01,,,,,,
--10,,,0.0095,,,,,,
-6500,All hues,,1e-8,0.8,,0.0,,0.3,
-+10,,,0.0095,,,,,,
--10,,,0.007,,,,,,
-10000,Full color space,,1e-8,1.0,,,,0.1,0.25
-+10,,,0.007,,,,,,
--10,,,0.004,,,,,,
-13000,Full color space,,1e-8,,,,,0.6,1.0
-+10,,,0.004,,,,,,
-20000,,,1e-8,,,,,,
+STEP,PHASE,ACTION,lr,loss-recon::step-end,reg-separate::step-end,reg-planar::step-end,reg-norm::step-end,reg-anchor::step-end,data-hues::step-end,data-vibrancies::step-end
+0,Primary & secondary,,1e-8,1.0,0.0,0.2,0.01,0.0,0.0,0.0
++10,,,0.01,,,,,,,
+-10,,,0.01,,,,,,,
+100,Primary & secondary,,1e-8,,0.15,0.3,0.25,,,
++10,,,0.01,,,,,,,
+-10,,,0.01,,,,,,,
+300,Primary & secondary,,1e-8,,0.0,0.2,,,,
++10,,,0.01,,,,,,,
+-10,,,0.01,,,,,,,
+500,All hues,anchor,1e-8,,,0.1,,0.25,0.5,0.0
++10,,,0.01,,,,,,,
+-10,,,0.0125,,,,,,,
+1000,All hues,,1e-8,,,0.0,0.4,,1.0,
++10,,,0.0125,,,,,,,
+-10,,,0.02,,,,,,,
+5000,Full color space,,1e-8,,,,0.25,,,0.5
++10,,,0.02,,,,,,,
+-10,,,0.016,,,,,,,
+6500,Full color space,,1e-8,,,,,,,1.0
++10,,,0.016,,,,,,,
+10000,,,0.001,,,,,,,

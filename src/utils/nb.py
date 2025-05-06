@@ -11,9 +11,9 @@ log = logging.getLogger(__name__)
 
 
 def displayer():
-    from uuid import uuid4 as uuid
+    import secrets
 
-    handle = f'displayer-{uuid()}'
+    handle = f'displayer-{secrets.token_hex(16)}'
     first = True
 
     def show(ob):
@@ -58,7 +58,7 @@ def save_fig(
         An HTML string '<img src="..." alt="...">'.
     """
     import html
-    import random
+    import secrets
     import urllib.parse
 
     import matplotlib.pyplot as plt
@@ -92,7 +92,7 @@ def save_fig(
     style = f'max-width: {max_width};' if max_width is not None else ''
 
     escaped_alt = html.escape(alt_text)
-    cache_buster = random.randint(1, 1_000_000)
+    cache_buster = secrets.token_urlsafe()
     safe_src = urllib.parse.quote(filepath.as_posix())
     escaped_style = html.escape(style)
-    return f'<img src="{safe_src}?v={cache_buster:d}" alt="{escaped_alt}" style="{escaped_style}" />'
+    return f'<img src="{safe_src}?v={cache_buster}" alt="{escaped_alt}" style="{escaped_style}" />'

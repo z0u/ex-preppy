@@ -1,3 +1,5 @@
+import numpy as np
+
 from ex_color.data.color_cube import ColorCube
 
 
@@ -6,11 +8,13 @@ def plot_colors(
     pretty: bool | str = True,
     patch_size: float = 0.25,
     title: str = '',
+    data: np.ndarray | None = None,
 ):
     """Plot a ColorCube in 2D slices."""
-    from math import ceil
-    import matplotlib.pyplot as plt
     from itertools import chain
+    from math import ceil
+
+    import matplotlib.pyplot as plt
 
     if pretty is True:
         pretty = cube.space
@@ -52,6 +56,9 @@ def plot_colors(
     )
     axes = list(chain(*axes))  # Flatten the axes array
 
+    if data is None:
+        data = cube.rgb_grid
+
     # Plot each slice of the cube (one for each value)
     for i, ax in enumerate(axes):
         if i >= len(main_coords):
@@ -60,7 +67,7 @@ def plot_colors(
         row = i // n_cols
         col = i % n_cols
 
-        ax.imshow(cube.rgb_grid[i])
+        ax.imshow(data[i], vmin=0, vmax=1)
 
         ax.set_title(f'{main_axis} = {fmt(main_axis, main_coords[i])}', fontsize=8)
 

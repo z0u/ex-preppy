@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import Sequence
+import re
+from typing import Any, Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -62,11 +63,24 @@ def group_properties_by_scale(df: pd.DataFrame) -> tuple[ParamGroup, ParamGroup]
 
     # Group properties - those with much smaller medians go to group 2
     # Handle cases where median_of_medians might be zero or very small
-    threshold = median_of_medians * 0.2 if median_of_medians > 1e-9 else 1e-9
+    threshold = median_of_medians * 0.4 if median_of_medians > 1e-9 else 1e-9
     group1 = [prop for prop in numeric_cols if prop_stats[prop]['max'] >= threshold]
     group2 = [prop for prop in numeric_cols if prop_stats[prop]['max'] < threshold]
 
     return ParamGroup(name='', params=group1, height_ratio=2.0), ParamGroup(name='', params=group2, height_ratio=1.0)
+
+
+def get_styles(prop: str, line_styles: list[tuple[re.Pattern, dict[str, Any]]], default_style: dict[str, Any] | None = None):
+    """Get line styles for plotting."""
+    # Convert str matchers to regex patterns, escaping special characters
+    for pattern, style in line_styles:
+        if pattern.search(prop):
+            line_style = style
+            break
+    else:
+        # Default line style if no pattern matches
+        line_style = {}
+    return {**(default_style or {}), **line_style}
 
 
 def plot_timeline(  # noqa: C901
@@ -78,10 +92,17 @@ def plot_timeline(  # noqa: C901
     legend_fontsize: str | None = None,
     title: str = 'Timeline property evolution',
     show_phase_labels: bool = True,
+    line_styles: list[tuple[str | re.Pattern, dict[str, Any]]] | None = None,
 ):
     if groups is None:
         cols = [col for col in history_df.columns if col not in RESERVED_COLS]
         groups = [ParamGroup(name='', params=cols, height_ratio=1.0)]
+
+    # Convert str matchers to regex patterns, escaping special characters
+    line_styles = [
+        (re.compile(re.escape(pattern)) if isinstance(pattern, str) else pattern, style)
+        for pattern, style in line_styles or []
+    ]
 
     # --- Figure/Axes Setup ---
     if ax is None:
@@ -123,7 +144,8 @@ def plot_timeline(  # noqa: C901
         for prop in group.params:
             # Ensure the property exists in the history dataframe before plotting
             if prop in history_df.columns:
-                (line,) = current_ax.plot(history_df['STEP'], history_df[prop], label=f'{prop}', alpha=0.75)
+                line_style = get_styles(prop, line_styles, {'alpha': 0.75})
+                (line,) = current_ax.plot(history_df['STEP'], history_df[prop], label=f'{prop}', **line_style)
                 # Add to the current axis's legend items
                 lines_for_current_ax.append(line)
                 labels_for_current_ax.append(f'{prop}')

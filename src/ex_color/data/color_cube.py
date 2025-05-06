@@ -8,7 +8,7 @@ class ColorCube:
     """A tensor of RGB values with coordinates in various color spaces (e.g. HSV)."""
 
     coordinates: tuple[np.ndarray, ...]
-    """The coordinate axes of the cube, with shape (a, b, c) for each axis."""
+    """The coordinate axes of the cube, with shapes (a,), (b,), (c,)."""
     space: str
     """The color space of the cube (e.g. 'vsh'), which is some permutation of the canonical space."""
     canonical_space: str
