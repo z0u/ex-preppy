@@ -11,7 +11,7 @@ We hope that this research will reveal more precise and robust ways to constrain
 1. The relevant directions would be known _even before training_, so you don't need to look for them. This could improve the prospect of both measuring model alignment throughout training, and intervening on misaligned behavior after training.
 2. Directions of interest should act as attractors for similar concepts, reducing the chance that unrelated (benign) concepts become entangled with them.
 
-## Preliminary experiments with color
+## 1. Preliminary experiments with color
 
 We begin with some experiments with color, because color spaces are well defined and highly intuitive for visualization.
 
@@ -20,6 +20,8 @@ We begin with some experiments with color, because color spaces are well defined
 3. [Curriculum learning](docs/ex-1.3-color-mlp-curriculum.ipynb): The same MLP, but with a 3D embedding layer. Curriculum learning and regularization are used to encourage the model to discover the color wheel without explicit normalization. The hues are embedded into the first two dimensions (as before); later phases in the curriculum add varying tones (values), which naturally balloon out into the third dimension.
 4. [Parameter transitions](docs/ex-1.4-parameter-transitions.ipynb): Exploration of ways to cause hyperparameters to vary smoothly over time, both to a schedule, and in reaction to measurements during training.
 5. [Smooth curriculum](docs/ex-1.5-color-mlp-anchoring.ipynb): Like experiment 1.3, but with hyperparameters smoothly varying across curriculum phases. For example, the extents of the color space of the training data (HSV) are gradually increased instead of extending it in large discrete steps.
+6. [Smooth vs. stepped curricula](docs/ex-1.6-curriculum-comparison.ipynb): A direct comparison of training stability and latent space evolution when using smooth hyperparameter transitions versus traditional stepped phase changes. This experiment had a negative result: it seems the smooth transitions don't help with training dynamics (although they do make curriculum specification easier).
+7. ~~Noisy regularization~~ (TO DO): We do away with most of the curriculum, training on the full dataset from the start but with targeted regularization. We hope to achieve similar results to the earlier experiments, but with a more realistic training dataset: the curriculum phases were "clean" in a way that is probably hard to replicate in LLM corpora.
 
 ## Future work
 
