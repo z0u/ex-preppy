@@ -34,6 +34,7 @@ def save_fig(
     filepath: str | Path,
     close_fig: bool = True,
     alt_text: str | None = None,
+    max_width: str | None = '70rem',
     **savefig_kwargs,
 ) -> str:
     """
@@ -48,6 +49,7 @@ def save_fig(
         filepath: The path (including filename and extension) to save the figure.
         close_fig: Whether to close the figure object after saving (prevents potential double display in some environments).
         alt_text: Optional alt text for the HTML img tag. Defaults to a generic message.
+        max_width: Optional CSS max-width for the img tag.
         **savefig_kwargs: Additional keyword arguments passed to fig.savefig().
                           Defaults include facecolor=fig.get_facecolor(),
                           bbox_inches='tight', and dpi=150.
@@ -87,7 +89,10 @@ def save_fig(
     if alt_text is None:
         alt_text = f'Plot saved at {filepath.name}'
 
+    style = f'max-width: {max_width};' if max_width is not None else ''
+
     escaped_alt = html.escape(alt_text)
     cache_buster = random.randint(1, 1_000_000)
     safe_src = urllib.parse.quote(filepath.as_posix())
-    return f'<img src="{safe_src}?v={cache_buster:d}" alt="{escaped_alt}">'
+    escaped_style = html.escape(style)
+    return f'<img src="{safe_src}?v={cache_buster:d}" alt="{escaped_alt}" style="{escaped_style}" />'

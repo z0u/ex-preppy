@@ -131,8 +131,16 @@ class DynamicWeightedRandomBatchSampler(Sampler[List[int]]):
     _weights: Weights
     _effective_bias: Weights | None
     """The normalized bias used for sampling, or None if no points are available."""
+    _rng: np.random.Generator  # Use a specific Generator instance
 
-    def __init__(self, bias: Weights, batch_size: int, steps_per_epoch: int, weights: Weights | None = None):
+    def __init__(
+        self,
+        bias: Weights,
+        batch_size: int,
+        steps_per_epoch: int,
+        weights: Weights | None = None,
+        seed: int | None = None,
+    ):
         """
         Create a batch sampler for a ColorCube.
 
@@ -141,6 +149,7 @@ class DynamicWeightedRandomBatchSampler(Sampler[List[int]]):
             batch_size: The number of indices to yield in each batch.
             steps_per_epoch: The total number of batches to yield per iteration (epoch).
             weights: An optional array with the same shape as the bias, used to modulate the sampling bias.
+            seed: An optional integer seed for the random number generator.
 
         Set the focus weights using the `weights` property.
         """
@@ -155,7 +164,7 @@ class DynamicWeightedRandomBatchSampler(Sampler[List[int]]):
         self.batch_size = batch_size
         self.steps_per_epoch = steps_per_epoch
 
-        self._rng = np.random.default_rng()
+        self._rng = np.random.default_rng(seed)
 
         self.weights = weights if weights is not None else np.ones_like(bias)
 

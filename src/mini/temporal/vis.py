@@ -73,9 +73,11 @@ def plot_timeline(  # noqa: C901
     history_df: pd.DataFrame,
     keyframes_df: pd.DataFrame,
     groups: Sequence[ParamGroup] | None = None,
-    ax: Axes | None = None,  # Add optional ax parameter
-    show_legend: bool = True,  # Add show_legend parameter
+    ax: Axes | None = None,
+    show_legend: bool = True,
+    legend_fontsize: str | None = None,
     title: str = 'Timeline property evolution',
+    show_phase_labels: bool = True,
 ):
     if groups is None:
         cols = [col for col in history_df.columns if col not in RESERVED_COLS]
@@ -121,7 +123,7 @@ def plot_timeline(  # noqa: C901
         for prop in group.params:
             # Ensure the property exists in the history dataframe before plotting
             if prop in history_df.columns:
-                (line,) = current_ax.plot(history_df['STEP'], history_df[prop], label=f'{prop}')
+                (line,) = current_ax.plot(history_df['STEP'], history_df[prop], label=f'{prop}', alpha=0.75)
                 # Add to the current axis's legend items
                 lines_for_current_ax.append(line)
                 labels_for_current_ax.append(f'{prop}')
@@ -165,7 +167,7 @@ def plot_timeline(  # noqa: C901
 
             # Create the legend for the current axis
             by_label = dict(zip(labels_for_current_ax, lines_for_current_ax, strict=True))
-            current_ax.legend(by_label.values(), by_label.keys(), loc='upper right')
+            current_ax.legend(by_label.values(), by_label.keys(), loc='upper right', fontsize=legend_fontsize)
 
     # --- Phase Changes and Labels (Plot only on main_ax) ---
     phase_changes = keyframes_df.dropna(subset=['PHASE'])
@@ -180,22 +182,23 @@ def plot_timeline(  # noqa: C901
             last_phase = row['PHASE']
 
     # Add phase labels only to the main plot (main_ax)
-    for i, pb in enumerate(phase_boundaries):
-        mid_point = (
-            (phase_boundaries[i + 1]['STEP'] + pb['STEP']) / 2
-            if i + 1 < len(phase_boundaries)
-            else (history_df['STEP'].max() + pb['STEP']) / 2  # Use max step from history
-        )
-        main_ax.text(
-            mid_point,
-            main_ax.get_ylim()[1],  # Position at the top
-            pb['PHASE'],
-            ha='center',
-            va='bottom',  # Align bottom of text to top of plot
-            fontweight='bold',
-            fontsize=10,
-            bbox=dict(boxstyle='round,pad=0.3', fc='#222', alpha=0.7, ec='none'),
-        )
+    if show_phase_labels:
+        for i, pb in enumerate(phase_boundaries):
+            mid_point = (
+                (phase_boundaries[i + 1]['STEP'] + pb['STEP']) / 2
+                if i + 1 < len(phase_boundaries)
+                else (history_df['STEP'].max() + pb['STEP']) / 2  # Use max step from history
+            )
+            main_ax.text(
+                mid_point,
+                main_ax.get_ylim()[1],  # Position at the top
+                pb['PHASE'],
+                ha='center',
+                va='bottom',  # Align bottom of text to top of plot
+                fontweight='bold',
+                fontsize=10,
+                bbox=dict(boxstyle='round,pad=0.3', fc='#222', alpha=0.7, ec='none'),
+            )
 
     # --- Action Markers (Plot only on main_ax) ---
     action_steps = history_df[history_df['ACTION'].apply(lambda x: bool(x))]  # Filter steps with non-empty action lists
