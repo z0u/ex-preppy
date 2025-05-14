@@ -92,7 +92,7 @@ def plot_timeline(  # noqa: C901
     legend_fontsize: str | None = None,
     title: str = 'Timeline property evolution',
     show_phase_labels: bool = True,
-    line_styles: list[tuple[str | re.Pattern, dict[str, Any]]] | None = None,
+    line_styles: Sequence[tuple[str | re.Pattern, dict[str, Any]]] | None = None,
 ):
     if groups is None:
         cols = [col for col in history_df.columns if col not in RESERVED_COLS]

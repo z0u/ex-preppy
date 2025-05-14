@@ -79,7 +79,7 @@ def save_fig(
 
     # Save the figure
     fig.savefig(filepath, **save_args)
-    log.info(f"Figure saved: '{filepath}'")
+    log.debug(f"Figure saved: '{filepath}'")
 
     if close_fig:
         plt.close(fig)

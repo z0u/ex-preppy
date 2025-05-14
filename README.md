@@ -21,7 +21,7 @@ We begin with some experiments with color, because color spaces are well defined
 4. [Parameter transitions](docs/ex-1.4-parameter-transitions.ipynb): Exploration of ways to cause hyperparameters to vary smoothly over time, both to a schedule, and in reaction to measurements during training.
 5. [Smooth curriculum](docs/ex-1.5-color-mlp-anchoring.ipynb): Like experiment 1.3, but with hyperparameters smoothly varying across curriculum phases. For example, the extents of the color space of the training data (HSV) are gradually increased instead of extending it in large discrete steps.
 6. [Smooth vs. stepped curricula](docs/ex-1.6-curriculum-comparison.ipynb): A direct comparison of training stability and latent space evolution when using smooth hyperparameter transitions versus traditional stepped phase changes. This experiment had a negative result: it seems the smooth transitions don't help with training dynamics (although they do make curriculum specification easier).
-7. ~~Noisy regularization~~ (TO DO): We do away with most of the curriculum, training on the full dataset from the start but with targeted regularization. We hope to achieve similar results to the earlier experiments, but with a more realistic training dataset: the curriculum phases were "clean" in a way that is probably hard to replicate in LLM corpora.
+7. [Sparse labels for regularization](docs/ex-1.7-sparse-labels.ipynb): We do away with most of the curriculum, training on the full dataset from the start but with targeted regularization. We hope to achieve similar results to the earlier experiments, but with a more realistic training dataset: the curriculum phases were "clean" in a way that is probably hard to replicate in LLM corpora.
 
 ## Future work
 

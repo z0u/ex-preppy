@@ -34,7 +34,7 @@ def primary_secondary_focus(cube: ColorCube) -> npt.NDArray[np.float64]:
     grid = coordinate_grid(*cube.coordinates)
 
     h_idx = cube.space.index('h')
-    H_grid = grid[..., h_idx] # Hue is normalized 0-1
+    H_grid = grid[..., h_idx]  # Hue is normalized 0-1
 
     # Convert normalized hue (0-1) to degrees (0-360)
     H_degrees = H_grid * 360.0
