@@ -3,7 +3,7 @@ import numpy as np
 from ex_color.data.color_cube import ColorCube
 
 
-def plot_colors(
+def plot_colors(  # noqa: C901
     cube: ColorCube,
     pretty: bool | str = True,
     patch_size: float = 0.25,

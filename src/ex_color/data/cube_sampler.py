@@ -154,7 +154,8 @@ class CubeRandomSampler:
 
 
 # S = TypeVar('S', bound=tuple[int, ...])
-Weights: TypeAlias = np.ndarray[tuple[int], np.dtype[np.floating]]
+# Weights: TypeAlias = np.ndarray[tuple[int], np.dtype[np.floating]]
+Weights: TypeAlias = npt.NDArray[np.floating]
 
 
 class DynamicWeightedRandomBatchSampler(Sampler[List[int]]):
@@ -222,7 +223,7 @@ class DynamicWeightedRandomBatchSampler(Sampler[List[int]]):
         self._rng = np.random.default_rng(seed)
 
     @property
-    def weights(self):
+    def weights(self) -> Weights:
         """
         The focus weights used to modulate the base bias.
 

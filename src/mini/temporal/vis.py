@@ -70,7 +70,9 @@ def group_properties_by_scale(df: pd.DataFrame) -> tuple[ParamGroup, ParamGroup]
     return ParamGroup(name='', params=group1, height_ratio=2.0), ParamGroup(name='', params=group2, height_ratio=1.0)
 
 
-def get_styles(prop: str, line_styles: list[tuple[re.Pattern, dict[str, Any]]], default_style: dict[str, Any] | None = None):
+def get_styles(
+    prop: str, line_styles: list[tuple[re.Pattern, dict[str, Any]]], default_style: dict[str, Any] | None = None
+):
     """Get line styles for plotting."""
     # Convert str matchers to regex patterns, escaping special characters
     for pattern, style in line_styles:

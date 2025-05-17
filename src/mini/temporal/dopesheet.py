@@ -195,7 +195,7 @@ class Dopesheet:
             value = series[idx]
             if pd.isna(value):
                 continue
-            next_idx: int | None = series[series.index > idx].first_valid_index()
+            next_idx = series[series.index > idx].first_valid_index()
             k = Key(
                 prop=prop,
                 t=step,
@@ -355,7 +355,7 @@ def _identify_anchors(steps: pd.Series) -> tuple[pd.Index, dict[int, int], pd.Se
 
                 step_val = int(step_str)
                 anchor_steps_dict[idx] = step_val
-                resolved_steps.loc[idx] = step_val
+                resolved_steps.loc[idx] = step_val  # type: ignore
                 anchor_indices_list.append(idx)
             except ValueError:
                 log.warning(f"Warning: Could not parse absolute step '{step_str}' at index {idx} as integer.")
