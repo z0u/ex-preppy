@@ -158,9 +158,9 @@ def fix_links(output_format: str = 'html'):
         print(f'  No {target_ext} files found to fix links in.')
         return
 
-    docs_prefix_pattern = re.compile(r'href="docs/([^"]*)"')
+    docs_prefix_pattern = re.compile(r'(href|src)="docs/([^"]*)"')
     md_link_prefix_pattern = re.compile(r'\]\(docs/([^)]*)\)')
-    ipynb_ext_pattern_html = re.compile(r'href="([^"#?]+)\.ipynb(#|\?|")')
+    ipynb_ext_pattern_html = re.compile(r'(href|src)="([^"#?]+)\.ipynb(#|\?|")')
     ipynb_ext_pattern_md = re.compile(r'\]\(([^)#?]+)\.ipynb(#|\?|\))')
 
     for file_path in output_files:
@@ -170,12 +170,13 @@ def fix_links(output_format: str = 'html'):
             original_content = content
 
             if output_format == 'html':
-                content = docs_prefix_pattern.sub(r'href="\1"', content)
+                content = docs_prefix_pattern.sub(r'\1="\2"', content)
 
                 def replace_ipynb_html(match):
-                    base_link = match.group(1)
-                    trailing_char = match.group(2)
-                    return f'href="{base_link}{target_ext}{trailing_char}'
+                    attr_type = match.group(1)
+                    base_link = match.group(2)
+                    trailing_char = match.group(3)
+                    return f'{attr_type}="{base_link}{target_ext}{trailing_char}'
 
                 content = ipynb_ext_pattern_html.sub(replace_ipynb_html, content)
             elif output_format == 'markdown':
