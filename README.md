@@ -11,7 +11,7 @@ We hope that this research will reveal more precise and robust ways to constrain
 1. The relevant directions would be known _even before training_, so you don't need to look for them. This could improve the prospect of both measuring model alignment throughout training, and intervening on misaligned behavior after training.
 2. Directions of interest should act as attractors for similar concepts, reducing the chance that unrelated (benign) concepts become entangled with them.
 
-## 1. Preliminary experiments with color
+## M1. Preliminary experiments with color
 
 We begin with some experiments with color, because color spaces are well defined and highly intuitive for visualization.
 
@@ -35,11 +35,31 @@ MLP experiment summary:
 | 1.6 | 5: 6 colors ~ all colors | 4D         | Unit, planar, repulsion (Euclidean) | Smooth & stepped |
 | 1.7 | 1: All colors            | 4D         | Unit, planar, repulsion (cosine)    | Smooth           |
 
-## Future work
+Publications:
+- [Selective regularization for alignment-focused representation engineering - LessWrong](https://www.lesswrong.com/posts/HFcriD29cw3E5QLCR/selective-regularization-for-alignment-focused)
 
-- Demonstrate intervention at inference time, showing that some colors can be reliably muted without affecting those that are not "close". For example, cause the network to fail to reconstruct _red_ and colors close to red, but allow _orange_.
-- Demonstrate that the latent space can be further manipulated to completely remove a representation. For example, pressure the network to reconfigure the space so that _only_ red colors are on one particular embedding dimension, and then _delete_ that dimension from the network. Hopefully, this would make it difficult to fine-tune the model later to restore the deleted capability.
-- Demonstrate a proof-of-concept transformer network with similar latent space structure. It could be a very small transfomer that can perform simple color operations, such as mixing colors.
+## M2. Practical control and intervention (TO DO)
+
+> Okay, you can structure latent spaces... but can you actually use that structure?
+
+1. Selective concept suppression (temporary, inference-time). Demonstrate intervention at inference time, showing that some colors can be reliably muted without affecting those that are not "close". For example, cause the network to fail to reconstruct _red_ and colors close to red, but allow _orange_.
+2. Permanent concept deletion (weight ablation). Demonstrate that the latent space can be further manipulated to completely remove a representation. For example, pressure the network to reconfigure the space so that _only_ red colors are on one particular embedding dimension, and then _delete_ that dimension from the network. Hopefully, this would make it difficult to fine-tune the model later to restore the deleted capability.
+
+## M3. Structured color transformer (TO DO)
+
+Proof-of-concept transformer network with similar latent space structure. It could be a very small transfomer that can perform simple color operations, such as mixing colors.
+
+1. Simple transformer doing color operations (mixing, complementary colors, etc.)
+2. Successful transfer of anchoring techniques to the residual stream or QK space (attention mechanism), with validation that structure persists through transformer training dynamics
+
+## M4. Language model application (TO DO)
+
+Impose structure on the latent representations of a transformer language model.
+
+1. Weak labeling pipeline for internet text (identifying "harmful," "deceptive," etc.)
+2. Application to actual language model training
+3. Evaluation of structured representations in the residual stream or QK space
+
 
 ---
 
