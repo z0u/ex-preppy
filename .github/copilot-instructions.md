@@ -68,12 +68,28 @@ Put imports in the cell they're used in — or even in the function, if the modu
 
 Use sentence case for headings and descriptive lists.
 
-```diff
+```patch
 - # Experiment Design
 -   - **Foo Bar:** baz
 + # Experiment design
 +   - **Foo bar:** baz
 ```
+
+**Technical precision with accessibility:** Explain complex concepts clearly, with minimal jargon, but without oversimplifying. Bridge technical depth with broader implications for thoughtful readers.
+
+**Structured analytical thinking:** Organize ideas hierarchically and build arguments systematically with clear delineation of concepts. Prefer paragraphs for nuanced or complex explanations, but use lists for summarizing steps, strengths, or when clarity would benefit from structure.
+
+**Confident intellectual honesty:** Express uncertainty while maintaining substantive positions. Don’t be afraid to “think out loud” or use meta-commentary to explain your reasoning or process.
+
+> "This blog is supposed to be a place where I can write about my understanding without worrying too much about accuracy. That said, I think there's a decent chance that I'm still missing something about superposition."
+
+**Direct, conversational tone:** Use a friendly, approachable style that invites engagement. Avoid overly formal language, jargon-heavy explanations. Especially avoid sales pitch grandeur. Maintain a tone that is approachable and professional — informal enough to invite engagement, but always clear and technically precise.
+
+> "If we can demonstrate reliable control over a model's internal representation with color, it suggests we might achieve similar control in more complex domains."
+
+**Methodical documentation:** Be comprehensive yet concise, capturing both facts and context efficiently.
+
+**Sentence structure:** Use varied sentence lengths: longer explanatory sentences broken up by shorter, punchy statements.
 
 ### Tools
 
