@@ -24,6 +24,7 @@ We begin with some experiments with color, because color spaces are well defined
 5. [Smooth curriculum](docs/m1-color-mlp/ex-1.5-color-mlp-anchoring.ipynb): Like experiment 1.3, but with 4D embeddings, and hyperparameters smoothly varying across curriculum phases. For example, the extents of the color space of the training data (HSV) are gradually increased instead of extending it in large discrete steps.
 6. [Smooth vs. stepped curricula](docs/m1-color-mlp/ex-1.6-curriculum-comparison.ipynb): A direct comparison of training stability and latent space evolution when using smooth hyperparameter transitions versus traditional stepped phase changes. This experiment had a negative result: it seems the smooth transitions don't help with training dynamics (although they do make curriculum specification easier).
 7. [Sparse labels for regularization](docs/m1-color-mlp/ex-1.7-sparse-labels.ipynb): We do away with the data phases, training on the full dataset from the start but with targeted (but noisy) regularization. We achieve similar results to the earlier experiments, but with a more realistic training dataset: previously, the curriculum phases were "clean" in a way that is probably hard to replicate in LLM corpora.
+8. [Regularizer combinations](docs/m1-color-mlp/ex-1.8-regularizer-combinations.ipynb): Systematic study to see the effects of each regularizer by itself, and all combinations of the regularizers. In each run, the regularizer weight schedules are kept the same, but select regularizers are not applied at all. We observe that they are all needed to produce a latent space with the desired characteristics.
 
 MLP experiment summary:
 
@@ -34,8 +35,10 @@ MLP experiment summary:
 | 1.5 | 4: 6 colors ~ all colors | 4D         | Unit, planar, repulsion (Euclidean) | Smooth           |
 | 1.6 | 5: 6 colors ~ all colors | 4D         | Unit, planar, repulsion (Euclidean) | Smooth & stepped |
 | 1.7 | 1: All colors            | 4D         | Unit, planar, repulsion (cosine)    | Smooth           |
+| 1.8 | 1: All colors            | 4D         | All combinations                    | Smooth           |
 
 Publications:
+
 - [Selective regularization for alignment-focused representation engineering - LessWrong](https://www.lesswrong.com/posts/HFcriD29cw3E5QLCR/selective-regularization-for-alignment-focused)
 
 ## M2. Practical control and intervention (TO DO)
@@ -59,7 +62,6 @@ Impose structure on the latent representations of a transformer language model.
 1. Weak labeling pipeline for internet text (identifying "harmful," "deceptive," etc.)
 2. Application to actual language model training
 3. Evaluation of structured representations in the residual stream or QK space
-
 
 ---
 
