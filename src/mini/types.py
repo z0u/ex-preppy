@@ -2,13 +2,13 @@ import typing
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from types import TracebackType
-from typing import Any, Awaitable, Callable, Optional, ParamSpec, Type, TypeAlias, TypeVar, Union
+from typing import Any, Callable, Coroutine, Optional, ParamSpec, Type, TypeAlias, TypeVar, Union
 
 T = TypeVar('T')
 P = ParamSpec('P')
 R = TypeVar('R')
 
-AsyncCallable: TypeAlias = Callable[P, Awaitable[R]]
+AsyncCallable: TypeAlias = Callable[P, Coroutine[Any, Any, R]]
 SyncHandler: TypeAlias = Callable[[T], None]
 AsyncHandler: TypeAlias = AsyncCallable[[T], None]
 Handler: TypeAlias = SyncHandler[T] | AsyncHandler[T]

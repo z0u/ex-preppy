@@ -9,27 +9,28 @@ from mini.types import AsyncCallable, Params
 
 T = TypeVar('T')
 P = ParamSpec('P')
+Q = ParamSpec('Q')
 R = TypeVar('R')
 
 
 log = logging.getLogger(__name__)
 
 
-Factory: TypeAlias = Callable[[], R]
+Factory: TypeAlias = Callable[Q, R]
 Callback: TypeAlias = Callable[P, Any | None]
 AsyncCallback: TypeAlias = AsyncCallable[P, Any | None]
 CallbackContextManager: TypeAlias = AbstractAsyncContextManager[Callback[P]]
 AsyncCallbackContextManager: TypeAlias = AbstractAsyncContextManager[AsyncCallback[P]]
 
 # @asynccontextmanager needs *both* of these types to match
-AsyncCallbackContextDecorator: TypeAlias = Factory[AsyncContextDecorator | AsyncCallbackContextManager[P]]
+AsyncCallbackContextDecorator: TypeAlias = Factory[[], AsyncContextDecorator | AsyncCallbackContextManager[P]]
 """Functions decorated with @asynccontextmanager (they're factories that return CMs)"""
 
 AsyncBatchCallback: TypeAlias = AsyncCallback[[list[T]]]
 AsyncBatchCallbackContextManager: TypeAlias = AbstractAsyncContextManager[AsyncBatchCallback[T]]
 
 # @asynccontextmanager needs *both* of these types to match
-AsyncBatchCallbackContextDecorator: TypeAlias = Factory[AsyncContextDecorator | AsyncBatchCallbackContextManager[T]]
+AsyncBatchCallbackContextDecorator: TypeAlias = Factory[[], AsyncContextDecorator | AsyncBatchCallbackContextManager[T]]
 """Functions decorated with @asynccontextmanager (they're factories that return CMs)"""
 
 # These function decorators cause a function to always run locally, even when called in a remote Modal worker.
@@ -53,7 +54,7 @@ def run_hither(callback: AsyncCallback[P]) -> CallbackContextManager[P]: ...
 
 
 @overload
-def run_hither(callback: Factory[AsyncCallback[P]]) -> Factory[CallbackContextManager[P]]: ...
+def run_hither(callback: Factory[Q, AsyncCallback[P]]) -> Factory[Q, CallbackContextManager[P]]: ...
 
 
 @overload
@@ -61,7 +62,7 @@ def run_hither(callback: AsyncCallbackContextManager[P]) -> CallbackContextManag
 
 
 @overload
-def run_hither(callback: AsyncCallbackContextDecorator[P]) -> Factory[CallbackContextManager[P]]: ...
+def run_hither(callback: AsyncCallbackContextDecorator[P]) -> Factory[[], CallbackContextManager[P]]: ...
 
 
 def run_hither(callback):  # type: ignore
@@ -101,7 +102,7 @@ def run_hither_batch(callback: AsyncBatchCallback[T]) -> CallbackContextManager[
 
 
 @overload
-def run_hither_batch(callback: Factory[AsyncBatchCallback[T]]) -> Factory[CallbackContextManager[T]]: ...
+def run_hither_batch(callback: Factory[Q, AsyncBatchCallback[T]]) -> Factory[Q, CallbackContextManager[T]]: ...
 
 
 @overload
@@ -109,7 +110,7 @@ def run_hither_batch(callback: AsyncBatchCallbackContextManager[T]) -> CallbackC
 
 
 @overload
-def run_hither_batch(callback: AsyncBatchCallbackContextDecorator[T]) -> Factory[CallbackContextManager[T]]: ...
+def run_hither_batch(callback: AsyncBatchCallbackContextDecorator[T]) -> Factory[[], CallbackContextManager[T]]: ...
 
 
 def run_hither_batch(callback):  # type: ignore

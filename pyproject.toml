@@ -9,6 +9,7 @@ dependencies = [
     "jaxtyping>=0.2.38",
     "modal>=0.73.67",
     "numpy>=2.2.3",
+    "pandas>=2.2.3",
     "pydantic>=2.10.6",
     "requests>=2.32.3",
     "scikit-image>=0.25.2",
@@ -41,7 +42,6 @@ local = [
     "ipykernel>=6.29.5",
     "ipywidgets>=8.1.5",
     "matplotlib>=3.10.0",
-    "pandas>=2.2.3",
     "polars>=1.23.0",
     "tabulate>=0.9.0",
     "tqdm>=4.67.1",
@@ -76,9 +76,8 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = [
-    "src/experiment",
+    "src/ex_color",
     "src/mini",
-    "src/subline",
     "src/utils",
 ]
 

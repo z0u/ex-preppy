@@ -249,14 +249,19 @@ class Experiment:
         specific_guards = guards or []
 
         def decorator(fn: AsyncCallable[P, R]) -> AsyncCallable[P, R]:
-            if 'image' not in kwargs:
-                kwargs['image'] = self.image
-
             volumes = kwargs.get('volumes', None) or {}
-            kwargs['volumes'] = {**self.volumes, **volumes}
+
+            modal_kwargs = {
+                'image': self.image,
+                # Arguments above may be overridden by kwargs
+                **kwargs,
+                # Arguments below override kwargs
+                'volumes': {**self.volumes, **volumes},
+            }
+
             fn_id = short_id()
 
-            @self.app.function(**kwargs)
+            @self.app.function(**modal_kwargs)
             @wraps(fn)
             async def modal_function(run_id, call_id, *_args, **_kwargs):
                 # This is called in the remote container

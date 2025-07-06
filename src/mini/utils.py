@@ -1,12 +1,12 @@
 import inspect
 from functools import wraps
-from typing import Awaitable, Callable, ParamSpec, TypeVar, cast
+from typing import Any, Coroutine, Callable, ParamSpec, TypeVar, cast
 
 P = ParamSpec('P')
 R = TypeVar('R')
 
 
-def coerce_to_async(fn: Callable[P, R | Awaitable[R]]) -> Callable[P, Awaitable[R]]:
+def coerce_to_async(fn: Callable[P, R | Coroutine[Any, Any, R]]) -> Callable[P, Coroutine[Any, Any, R]]:
     if inspect.iscoroutinefunction(fn):
         return fn
 

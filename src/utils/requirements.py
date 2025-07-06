@@ -99,7 +99,7 @@ def project_packages() -> list[str]:
 
     log.debug('Using tool.hatch.build.targets.wheel.packages')
     paths = [
-        Path(d)
+        root_dir / d
         for d in pyproject.get('tool', {})
         .get('hatch', {})
         .get('build', {})
@@ -110,7 +110,7 @@ def project_packages() -> list[str]:
     directories = [path for path in paths if path.is_dir()]
     packages = [path.name for path in directories]
 
-    log.info(f'Found {len(packages)} local packages in the project')
+    log.info(f'Found {len(packages)} local packages: {", ".join(packages)}')
     log.debug('Packages: %s', packages)
     return packages
 
