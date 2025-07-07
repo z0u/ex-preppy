@@ -102,10 +102,22 @@ def main():
     parser.add_argument('outpath', type=Path, help='Path to notebook or directory')
 
     args = parser.parse_args()
+
+    # Filter out sources that don't exist (handles empty glob expansions)
+    existing_sources = [source for source in args.sources if source.exists()]
+
+    if not existing_sources:
+        print('No existing sources found - this is fine if no notebooks exist yet', file=sys.stderr)
+        return
+
     try:
-        tasks = collect_conversion_tasks(args.sources, args.outpath)
+        tasks = collect_conversion_tasks(existing_sources, args.outpath)
     except OSError as e:
         print(f'Error: {e}', file=sys.stderr)
+        return
+
+    if not tasks:
+        print('No notebooks found to convert - this is fine if no notebooks exist yet', file=sys.stderr)
         return
 
     process_conversion_tasks(tasks, verbose=True)
