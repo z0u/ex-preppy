@@ -1,7 +1,7 @@
 ### Style
 Use JavaScript-style method chaining (newline before the dot, use outer parentheses as necessary).
 Use cutting-edge syntax.
-Prefer previty.
+Prefer brevity.
 Use single quotes for strings, except for multiline strings.
 
 ### Docstrings
