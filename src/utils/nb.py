@@ -1,5 +1,9 @@
+import html
 import logging
+import secrets
 import typing
+import urllib.parse
+from contextlib import contextmanager
 from pathlib import Path
 
 if typing.TYPE_CHECKING:
@@ -11,22 +15,38 @@ log = logging.getLogger(__name__)
 
 
 def displayer():
-    import secrets
+    """
+    Display-or-update object for Jupyter notebooks.
 
-    handle = f'displayer-{secrets.token_hex(16)}'
-    first = True
+    Like Jupyter's `display` function, but updates the displayed content
+    in-place instead of creating a new output cell each time.
+    """
+    from utils._nb import Displayer
 
-    def show(ob):
-        nonlocal handle, first
-        from IPython.display import display, update_display
+    return Displayer()
 
-        if first:
-            first = False
-            display(ob, display_id=handle)
-        else:
-            update_display(ob, display_id=handle)
 
-    return show
+@contextmanager
+def displayer_img(
+    filepath: str | Path,
+    alt_text: str | None = None,
+    max_width: str | None = '70rem',
+):
+    """
+    Context manager to display an image in a Jupyter notebook.
+
+    Within the context, you can use the `show` object to display anything that can be serialized to PNG by Jupyter. Calling `show` repeatedly will update the displayed image.
+
+    When exited, the last image will be saved to the specified file path and used instead of the in-memory image. The image will be displayed as an HTML img tag with the specified alt text and max width.
+    """
+    from utils._nb import Displayer, ImageDisplayer
+
+    show = ImageDisplayer(Displayer(), filepath, alt_text=alt_text, max_width=max_width)
+
+    try:
+        yield show
+    finally:
+        show.externalize()
 
 
 def save_fig(
@@ -57,10 +77,6 @@ def save_fig(
     Returns:
         An HTML string '<img src="..." alt="...">'.
     """
-    import html
-    import secrets
-    import urllib.parse
-
     import matplotlib.pyplot as plt
 
     filepath = Path(filepath)
