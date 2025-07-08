@@ -10,7 +10,7 @@ T = TypeVar('T', default=int)
 
 
 class _CounterIterator(Iterator[int]):
-    def __init__(self, pbar: 'RichProgress[Any]'):
+    def __init__(self, pbar: 'Progress[Any]'):
         self.pbar = pbar
 
     def __iter__(self) -> Iterator[int]:
@@ -29,7 +29,7 @@ class _CounterIterator(Iterator[int]):
 
 
 class _IteratorWrapper(Generic[T], Iterator[T]):
-    def __init__(self, pbar: 'RichProgress[T]', iterator: Iterator[T]):
+    def __init__(self, pbar: 'Progress[T]', iterator: Iterator[T]):
         self.pbar = pbar
         self.iterator = iterator
 
@@ -51,7 +51,7 @@ class _IteratorWrapper(Generic[T], Iterator[T]):
             raise
 
 
-class RichProgress(Generic[T]):
+class Progress(Generic[T]):
     """
     A simple, Jupyter-friendly progress bar using HTML and display updates.
 
@@ -273,15 +273,15 @@ def format_time(seconds: float) -> str:
 
 
 # Example Usage (for testing in a notebook cell):
-# from src.utils.progress import RichProgress
+# from src.utils.progress import Progress
 # import time
 #
 # total_items = 150
 # items = range(total_items)
 # metrics = {"loss": 1.5, "accuracy": 0.3}
 #
-# print("Iterating over RichProgress(range(total_items)):")
-# with RichProgress(items, description="Training Epoch 1", initial_metrics=metrics) as pbar:
+# print("Iterating over Progress(range(total_items)):")
+# with Progress(items, description="Training Epoch 1", initial_metrics=metrics) as pbar:
 #     for i in pbar:
 #         time.sleep(0.05)
 #         if i % 10 == 0 and i > 0:
@@ -292,8 +292,8 @@ def format_time(seconds: float) -> str:
 #         if i == 100:
 #             pbar.update(0, suffix="Halfway there!")
 #
-# print("\nIterating over RichProgress(total=total_items):")
-# with RichProgress(total=total_items, description="Processing Items") as pbar:
+# print("\nIterating over Progress(total=total_items):")
+# with Progress(total=total_items, description="Processing Items") as pbar:
 #     for i in pbar:
 #         time.sleep(0.02)
 #         if i == 50:
