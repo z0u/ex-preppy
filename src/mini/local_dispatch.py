@@ -18,7 +18,7 @@ T = TypeVar('T')
 async def send_batch_to(
     receive: Handler[list[T]],
     trailing_timeout: float | None = 5,
-) -> AsyncGenerator[SyncHandler[list[T]]]:
+) -> AsyncGenerator[SyncHandler[list[T]], None]:
     """
     Create a distributed producer-consumer for batch processing with Modal.
 

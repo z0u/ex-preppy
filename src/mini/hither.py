@@ -149,7 +149,7 @@ def run_hither_batch(callback):  # type: ignore
 @asynccontextmanager
 async def _run_hither(
     callback: AsyncCallback[P],
-) -> AsyncGenerator[Callback[P]]:
+) -> AsyncGenerator[Callback[P], None]:
     @wraps(callback, assigned=('__module__', '__name__', '__qualname__', '__doc__'))
     async def batched_callback(calls: list[Params[P]]) -> None:
         for call in calls:
@@ -171,7 +171,7 @@ async def _run_hither(
 @asynccontextmanager
 async def _run_hither_batch(
     callback: AsyncCallback[list[T]],
-) -> AsyncGenerator[Callback[T]]:
+) -> AsyncGenerator[Callback[T], None]:
     log.debug('Starting batched producer and consumer for %s', callback)
     async with send_batch_to(callback) as send_batch:
 
@@ -188,7 +188,7 @@ async def _run_hither_batch(
 @asynccontextmanager
 async def _run_hither_cm(
     cb_context: AsyncCallbackContextManager[P],
-) -> AsyncGenerator[Callback[P]]:
+) -> AsyncGenerator[Callback[P], None]:
     log.debug('Entering callback context %s', cb_context)
     async with cb_context as callback:
         async with _run_hither(callback) as send:
@@ -198,7 +198,7 @@ async def _run_hither_cm(
 @asynccontextmanager
 async def _run_hither_batch_cm(
     cb_context: AsyncCallbackContextManager[list[T]],
-) -> AsyncGenerator[Callback[T]]:
+) -> AsyncGenerator[Callback[T], None]:
     log.debug('Entering batched callback context %s', cb_context)
     async with cb_context as callback:
         async with _run_hither_batch(callback) as send:

@@ -6,26 +6,7 @@ from IPython.display import HTML
 
 from utils.nb import displayer
 
-T = TypeVar('T', default=int)
-
-
-class _CounterIterator(Iterator[int]):
-    def __init__(self, pbar: 'Progress[Any]'):
-        self.pbar = pbar
-
-    def __iter__(self) -> Iterator[int]:
-        return self
-
-    def __next__(self) -> int:
-        if self.pbar._closed:
-            raise StopIteration
-        if self.pbar.count >= self.pbar.total:
-            self.pbar.close()
-            raise StopIteration
-
-        current_count = self.pbar.count
-        self.pbar.update(1)
-        return current_count
+T = TypeVar('T')
 
 
 class _IteratorWrapper(Generic[T], Iterator[T]):

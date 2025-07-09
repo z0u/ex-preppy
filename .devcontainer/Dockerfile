@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/devcontainers/python:3
+FROM mcr.microsoft.com/devcontainers/python:3.12
 
 # Install additional packages
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \

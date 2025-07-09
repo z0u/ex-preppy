@@ -13,6 +13,10 @@ case "${1:-all}" in
         shift
         "$SCRIPT_DIR/auth.sh" "$@"
         ;;
+    track)
+        shift
+        "$SCRIPT_DIR/track.sh" "$@"
+        ;;
     format|formatting)
         shift
         "$SCRIPT_DIR/format.sh" "$@"
