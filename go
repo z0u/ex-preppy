@@ -15,6 +15,7 @@ case "${1:-all}" in
         ;;
     track)
         shift
+        [ ! -e ~/.modal.toml ] && echo "W: Modal token missing; you may need to run $0 auth" >&2
         "$SCRIPT_DIR/track.sh" "$@"
         ;;
     format|formatting)

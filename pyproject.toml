@@ -52,7 +52,11 @@ pages = [
 ]
 track = [
     "modal>=0.73.67",
-    "aim>=3.0.0,<3.28.0",  # https://github.com/aimhubio/aim/issues/3351
+    "aim>=3.0.0,<3.28.0", # https://github.com/aimhubio/aim/issues/3351
+    "authlib>=1.6.0",
+    "httpx>=0.28.1",
+    "starlette>=0.46.2",
+    "itsdangerous>=2.2.0",
 ]
 
 [tool.uv]
