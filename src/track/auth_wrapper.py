@@ -57,13 +57,15 @@ def create_wrapper_app(name: str):  # noqa: C901
     @app.middleware('http')
     async def auth_middleware(request: Request, call_next: MiddlewareDelegate):
         # Ensures all requests are authorized, except for login/auth endpoints
-        if request.url.path.startswith(('/auth', '/login')):
+        login_path = request.url_for('login').path
+        auth_path = request.url_for('auth').path
+        if request.url.path in (login_path, auth_path):
             return await call_next(request)
 
         if not is_authorized(request):
             if not os.environ.get('ALLOWED_EMAIL'):
                 return JSONResponse({'error': 'authentication is misconfigured'}, status_code=500)
-            return RedirectResponse('/login')
+            return RedirectResponse(request.url_for('login'))
         return await call_next(request)
 
     # This needs to be added after our @app.middleware function, or the session won't be available.

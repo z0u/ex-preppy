@@ -1,7 +1,6 @@
 import logging
 import os
 from pathlib import PurePosixPath
-
 import modal
 
 from infra.requirements import freeze, get_project_name
@@ -31,30 +30,34 @@ def create_app():
         volumes={AIM_DIR: volume},
     )
 
-    @app.function(
-        serialized=True,  # Isolate the function from the rest of this module
+    @app.cls(
+        serialized=True,  # Isolate from the rest of this module
         secrets=[modal.Secret.from_name('google-oauth')],
+        max_containers=1,
     )
-    @modal.concurrent(max_inputs=100)
-    @modal.asgi_app(label='track')
-    def start_aim():
-        from aim.sdk.repo import Repo
+    @modal.concurrent(max_inputs=10)
+    class AimService:
+        @modal.enter()
+        def enter(self):
+            from aim.sdk.repo import Repo
 
-        if not Repo.exists(str(AIM_DIR)):
-            log.info(f'Creating Aim repo at {AIM_DIR}')
-            Repo.from_path(str(AIM_DIR), init=True)
-        else:
-            log.info(f'Aim repo exists at {AIM_DIR}')
+            if not Repo.exists(str(AIM_DIR)):
+                log.info(f'Creating Aim repo at {AIM_DIR}')
+                self.repo = Repo.from_path(str(AIM_DIR), init=True)
+            else:
+                log.info(f'Using existing Aim repo at {AIM_DIR}')
+                self.repo = Repo.from_path(str(AIM_DIR))
 
-        os.chdir(AIM_DIR)
+            os.chdir(AIM_DIR)
 
-        from track.auth_wrapper import create_wrapper_app
-        from aim.web.run import app as aim_asgi_app
+        @modal.asgi_app(label='track')
+        def web_interface(self):
+            from track.auth_wrapper import create_wrapper_app
+            from aim.web.run import app as aim_asgi_app
 
-        # return aim_asgi_app
-        wrapper_app = create_wrapper_app(name)
-        wrapper_app.mount('/', aim_asgi_app, 'Aim')
-        return wrapper_app
+            wrapper_app = create_wrapper_app(name)
+            wrapper_app.mount('/', aim_asgi_app, 'Aim')
+            return wrapper_app
 
     return app
 
