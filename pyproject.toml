@@ -57,6 +57,7 @@ track = [
     "httpx>=0.28.1",
     "starlette>=0.46.2",
     "itsdangerous>=2.2.0",
+    "proxy-py>=2.4.10",
 ]
 
 [tool.uv]

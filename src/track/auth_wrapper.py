@@ -1,13 +1,12 @@
 import os
 from typing import Awaitable, Callable, TypeAlias
 
-# from aim.web.run import app as aim_asgi_app  # ← Aim’s actual app
 from authlib.integrations.starlette_client import OAuth
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
 
-from track.session_secret import get_or_create_session_secret
+from track.secrets import get_session_secret, get_internal_api_key
 
 MiddlewareDelegate: TypeAlias = Callable[[Request], Awaitable[Response]]
 
@@ -28,6 +27,9 @@ def create_wrapper_app(name: str):  # noqa: C901
     app = FastAPI(name=name)
     """Wrapper app that provides authentication middleware"""
 
+    internal_api_key = get_internal_api_key(name)
+    """Secret token for access by other Modal workers"""
+
     # OAuth client config (from Google Cloud Console)
     oauth = OAuth()
     oauth.register(
@@ -41,8 +43,13 @@ def create_wrapper_app(name: str):  # noqa: C901
         },
     )
 
+
     def is_authorized(request: Request) -> bool:
         """Check if the user is authenticated and their email is allowed."""
+        authz = request.headers.get('Authorization', '')
+        if authz == f'Bearer {internal_api_key}':
+            return True
+
         user_email = request.session.get('user', {}).get('email')
         if not user_email:
             return False
@@ -69,7 +76,7 @@ def create_wrapper_app(name: str):  # noqa: C901
         return await call_next(request)
 
     # This needs to be added after our @app.middleware function, or the session won't be available.
-    app.add_middleware(SessionMiddleware, secret_key=get_or_create_session_secret(name))
+    app.add_middleware(SessionMiddleware, secret_key=get_session_secret(name))
 
     @app.get('/login')
     async def login(request: Request):
@@ -91,4 +98,4 @@ def create_wrapper_app(name: str):  # noqa: C901
 
         return RedirectResponse('/')
 
-    return app
+    return app, internal_api_key
