@@ -7,9 +7,17 @@ on:
   push:
     paths:
       - .github/workflows/copilot-setup-steps.yml
+      - go
+      - scripts/install.sh
+      - pyproject.toml
+      - uv.lock
   pull_request:
     paths:
       - .github/workflows/copilot-setup-steps.yml
+      - go
+      - scripts/install.sh
+      - pyproject.toml
+      - uv.lock
 
 jobs:
   # The job MUST be called `copilot-setup-steps` or it will not be picked up by Copilot.
