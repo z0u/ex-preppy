@@ -3,7 +3,10 @@ import re
 import subprocess
 import tomllib
 from pathlib import Path
-from typing import overload
+from typing import Literal, overload
+from types import ModuleType
+
+import modal
 
 log = logging.getLogger(__name__)
 
@@ -73,6 +76,86 @@ def freeze(
     log.info(f'Selected {len(selected_deps)} of {len(available_deps)} dependencies')
     log.debug('Dependencies: %s', selected_deps)
     return selected_deps
+
+
+def uv_freeze(
+    *packages: str,
+    groups: list[str] | None = None,
+    not_groups: list[str] | None = None,
+    only_groups: list[str] | None = None,
+    all_groups: bool = False,
+    indexes: list[str] | None = None,
+    python_version: str | None = None,
+    python_platform: str | None = None,
+    only_run_locally: bool = True,
+) -> list[str]:
+    if only_run_locally and not modal.is_local():
+        log.info('Skipping package-freezing: not running locally')
+        return []
+
+    cmd = ['uv', '--offline', 'tree']
+
+    result = subprocess.run(cmd + ['--no-dedupe', '--all-groups'], text=True, capture_output=True, check=True)
+    all_deps = parse_uv_tree_output(result.stdout, ignore_first=True)
+
+    opts: list[str | tuple[str, ...]] = []
+    opts += [('--package', pkg) for pkg in packages]
+    opts += [('--group', g) for g in (groups or [])]
+    opts += [('--not-group', g) for g in (not_groups or [])]
+    opts += [('--only-group', g) for g in (only_groups or [])]
+    opts += [('--index', i) for i in (indexes or [])]
+    if all_groups:
+        opts += ['--all-groups']
+    if python_version:
+        opts += [('--python-version', python_version)]
+    if python_platform:
+        opts += [('--python-platform', python_platform)]
+
+    # Flatten tuples
+    opts = [(opt,) if isinstance(opt, str) else opt for opt in opts]
+    flat_opts = [opt for sublist in opts for opt in sublist]
+
+    result = subprocess.run(cmd + flat_opts, text=True, capture_output=True, check=True)
+    selected_deps = parse_uv_tree_output(result.stdout, ignore_first=bool(groups))
+    log.info(f'Selected {len(selected_deps)} of {len(all_deps)} dependencies')
+    log.debug('Dependencies: %s', selected_deps)
+    return selected_deps
+
+
+def modnames(*modules: ModuleType | Literal['self']) -> list[str]:
+    """
+    Convert a list of modules into a list of names.
+
+    'self' is special: it will be converted into the name of the calling module.
+    """
+    ps = set[str]()
+    for mod in modules:
+        if mod == 'self':
+            try:
+                mod = get_calling_module()
+            except RuntimeError as e:
+                raise ValueError('Module "self" has no name') from e
+        if mod.__name__ == '__main__':
+            log.warning('Using __main__ as a requirement')
+        ps.add(mod.__name__)
+    return sorted(ps)
+
+
+def get_calling_module() -> ModuleType:
+    """
+    Search up the stack to find the module that called this function.
+
+    Ignores this module.
+    """
+    import inspect
+
+    frame = inspect.currentframe()
+    while frame:
+        mod = inspect.getmodule(frame)
+        if mod and mod.__name__ != __name__:
+            return mod
+        frame = frame.f_back
+    raise RuntimeError('Could not find calling module')
 
 
 def parse_uv_tree_output(output: str, ignore_first: bool) -> list[str]:

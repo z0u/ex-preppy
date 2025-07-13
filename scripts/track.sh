@@ -2,12 +2,12 @@
 
 set -euo pipefail
 
-mode=serve
+mode=deploy
 processed_args=()
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        -d|--deploy|--detach)
-            mode=deploy
+        -d|--dev)
+            mode=serve
             shift # consume the argument
             ;;
         --)

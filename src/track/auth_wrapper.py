@@ -43,13 +43,18 @@ def create_wrapper_app(name: str):  # noqa: C901
         },
     )
 
-
     def is_authorized(request: Request) -> bool:
-        """Check if the user is authenticated and their email is allowed."""
+        return _is_authorized_service(request) or _is_authorized_user(request)
+
+    def _is_authorized_service(request: Request) -> bool:
+        # Service accounts use an API key
         authz = request.headers.get('Authorization', '')
         if authz == f'Bearer {internal_api_key}':
             return True
+        return False
 
+    def _is_authorized_user(request: Request) -> bool:
+        # Users use OAuth
         user_email = request.session.get('user', {}).get('email')
         if not user_email:
             return False

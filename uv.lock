@@ -609,8 +609,8 @@ track = [
     { name = "httpx" },
     { name = "itsdangerous" },
     { name = "modal" },
-    { name = "proxy-py" },
     { name = "starlette" },
+    { name = "yarl" },
 ]
 
 [package.metadata]
@@ -659,8 +659,8 @@ track = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "itsdangerous", specifier = ">=2.2.0" },
     { name = "modal", specifier = ">=0.73.67" },
-    { name = "proxy-py", specifier = ">=2.4.10" },
     { name = "starlette", specifier = ">=0.46.2" },
+    { name = "yarl", specifier = ">=1.20.0" },
 ]
 
 [[package]]
@@ -1993,15 +1993,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/76/a1/7a5a94032c83375e4fe7e7f56e3976ea6ac90c5e85fac8576409e25c39c3/protobuf-6.31.1-cp39-abi3-manylinux2014_aarch64.whl", hash = "sha256:a40fc12b84c154884d7d4c4ebd675d5b3b5283e155f324049ae396b95ddebc39", size = 322115, upload-time = "2025-05-28T19:25:47.128Z" },
     { url = "https://files.pythonhosted.org/packages/fa/b1/b59d405d64d31999244643d88c45c8241c58f17cc887e73bcb90602327f8/protobuf-6.31.1-cp39-abi3-manylinux2014_x86_64.whl", hash = "sha256:4ee898bf66f7a8b0bd21bce523814e6fbd8c6add948045ce958b73af7e8878c6", size = 321070, upload-time = "2025-05-28T19:25:50.036Z" },
     { url = "https://files.pythonhosted.org/packages/f7/af/ab3c51ab7507a7325e98ffe691d9495ee3d3aa5f589afad65ec920d39821/protobuf-6.31.1-py3-none-any.whl", hash = "sha256:720a6c7e6b77288b85063569baae8536671b39f15cc22037ec7045658d80489e", size = 168724, upload-time = "2025-05-28T19:25:53.926Z" },
-]
-
-[[package]]
-name = "proxy-py"
-version = "2.4.10"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/60/c3/157c302e82abf8e1edf9dae55665b9480c0a6bd63b42cbbeb925a37f1e1f/proxy_py-2.4.10.tar.gz", hash = "sha256:41b9e9d3aae6f80e2304d3726e8e9c583a510d8de224eada53d115f48a63a9ce", size = 326541, upload-time = "2025-02-18T16:36:38.02Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c1/38/e2546d82f769550a54cca9b1ae81f229871c9bb8b9eca55d766c74a83b03/proxy.py-2.4.10-py3-none-any.whl", hash = "sha256:ef3a31f6ef3be6ff78559c0e68198523bfe2fb1e820bb16686750c1bb5baf9e8", size = 227130, upload-time = "2025-02-18T16:36:35.394Z" },
 ]
 
 [[package]]
