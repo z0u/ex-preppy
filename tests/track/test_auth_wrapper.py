@@ -4,11 +4,14 @@ from unittest.mock import MagicMock, patch
 from track.auth_wrapper import create_wrapper_app
 
 
-@patch.dict(os.environ, {
-    'GOOGLE_CLIENT_ID': 'test_client_id',
-    'GOOGLE_CLIENT_SECRET': 'test_client_secret',
-    'ALLOWED_EMAIL': 'user@example.com,admin@example.com'
-})
+@patch.dict(
+    os.environ,
+    {
+        'GOOGLE_CLIENT_ID': 'test_client_id',
+        'GOOGLE_CLIENT_SECRET': 'test_client_secret',
+        'ALLOWED_EMAIL': 'user@example.com,admin@example.com',
+    },
+)
 @patch('track.auth_wrapper.get_session_secret')
 @patch('track.auth_wrapper.get_internal_api_key')
 def test_create_wrapper_app(mock_get_api_key, mock_get_session_secret):
@@ -27,11 +30,14 @@ def test_create_wrapper_app(mock_get_api_key, mock_get_session_secret):
     mock_get_session_secret.assert_called_once_with('test_app')
 
 
-@patch.dict(os.environ, {
-    'GOOGLE_CLIENT_ID': 'test_client_id',
-    'GOOGLE_CLIENT_SECRET': 'test_client_secret',
-    'ALLOWED_EMAIL': 'user@example.com'
-})
+@patch.dict(
+    os.environ,
+    {
+        'GOOGLE_CLIENT_ID': 'test_client_id',
+        'GOOGLE_CLIENT_SECRET': 'test_client_secret',
+        'ALLOWED_EMAIL': 'user@example.com',
+    },
+)
 @patch('track.auth_wrapper.get_session_secret')
 @patch('track.auth_wrapper.get_internal_api_key')
 def test_service_authorization(mock_get_api_key, mock_get_session_secret):
@@ -54,11 +60,14 @@ def test_service_authorization(mock_get_api_key, mock_get_session_secret):
     assert is_service_auth_wrong is False
 
 
-@patch.dict(os.environ, {
-    'GOOGLE_CLIENT_ID': 'test_client_id',
-    'GOOGLE_CLIENT_SECRET': 'test_client_secret',
-    'ALLOWED_EMAIL': 'user@example.com,admin@example.com'
-})
+@patch.dict(
+    os.environ,
+    {
+        'GOOGLE_CLIENT_ID': 'test_client_id',
+        'GOOGLE_CLIENT_SECRET': 'test_client_secret',
+        'ALLOWED_EMAIL': 'user@example.com,admin@example.com',
+    },
+)
 @patch('track.auth_wrapper.get_session_secret')
 @patch('track.auth_wrapper.get_internal_api_key')
 def test_user_authorization_allowed_email(mock_get_api_key, mock_get_session_secret):
@@ -76,11 +85,14 @@ def test_user_authorization_allowed_email(mock_get_api_key, mock_get_session_sec
     assert user_email in allowed_emails
 
 
-@patch.dict(os.environ, {
-    'GOOGLE_CLIENT_ID': 'test_client_id',
-    'GOOGLE_CLIENT_SECRET': 'test_client_secret',
-    'ALLOWED_EMAIL': 'user@example.com'
-})
+@patch.dict(
+    os.environ,
+    {
+        'GOOGLE_CLIENT_ID': 'test_client_id',
+        'GOOGLE_CLIENT_SECRET': 'test_client_secret',
+        'ALLOWED_EMAIL': 'user@example.com',
+    },
+)
 @patch('track.auth_wrapper.get_session_secret')
 @patch('track.auth_wrapper.get_internal_api_key')
 def test_user_authorization_disallowed_email(mock_get_api_key, mock_get_session_secret):
@@ -98,10 +110,7 @@ def test_user_authorization_disallowed_email(mock_get_api_key, mock_get_session_
     assert user_email not in allowed_emails
 
 
-@patch.dict(os.environ, {
-    'GOOGLE_CLIENT_ID': 'test_client_id',
-    'GOOGLE_CLIENT_SECRET': 'test_client_secret'
-})
+@patch.dict(os.environ, {'GOOGLE_CLIENT_ID': 'test_client_id', 'GOOGLE_CLIENT_SECRET': 'test_client_secret'})
 @patch('track.auth_wrapper.get_session_secret')
 @patch('track.auth_wrapper.get_internal_api_key')
 def test_no_allowed_emails_configured(mock_get_api_key, mock_get_session_secret):
@@ -118,6 +127,7 @@ def test_no_allowed_emails_configured(mock_get_api_key, mock_get_session_secret)
 
 def test_authorization_logic_functions():
     """Test the core authorization logic without FastAPI dependencies."""
+
     # Test service authorization logic
     def is_authorized_service(auth_header: str, internal_api_key: str) -> bool:
         return auth_header == f'Bearer {internal_api_key}'
@@ -139,11 +149,14 @@ def test_authorization_logic_functions():
     assert is_authorized_user(None, 'user@example.com') is False
 
 
-@patch.dict(os.environ, {
-    'GOOGLE_CLIENT_ID': 'test_client_id',
-    'GOOGLE_CLIENT_SECRET': 'test_client_secret',
-    'ALLOWED_EMAIL': 'user@example.com'
-})
+@patch.dict(
+    os.environ,
+    {
+        'GOOGLE_CLIENT_ID': 'test_client_id',
+        'GOOGLE_CLIENT_SECRET': 'test_client_secret',
+        'ALLOWED_EMAIL': 'user@example.com',
+    },
+)
 @patch('track.auth_wrapper.get_session_secret')
 @patch('track.auth_wrapper.get_internal_api_key')
 def test_oauth_configuration(mock_get_api_key, mock_get_session_secret):

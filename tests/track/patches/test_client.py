@@ -15,10 +15,7 @@ def test_authorized_client_adds_bearer_token(mock_connect):
     test_headers = {'Content-Type': 'application/json'}
     client.request_headers = test_headers
 
-    expected_headers = {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer test_token_123'
-    }
+    expected_headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer test_token_123'}
     assert client.request_headers == expected_headers
 
 
@@ -30,10 +27,7 @@ def test_authorized_client_preserves_existing_auth(mock_connect):
     client = AuthorizedClient('http://test.com')
 
     # Test setting headers with existing Authorization
-    test_headers = {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer existing_token'
-    }
+    test_headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer existing_token'}
     client.request_headers = test_headers
 
     # Should preserve existing Authorization header
@@ -119,6 +113,7 @@ def test_bearer_token_class_variable():
 
 def test_authorization_header_logic():
     """Test the core authorization header logic without creating clients."""
+
     # Simulate the setter logic
     def add_auth_header(headers: dict, token: str | None) -> dict:
         if token and 'Authorization' not in headers:
