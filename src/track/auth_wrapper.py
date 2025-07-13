@@ -11,6 +11,19 @@ from track.secrets import get_session_secret, get_internal_api_key
 MiddlewareDelegate: TypeAlias = Callable[[Request], Awaitable[Response]]
 
 
+def is_authorized_service(auth_header: str, internal_api_key: str) -> bool:
+    """Check if request is authorized using service API key."""
+    return auth_header == f'Bearer {internal_api_key}'
+
+
+def is_authorized_user(user_email: str | None, allowed_emails_str: str) -> bool:
+    """Check if user email is in the allowed emails list."""
+    if not user_email or not allowed_emails_str:
+        return False
+    allowed_emails = {email.strip() for email in allowed_emails_str.split(',')}
+    return user_email in allowed_emails
+
+
 def create_wrapper_app(name: str):  # noqa: C901
     """
     Create a FastAPI app to wrap another one with an authentication flow.
@@ -49,22 +62,13 @@ def create_wrapper_app(name: str):  # noqa: C901
     def _is_authorized_service(request: Request) -> bool:
         # Service accounts use an API key
         authz = request.headers.get('Authorization', '')
-        if authz == f'Bearer {internal_api_key}':
-            return True
-        return False
+        return is_authorized_service(authz, internal_api_key)
 
     def _is_authorized_user(request: Request) -> bool:
         # Users use OAuth
         user_email = request.session.get('user', {}).get('email')
-        if not user_email:
-            return False
-
         allowed_emails_str = os.environ.get('ALLOWED_EMAIL', '')
-        if not allowed_emails_str:
-            return False
-
-        allowed_emails = {email.strip() for email in allowed_emails_str.split(',')}
-        return user_email in allowed_emails
+        return is_authorized_user(user_email, allowed_emails_str)
 
     @app.middleware('http')
     async def auth_middleware(request: Request, call_next: MiddlewareDelegate):
