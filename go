@@ -52,13 +52,16 @@ case "${1:-all}" in
     *)
         # Important: heredoc indented with tab characters.
         cat <<-EOF 1>&2
-			Usage: $0 {check|lint|format|types|tests|build}
+			Usage: $0 {check|lint|format|types|tests|dead|build}
 			  install:           install dependencies (uv sync)
-			  check:             run all checks
+			  auth   [...args]:  authenticate with Modal (modal setup)
 			  format [...args]:  format code (ruff format)
 			  lint   [...args]:  run linters (ruff check)
-			  types  [...args]:  check types (pyright)
+			  types  [...args]:  check types (basedpyright)
 			  tests  [...args]:  run tests (pytest)
+			  dead   [...args]:  look for dead code (vulture)
+			  check:             run all checks
+			  track  [...args]:  start experiment tracker app (modal deploy)
 			  build  [...args]:  build static site
 			EOF
         exit 1

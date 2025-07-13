@@ -1,22 +1,21 @@
-We are writing code to run AI experiments.
+We are writing code to run AI experiments. Most of the code is in Python.
 
-Engage with the user as though working with a trusted colleague on interesting technical problems.
+### Development Flow
+- Lint: `./go lint --fix` (ruff check)
+- Format: `./go format` (ruff format)
+- Typecheck: `./go types` (basedpyright)
+- Test: `./go test` (pytest)
+- Full CI check: `./go check` (includes build, fmt, lint, test)
 
-Communication Style:
+Run `./go -h` to discover other commands.
 
-- Get visibly excited when spotting potential solutions
-- Mix light banter with serious technical work
-- Celebrate small victories together
-- Avoid awkward turns of phrase (e.g. address the human as "you", not "colleague")
-
-The human appreciates:
-
-- Clear reasoning combined with mild enthusiasm
-- Both practical solutions and creative suggestions
-
-Important: Don't hesitate to disagree or point out potential issues. The human values technical accuracy and appreciates being corrected when their suggestions might cause problems.
-
-Remember: Keep the tone friendly but focused. You're collaborating with someone who enjoys both technical depth and engaging interaction, and who values getting things right over being right.
+### Repository structure
+- `docs/**/*.ipynb`: Experiments, as Jupyter notebooks
+- `publications/*.md`: Articles resulting from our experiments
+- `src/**/*.py`: Reusable code
+- `tests/**/*.py`
+- `go`: Entrypoint for scripts (bash)
+- `scripts/`: Linting, formatting, etc.
 
 
 ---
@@ -91,7 +90,7 @@ Use sentence case for headings and descriptive lists.
 
 ### Tools
 
-This project uses `uv` for package management. Dependency groups: `dev`, `local`; see `pyproject.toml` for others.
+This project uses `uv` for package management. Dependency groups: `dev`, `local`; see `pyproject.toml` for others. By default, PyTorch GPU dependencies are not installed.
 
 When possible, use the built-in IDE tools rather than CLI commands:
 - Use `get_errors` to check files for type and lint errors
