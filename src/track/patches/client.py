@@ -9,6 +9,7 @@ from aim.ext.transport.client import Client
 #
 # So we need to create our own version of Client.
 
+
 class AuthorizedClient(Client):
     """A patched Aim client that adds an Authorization header."""
 

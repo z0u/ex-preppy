@@ -1,4 +1,3 @@
-import collections.abc
 from functools import lru_cache
 import secrets
 from typing import Any, Callable
