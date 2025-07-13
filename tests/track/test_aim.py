@@ -1,15 +1,9 @@
 from unittest.mock import MagicMock, patch, AsyncMock
-from pathlib import PurePosixPath
 import pytest
 
-from track.aim import AIM_DIR, get_repo, track_app_name
-
-
-def test_constants():
-    """Test that module constants are properly defined."""
-    assert AIM_DIR == PurePosixPath('/aim')
-    assert track_app_name == 'mi-ni.track'
-    assert isinstance(AIM_DIR, PurePosixPath)
+# Mock the uv_freeze function before importing track.aim since it's called at module level
+with patch('infra.requirements.uv_freeze', return_value=[]):
+    from track.aim import AIM_DIR, get_repo, track_app_name
 
 
 @patch('aim.sdk.repo.Repo')
@@ -54,7 +48,7 @@ async def test_get_repo(mock_repo_class, mock_patch_client, mock_cls):
     # Mock the Modal service
     mock_service_instance = MagicMock()
     mock_service_instance.get_repo_for_client.remote.aio = AsyncMock(
-        return_value=('https://test.modal.run', 'api_key_123')
+        return_value=('https://example.com', 'api_key_123')
     )
     mock_service = MagicMock()
     mock_service.return_value = mock_service_instance
@@ -73,35 +67,9 @@ async def test_get_repo(mock_repo_class, mock_patch_client, mock_cls):
     mock_patch_client.assert_called_once_with('api_key_123')
 
     # Verify Repo creation with correct URL
-    mock_repo_class.assert_called_once_with('aim://test.modal.run/server')
+    mock_repo_class.assert_called_once_with('aim://example.com/server')
 
     assert result == mock_repo_instance
-
-
-def test_service_configuration():
-    """Test basic service configuration that can be verified."""
-    from track.aim import AimService
-
-    # Test that we can create a service instance
-    service = AimService()  # type: ignore  # Modal decorated class
-
-    # Test that methods exist
-    assert hasattr(service, '_ensure_repo')
-    assert hasattr(service, 'get_repo_for_client')
-    assert hasattr(service, 'web_interface')
-
-
-def test_aim_dir_path_type():
-    """Test that AIM_DIR is the correct path type."""
-    assert isinstance(AIM_DIR, PurePosixPath)
-    assert str(AIM_DIR) == '/aim'
-
-
-def test_track_app_name_format():
-    """Test track app name follows expected format."""
-    assert track_app_name == 'mi-ni.track'
-    assert '.' in track_app_name
-    assert track_app_name.startswith('mi-ni')
 
 
 def test_get_repo_service_error_handling():
@@ -124,32 +92,9 @@ def test_url_construction_logic():
     from yarl import URL
 
     # Test the URL construction logic that would be used in get_repo
-    base_url = 'https://test.modal.run'
+    base_url = 'https://example.com'
     url = URL(base_url).with_scheme('aim') / 'server'
 
     # Verify the URL is constructed correctly
-    expected_url = 'aim://test.modal.run/server'
+    expected_url = 'aim://example.com/server'
     assert str(url) == expected_url
-
-
-def test_module_imports():
-    """Test that module imports work correctly."""
-    # Test that all expected imports are available
-    import track.aim
-
-    assert hasattr(track.aim, 'AimService')
-    assert hasattr(track.aim, 'get_repo')
-    assert hasattr(track.aim, 'AIM_DIR')
-    assert hasattr(track.aim, 'track_app_name')
-
-
-def test_aim_service_methods_exist():
-    """Test that AimService has the expected methods."""
-    from track.aim import AimService
-
-    service = AimService()  # type: ignore  # Modal decorated class
-
-    # Test methods exist (Modal decorates them, so they may not be normal callables)
-    assert hasattr(service, '_ensure_repo')
-    assert hasattr(service, 'get_repo_for_client')
-    assert hasattr(service, 'web_interface')

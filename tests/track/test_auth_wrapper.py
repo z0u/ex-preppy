@@ -1,7 +1,7 @@
 import os
 from unittest.mock import MagicMock, patch
 
-from track.auth_wrapper import create_wrapper_app
+from track.auth_wrapper import create_wrapper_app, is_authorized_service, is_authorized_user
 
 
 @patch.dict(
@@ -47,17 +47,9 @@ def test_service_authorization(mock_get_api_key, mock_get_session_secret):
 
     app, _ = create_wrapper_app('test_app')
 
-    # Test the authorization logic directly since accessing middleware is complex
-    authz = 'Bearer service_api_key'
-    internal_api_key = 'service_api_key'
-    is_service_auth = authz == f'Bearer {internal_api_key}'
-
-    assert is_service_auth is True
-
-    # Test with wrong key
-    wrong_authz = 'Bearer wrong_key'
-    is_service_auth_wrong = wrong_authz == f'Bearer {internal_api_key}'
-    assert is_service_auth_wrong is False
+    # Test the authorization logic using the actual function
+    assert is_authorized_service('Bearer service_api_key', 'service_api_key') is True
+    assert is_authorized_service('Bearer wrong_key', 'service_api_key') is False
 
 
 @patch.dict(
@@ -77,12 +69,8 @@ def test_user_authorization_allowed_email(mock_get_api_key, mock_get_session_sec
 
     app, _ = create_wrapper_app('test_app')
 
-    # Test allowed email
-    user_email = 'user@example.com'
-    allowed_emails_str = 'user@example.com,admin@example.com'
-    allowed_emails = {email.strip() for email in allowed_emails_str.split(',')}
-
-    assert user_email in allowed_emails
+    # Test allowed email using the actual function
+    assert is_authorized_user('user@example.com', 'user@example.com,admin@example.com') is True
 
 
 @patch.dict(
@@ -102,12 +90,8 @@ def test_user_authorization_disallowed_email(mock_get_api_key, mock_get_session_
 
     app, _ = create_wrapper_app('test_app')
 
-    # Test disallowed email
-    user_email = 'hacker@badsite.com'
-    allowed_emails_str = 'user@example.com'
-    allowed_emails = {email.strip() for email in allowed_emails_str.split(',')}
-
-    assert user_email not in allowed_emails
+    # Test disallowed email using the actual function
+    assert is_authorized_user('hacker@badsite.com', 'user@example.com') is False
 
 
 @patch.dict(os.environ, {'GOOGLE_CLIENT_ID': 'test_client_id', 'GOOGLE_CLIENT_SECRET': 'test_client_secret'})
@@ -126,23 +110,14 @@ def test_no_allowed_emails_configured(mock_get_api_key, mock_get_session_secret)
 
 
 def test_authorization_logic_functions():
-    """Test the core authorization logic without FastAPI dependencies."""
+    """Test the core authorization logic using the actual extracted functions."""
 
     # Test service authorization logic
-    def is_authorized_service(auth_header: str, internal_api_key: str) -> bool:
-        return auth_header == f'Bearer {internal_api_key}'
-
     assert is_authorized_service('Bearer test_key', 'test_key') is True
     assert is_authorized_service('Bearer wrong_key', 'test_key') is False
     assert is_authorized_service('', 'test_key') is False
 
     # Test user authorization logic
-    def is_authorized_user(user_email: str | None, allowed_emails_str: str) -> bool:
-        if not user_email or not allowed_emails_str:
-            return False
-        allowed_emails = {email.strip() for email in allowed_emails_str.split(',')}
-        return user_email in allowed_emails
-
     assert is_authorized_user('user@example.com', 'user@example.com,admin@example.com') is True
     assert is_authorized_user('hacker@badsite.com', 'user@example.com') is False
     assert is_authorized_user('user@example.com', '') is False

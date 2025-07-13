@@ -9,7 +9,7 @@ def test_authorized_client_adds_bearer_token(mock_connect):
     # Set a bearer token
     AuthorizedClient.BEARER_TOKEN = 'test_token_123'
 
-    client = AuthorizedClient('http://test.com')
+    client = AuthorizedClient('http://example.com')
 
     # Test setting headers without Authorization
     test_headers = {'Content-Type': 'application/json'}
@@ -24,7 +24,7 @@ def test_authorized_client_preserves_existing_auth(mock_connect):
     """Test that AuthorizedClient doesn't override existing Authorization header."""
     AuthorizedClient.BEARER_TOKEN = 'test_token_123'
 
-    client = AuthorizedClient('http://test.com')
+    client = AuthorizedClient('http://example.com')
 
     # Test setting headers with existing Authorization
     test_headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer existing_token'}
@@ -40,7 +40,7 @@ def test_authorized_client_no_token(mock_connect):
     """Test that AuthorizedClient doesn't add header when no token is set."""
     AuthorizedClient.BEARER_TOKEN = None
 
-    client = AuthorizedClient('http://test.com')
+    client = AuthorizedClient('http://example.com')
 
     test_headers = {'Content-Type': 'application/json'}
     client.request_headers = test_headers
@@ -81,7 +81,7 @@ def test_authorized_client_inherits_from_aim_client():
 @patch('track.patches.client.Client.connect')
 def test_authorized_client_request_headers_property(mock_connect):
     """Test the request_headers property getter and setter work correctly."""
-    client = AuthorizedClient('http://test.com')
+    client = AuthorizedClient('http://example.com')
 
     # Test getter
     headers = client.request_headers
