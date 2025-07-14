@@ -17,7 +17,7 @@ class TestProgressDebouncing:
         mock_displayer.return_value = mock_display
 
         # Create progress bar
-        with Progress(total=5, description="Test", min_interval_sec=0.1) as pbar:
+        with Progress(total=5, description='Test', min_interval_sec=0.1) as pbar:
             for _i in range(5):
                 pbar.update(1)
 
@@ -31,7 +31,7 @@ class TestProgressDebouncing:
         mock_displayer.return_value = mock_display
 
         # Create progress bar with short interval
-        with Progress(total=10, description="Rapid", min_interval_sec=0.05) as pbar:
+        with Progress(total=10, description='Rapid', min_interval_sec=0.05) as pbar:
             time.monotonic()
 
             # Rapid updates (no sleep)
@@ -53,7 +53,7 @@ class TestProgressDebouncing:
         mock_displayer.return_value = mock_display
 
         # In async context, debouncing should work better
-        with Progress(total=5, description="Async", min_interval_sec=0.02) as pbar:
+        with Progress(total=5, description='Async', min_interval_sec=0.02) as pbar:
             for _i in range(5):
                 await asyncio.sleep(0.01)  # Async delay
                 pbar.update(1)
@@ -68,21 +68,21 @@ class TestProgressDebouncing:
         mock_displayer.return_value = mock_display
 
         # All existing functionality should work
-        pbar = Progress(total=3, description="Compat")
+        pbar = Progress(total=3, description='Compat')
         initial_count = mock_display.call_count
 
         # Update with different parameters, with small delays to ensure display calls
-        pbar.update(1, suffix="Step 1")
+        pbar.update(1, suffix='Step 1')
         time.sleep(0.11)  # Wait longer than min_interval_sec to ensure display
-        pbar.update(1, metrics={"loss": 0.5})
+        pbar.update(1, metrics={'loss': 0.5})
         time.sleep(0.11)  # Wait longer than min_interval_sec to ensure display
-        pbar.update(1, suffix="Done", metrics={"loss": 0.1, "acc": 0.9})
+        pbar.update(1, suffix='Done', metrics={'loss': 0.1, 'acc': 0.9})
 
         # Should work as before
         assert pbar.count == 3
-        assert pbar.suffix == "Done"
-        assert pbar.metrics["loss"] == 0.1
-        assert pbar.metrics["acc"] == 0.9
+        assert pbar.suffix == 'Done'
+        assert pbar.metrics['loss'] == 0.1
+        assert pbar.metrics['acc'] == 0.9
 
         # Should have made display calls during updates
         assert mock_display.call_count > initial_count
@@ -101,7 +101,7 @@ class TestProgressDebouncing:
         items = [1, 2, 3, 4, 5]
         results = []
 
-        with Progress(items, description="Iterator") as pbar:
+        with Progress(items, description='Iterator') as pbar:
             for item in pbar:
                 results.append(item)
 
@@ -114,7 +114,7 @@ class TestProgressDebouncing:
         mock_display = Mock()
         mock_displayer.return_value = mock_display
 
-        with Progress(total=2, description="Context") as pbar:
+        with Progress(total=2, description='Context') as pbar:
             pbar.update(1)
             pbar.update(1)
             # Should auto-close on exit

@@ -33,6 +33,7 @@ def debounced(
     Returns:
         Debounced function that returns an asyncio.Task
     """
+
     def decorator(f: Callable[P, Any]) -> Callable[P, asyncio.Task]:
         pending: tuple[tuple, dict] | None = None
         current_task: asyncio.Task | None = None

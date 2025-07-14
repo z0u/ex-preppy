@@ -20,9 +20,9 @@ class TestDebounced:
             mock_func(arg)
 
         # Multiple rapid calls should result in leading + trailing execution
-        task1 = test_func("first")
-        task2 = test_func("second")
-        task3 = test_func("third")
+        task1 = test_func('first')
+        task2 = test_func('second')
+        task3 = test_func('third')
 
         # All tasks should be the same (since debounced)
         assert task1 is task2 is task3
@@ -34,7 +34,7 @@ class TestDebounced:
         assert mock_func.call_count >= 1
         # Latest call should have "third" as argument
         last_call_args = mock_func.call_args_list[-1]
-        assert last_call_args[0][0] == "third"
+        assert last_call_args[0][0] == 'third'
 
     @pytest.mark.asyncio
     async def test_debounced_with_timing(self):
@@ -48,12 +48,12 @@ class TestDebounced:
         start_time = time.monotonic()
 
         # First call should execute immediately (leading edge)
-        task1 = test_func("first")
+        task1 = test_func('first')
 
         # Rapid subsequent calls should be debounced
         await asyncio.sleep(0.01)  # Small delay
-        task2 = test_func("second")
-        task3 = test_func("third")
+        task2 = test_func('second')
+        task3 = test_func('third')
 
         # Wait for completion
         await task1
@@ -64,8 +64,8 @@ class TestDebounced:
 
         # Should have exactly 2 calls: leading + trailing
         assert len(calls) == 2
-        assert calls[0][0] == "first"  # Leading edge
-        assert calls[1][0] == "third"  # Trailing edge with latest args
+        assert calls[0][0] == 'first'  # Leading edge
+        assert calls[1][0] == 'third'  # Trailing edge with latest args
 
         # Check timing - should take at least min_interval
         total_time = end_time - start_time
@@ -85,14 +85,14 @@ class TestDebounced:
             calls.append(arg)
 
         # Multiple calls
-        task1 = test_func("first")
-        task2 = test_func("second")
+        task1 = test_func('first')
+        task2 = test_func('second')
 
         await task1
         await task2
 
         # Should execute with latest args (basic debouncing)
-        assert "second" in calls
+        assert 'second' in calls
 
     @pytest.mark.asyncio
     async def test_debounced_with_async_function(self):
@@ -105,18 +105,19 @@ class TestDebounced:
             await asyncio.sleep(0.01)  # Simulate async work
 
         # Multiple calls
-        task1 = async_test_func("first")
-        task2 = async_test_func("second")
+        task1 = async_test_func('first')
+        task2 = async_test_func('second')
 
         await task1
         await task2
 
         # Should work with async functions too
         assert len(calls) >= 1
-        assert "second" in calls
+        assert 'second' in calls
 
     def test_debounced_parameter_syntax(self):
         """Test that decorator can be used with parameters."""
+
         # This should not raise an error
         @debounced(min_interval=0.1)
         def test_func():
