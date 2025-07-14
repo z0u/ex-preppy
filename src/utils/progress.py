@@ -1,9 +1,12 @@
+import asyncio
 import time
+import warnings
 from math import isfinite
 from typing import Any, Dict, Generic, Iterable, Iterator, Optional, TypeVar, cast
 
 from IPython.display import HTML
 
+from utils.coro import debounced
 from utils.nb import displayer
 
 T = TypeVar('T')
@@ -79,6 +82,16 @@ class Progress(Generic[T]):
         self.last_update_time = 0.0
         self._update_display = displayer()
         self._closed = False
+
+        # Create a debounced display function that captures this instance
+        @debounced(min_interval=min_interval_sec)
+        def _debounced_display_impl():
+            if not self._closed:
+                html_content = self._render_html()
+                self._update_display(HTML(html_content))
+                self.last_update_time = time.monotonic()
+
+        self._debounced_display_impl = _debounced_display_impl  # type: ignore
         self._display(force=True)
 
     def update(
@@ -99,22 +112,33 @@ class Progress(Generic[T]):
         self._display()
 
     def _display(self, force: bool = False) -> None:
-        """Render and update the HTML display, respecting rate limits."""
+        """Render and update the HTML display, using debounced updates when possible."""
         if self._closed:
             return
 
+        if force:
+            # For forced updates, bypass debouncing and update immediately
+            html_content = self._render_html()
+            self._update_display(HTML(html_content))
+            self.last_update_time = time.monotonic()
+        else:
+            # Try to use debounced display if event loop is available
+            try:
+                asyncio.get_running_loop()
+                # Event loop is available, use debounced display
+                self._debounced_display_impl()  # type: ignore
+            except RuntimeError:
+                # No event loop available, use manual rate limiting as fallback
+                self._display_with_manual_rate_limiting()
+    
+    def _display_with_manual_rate_limiting(self) -> None:
+        """Fallback display method with manual rate limiting."""
         now = time.monotonic()
-        if not force:
-            dt = now - self.last_update_time
-            if dt < self.min_interval_sec:
-                return
-            if self.count >= self.total:
-                return
-
-        html_content = self._render_html()
-        self._update_display(HTML(html_content))
-
-        self.last_update_time = now
+        dt = now - self.last_update_time
+        if dt >= self.min_interval_sec:
+            html_content = self._render_html()
+            self._update_display(HTML(html_content))
+            self.last_update_time = now
 
     def _render_html(self) -> str:
         """Generate the HTML for the progress bar and metrics grid."""
