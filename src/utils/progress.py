@@ -81,6 +81,7 @@ class Progress(Generic[T]):
         self.last_update_time = 0.0
         self._update_display = displayer()
         self._closed = False
+        self._pending_display = False  # Track if display is pending
 
         # Create a debounced display function that captures this instance
         @debounced(min_interval=min_interval_sec)
@@ -121,17 +122,38 @@ class Progress(Generic[T]):
             # Event loop is available, use debounced display
             self._debounced_display_impl()
         except RuntimeError:
-            # No event loop available, use manual rate limiting as fallback
+            # No event loop available, debounced function will execute immediately
+            # but we still want rate limiting, so use manual rate limiting
             self._display_with_manual_rate_limiting()
 
     def _display_with_manual_rate_limiting(self) -> None:
-        """Fallback display method with manual rate limiting."""
+        """Fallback display method with manual rate limiting and trailing edge behavior."""
+        import threading
+
         now = time.monotonic()
         dt = now - self.last_update_time
+
         if dt >= self._min_interval_sec:
+            # Leading edge: enough time has passed, display immediately
             html_content = self._render_html()
             self._update_display(HTML(html_content))
             self.last_update_time = now
+            self._pending_display = False
+        elif not self._pending_display:
+            # Trailing edge: schedule display after minimum interval
+            self._pending_display = True
+            remaining_time = self._min_interval_sec - dt
+
+            def delayed_display():
+                time.sleep(remaining_time)
+                if self._pending_display and not self._closed:
+                    html_content = self._render_html()
+                    self._update_display(HTML(html_content))
+                    self.last_update_time = time.monotonic()
+                    self._pending_display = False
+
+            # Start delayed display in background thread
+            threading.Thread(target=delayed_display, daemon=True).start()
 
     def _force_display(self) -> None:
         """Force an immediate display update, bypassing debouncing."""

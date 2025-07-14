@@ -50,6 +50,9 @@ pages = [
     "jupyter",
     "nbconvert",
 ]
+test = [
+    "ipython>=9.4.0",
+]
 track = [
     "modal>=0.73.67",
     "aim>=3.0.0,<3.28.0", # https://github.com/aimhubio/aim/issues/3351

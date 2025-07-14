@@ -120,3 +120,28 @@ class TestProgressDebouncing:
             # Should auto-close on exit
 
         assert pbar._closed
+
+    @patch('utils.progress.displayer')
+    def test_progress_sync_trailing_edge_behavior(self, mock_displayer):
+        """Test that progress shows trailing edge updates in synchronous mode."""
+        mock_display = Mock()
+        mock_displayer.return_value = mock_display
+
+        # Test rapid updates that should trigger trailing edge
+        with Progress(total=5, description='Sync Test', min_interval_sec=0.05) as pbar:
+            initial_calls = mock_display.call_count
+
+            # Make rapid updates (faster than min_interval_sec)
+            for _i in range(5):
+                pbar.update(1)
+                time.sleep(0.01)  # Much faster than 0.05 min_interval_sec
+
+            # Give time for trailing edge to execute
+            time.sleep(0.1)
+            calls_after_trailing = mock_display.call_count
+
+        final_calls = mock_display.call_count
+
+        # Should have initial display, trailing edge display, and final close display
+        assert calls_after_trailing > initial_calls, 'Should have trailing edge updates'
+        assert final_calls > calls_after_trailing, 'Should have close display'

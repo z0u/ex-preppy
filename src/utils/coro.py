@@ -8,18 +8,22 @@ P = ParamSpec('P')
 
 
 @overload
-def debounced(func: Callable[P, Any]) -> Callable[P, asyncio.Task]: ...
+def debounced(func: Callable[P, Any]) -> Callable[P, Any]: ...
 
 
 @overload
-def debounced(*, min_interval: float = 0.0) -> Callable[[Callable[P, Any]], Callable[P, asyncio.Task]]: ...
+def debounced(*, min_interval: float = 0.0) -> Callable[[Callable[P, Any]], Callable[P, Any]]: ...
 
 
-def debounced(
+def debounced(  # noqa: C901
     func: Callable[P, Any] | None = None, *, min_interval: float = 0.0
-) -> Union[Callable[P, asyncio.Task], Callable[[Callable[P, Any]], Callable[P, asyncio.Task]]]:
+) -> Union[Callable[P, Any], Callable[[Callable[P, Any]], Callable[P, Any]]]:
     """
     Debounce decorator with leading and trailing edge execution.
+
+    Works in both sync and async contexts:
+    - With event loop: Uses asyncio.Task for proper async debouncing
+    - Without event loop: Executes immediately (no debouncing, falls back to caller)
 
     - Leading edge: Function runs immediately on first call
     - Trailing edge: If called during execution, runs again with latest arguments
@@ -31,16 +35,17 @@ def debounced(
         min_interval: Minimum time in seconds between executions (default: 0.0)
 
     Returns:
-        Debounced function that returns an asyncio.Task
+        Debounced function that works in both sync and async contexts
     """
 
-    def decorator(f: Callable[P, Any]) -> Callable[P, asyncio.Task]:
+    def decorator(f: Callable[P, Any]) -> Callable[P, Any]:  # noqa: C901
+        # Async state
         pending: tuple[tuple, dict] | None = None
         current_task: asyncio.Task | None = None
-        last_execution_time: float = 0.0
+        async_last_execution_time: float = 0.0
 
         async def _execute_loop():
-            nonlocal pending, current_task, last_execution_time
+            nonlocal pending, current_task, async_last_execution_time
             try:
                 while pending is not None:
                     current_args, current_kwargs = pending
@@ -49,7 +54,7 @@ def debounced(
                     # Respect minimum interval
                     if min_interval > 0.0:
                         now = time.monotonic()
-                        time_since_last = now - last_execution_time
+                        time_since_last = now - async_last_execution_time
                         if time_since_last < min_interval:
                             await asyncio.sleep(min_interval - time_since_last)
 
@@ -58,19 +63,12 @@ def debounced(
                     if isawaitable(ret):
                         await ret
 
-                    last_execution_time = time.monotonic()
+                    async_last_execution_time = time.monotonic()
             finally:
                 current_task = None
 
-        @wraps(f)
-        def _debounced(*args: P.args, **kwargs: P.kwargs) -> asyncio.Task:
-            """
-            Call the debounced function.
-
-            Returns:
-                - asyncio.Task if starting new execution (can be awaited)
-                - Current task if execution is already running
-            """
+        def _handle_async_call(*args: P.args, **kwargs: P.kwargs) -> asyncio.Task:
+            """Handle debounced function call in async context."""
             nonlocal pending, current_task
             # Store the latest arguments
             pending = (args, kwargs)
@@ -81,6 +79,31 @@ def debounced(
 
             # Return current task (caller can await if desired)
             return current_task
+
+        def _handle_sync_call(*args: P.args, **kwargs: P.kwargs) -> Any:
+            """Handle debounced function call in sync context."""
+            # No event loop, execute immediately and let caller handle debouncing
+            ret = f(*args, **kwargs)
+            if isawaitable(ret):
+                # This shouldn't happen in sync context, but handle gracefully
+                pass
+            return ret
+
+        @wraps(f)
+        def _debounced(*args: P.args, **kwargs: P.kwargs) -> Any:
+            """
+            Call the debounced function.
+
+            Returns:
+                - asyncio.Task in async context (can be awaited)
+                - None in sync context (caller handles debouncing)
+            """
+            # Check if we're in an async context
+            try:
+                asyncio.get_running_loop()
+                return _handle_async_call(*args, **kwargs)
+            except RuntimeError:
+                return _handle_sync_call(*args, **kwargs)
 
         return _debounced
 

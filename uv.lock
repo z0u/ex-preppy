@@ -603,6 +603,9 @@ pages = [
     { name = "jupyter" },
     { name = "nbconvert" },
 ]
+test = [
+    { name = "ipython" },
+]
 track = [
     { name = "aim" },
     { name = "authlib" },
@@ -653,6 +656,7 @@ pages = [
     { name = "jupyter" },
     { name = "nbconvert" },
 ]
+test = [{ name = "ipython", specifier = ">=9.4.0" }]
 track = [
     { name = "aim", specifier = ">=3.0.0,<3.28.0" },
     { name = "authlib", specifier = ">=1.6.0" },
