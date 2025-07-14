@@ -2,12 +2,22 @@ import asyncio
 import time
 from functools import wraps
 from inspect import isawaitable
-from typing import Any, Callable, ParamSpec
+from typing import Any, Callable, ParamSpec, Union, overload
 
 P = ParamSpec('P')
 
 
-def debounced(func: Callable[P, Any] | None = None, *, min_interval: float = 0.0):  # type: ignore
+@overload
+def debounced(func: Callable[P, Any]) -> Callable[P, asyncio.Task]: ...
+
+
+@overload
+def debounced(*, min_interval: float = 0.0) -> Callable[[Callable[P, Any]], Callable[P, asyncio.Task]]: ...
+
+
+def debounced(
+    func: Callable[P, Any] | None = None, *, min_interval: float = 0.0
+) -> Union[Callable[P, asyncio.Task], Callable[[Callable[P, Any]], Callable[P, asyncio.Task]]]:
     """
     Debounce decorator with leading and trailing edge execution.
 

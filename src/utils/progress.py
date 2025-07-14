@@ -74,7 +74,7 @@ class Progress(Generic[T]):
         self.description = description
         self.metrics = initial_metrics.copy() if initial_metrics else {}
         self.suffix = ''
-        self.min_interval_sec = min_interval_sec
+        self._min_interval_sec = min_interval_sec  # Store as private attribute
 
         self.count = 0
         self.start_time = time.monotonic()
@@ -90,8 +90,8 @@ class Progress(Generic[T]):
                 self._update_display(HTML(html_content))
                 self.last_update_time = time.monotonic()
 
-        self._debounced_display_impl = _debounced_display_impl  # type: ignore
-        self._display(force=True)
+        self._debounced_display_impl = _debounced_display_impl
+        self._display()  # Initial display without force
 
     def update(
         self,
@@ -110,34 +110,35 @@ class Progress(Generic[T]):
 
         self._display()
 
-    def _display(self, force: bool = False) -> None:
+    def _display(self) -> None:
         """Render and update the HTML display, using debounced updates when possible."""
         if self._closed:
             return
 
-        if force:
-            # For forced updates, bypass debouncing and update immediately
-            html_content = self._render_html()
-            self._update_display(HTML(html_content))
-            self.last_update_time = time.monotonic()
-        else:
-            # Try to use debounced display if event loop is available
-            try:
-                asyncio.get_running_loop()
-                # Event loop is available, use debounced display
-                self._debounced_display_impl()  # type: ignore
-            except RuntimeError:
-                # No event loop available, use manual rate limiting as fallback
-                self._display_with_manual_rate_limiting()
+        # Try to use debounced display if event loop is available
+        try:
+            asyncio.get_running_loop()
+            # Event loop is available, use debounced display
+            self._debounced_display_impl()
+        except RuntimeError:
+            # No event loop available, use manual rate limiting as fallback
+            self._display_with_manual_rate_limiting()
 
     def _display_with_manual_rate_limiting(self) -> None:
         """Fallback display method with manual rate limiting."""
         now = time.monotonic()
         dt = now - self.last_update_time
-        if dt >= self.min_interval_sec:
+        if dt >= self._min_interval_sec:
             html_content = self._render_html()
             self._update_display(HTML(html_content))
             self.last_update_time = now
+
+    def _force_display(self) -> None:
+        """Force an immediate display update, bypassing debouncing."""
+        if not self._closed:
+            html_content = self._render_html()
+            self._update_display(HTML(html_content))
+            self.last_update_time = time.monotonic()
 
     def _render_html(self) -> str:
         """Generate the HTML for the progress bar and metrics grid."""
@@ -245,11 +246,11 @@ class Progress(Generic[T]):
     def close(self) -> None:
         """Finalize the progress bar, ensuring it shows 100%."""
         if not self._closed:
-            self._display(force=True)
+            self._force_display()
             self._closed = True
 
     def __enter__(self):
-        self._display(force=True)
+        self._force_display()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -260,7 +261,7 @@ class Progress(Generic[T]):
         self.start_time = time.monotonic()
         self.last_update_time = 0.0
         self._closed = False
-        self._display(force=True)
+        self._force_display()
 
         return _IteratorWrapper(self, self._iterator)
 

@@ -20,15 +20,15 @@ class TestDebounced:
             mock_func(arg)
 
         # Multiple rapid calls should result in leading + trailing execution
-        task1 = test_func("first")  # type: ignore
-        task2 = test_func("second")  # type: ignore
-        task3 = test_func("third")  # type: ignore
+        task1 = test_func("first")
+        task2 = test_func("second")
+        task3 = test_func("third")
 
         # All tasks should be the same (since debounced)
         assert task1 is task2 is task3
 
         # Wait for execution
-        await task1  # type: ignore
+        await task1
 
         # Function should be called with latest arguments
         assert mock_func.call_count >= 1
@@ -48,12 +48,12 @@ class TestDebounced:
         start_time = time.monotonic()
 
         # First call should execute immediately (leading edge)
-        task1 = test_func("first")  # type: ignore
+        task1 = test_func("first")
 
         # Rapid subsequent calls should be debounced
         await asyncio.sleep(0.01)  # Small delay
-        task2 = test_func("second")  # type: ignore
-        task3 = test_func("third")  # type: ignore
+        task2 = test_func("second")
+        task3 = test_func("third")
 
         # Wait for completion
         await task1
@@ -85,11 +85,11 @@ class TestDebounced:
             calls.append(arg)
 
         # Multiple calls
-        task1 = test_func("first")  # type: ignore
-        task2 = test_func("second")  # type: ignore
+        task1 = test_func("first")
+        task2 = test_func("second")
 
-        await task1  # type: ignore
-        await task2  # type: ignore
+        await task1
+        await task2
 
         # Should execute with latest args (basic debouncing)
         assert "second" in calls
@@ -105,8 +105,8 @@ class TestDebounced:
             await asyncio.sleep(0.01)  # Simulate async work
 
         # Multiple calls
-        task1 = async_test_func("first")  # type: ignore
-        task2 = async_test_func("second")  # type: ignore
+        task1 = async_test_func("first")
+        task2 = async_test_func("second")
 
         await task1
         await task2

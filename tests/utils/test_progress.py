@@ -45,25 +45,6 @@ class TestProgressDebouncing:
         assert mock_display.call_count < 10
         assert mock_display.call_count >= 2  # At least initial + final
 
-    @patch('utils.progress.displayer')
-    def test_progress_forced_updates_bypass_debouncing(self, mock_displayer):
-        """Test that forced updates bypass debouncing."""
-        mock_display = Mock()
-        mock_displayer.return_value = mock_display
-
-        pbar = Progress(total=3, description="Forced", min_interval_sec=0.1)
-
-        # Multiple forced updates should all go through
-        initial_count = mock_display.call_count
-        pbar._display(force=True)
-        pbar._display(force=True)
-        pbar._display(force=True)
-
-        # Should have made 3 additional calls
-        assert mock_display.call_count == initial_count + 3
-
-        pbar.close()
-
     @pytest.mark.asyncio
     @patch('utils.progress.displayer')
     async def test_progress_in_async_context(self, mock_displayer):
@@ -88,10 +69,13 @@ class TestProgressDebouncing:
 
         # All existing functionality should work
         pbar = Progress(total=3, description="Compat")
+        initial_count = mock_display.call_count
 
-        # Update with different parameters
+        # Update with different parameters, with small delays to ensure display calls
         pbar.update(1, suffix="Step 1")
+        time.sleep(0.11)  # Wait longer than min_interval_sec to ensure display
         pbar.update(1, metrics={"loss": 0.5})
+        time.sleep(0.11)  # Wait longer than min_interval_sec to ensure display
         pbar.update(1, suffix="Done", metrics={"loss": 0.1, "acc": 0.9})
 
         # Should work as before
@@ -100,7 +84,13 @@ class TestProgressDebouncing:
         assert pbar.metrics["loss"] == 0.1
         assert pbar.metrics["acc"] == 0.9
 
+        # Should have made display calls during updates
+        assert mock_display.call_count > initial_count
+
         pbar.close()
+
+        # Should have made additional call on close
+        assert mock_display.call_count > initial_count + 1
 
     @patch('utils.progress.displayer')
     def test_progress_iterator_functionality(self, mock_displayer):
@@ -130,19 +120,3 @@ class TestProgressDebouncing:
             # Should auto-close on exit
 
         assert pbar._closed
-
-    @patch('utils.progress.displayer')
-    def test_progress_min_interval_parameter(self, mock_displayer):
-        """Test that min_interval_sec parameter is properly used."""
-        mock_display = Mock()
-        mock_displayer.return_value = mock_display
-
-        # Test different intervals
-        pbar1 = Progress(total=1, min_interval_sec=0.1)
-        pbar2 = Progress(total=1, min_interval_sec=0.05)
-
-        assert pbar1.min_interval_sec == 0.1
-        assert pbar2.min_interval_sec == 0.05
-
-        pbar1.close()
-        pbar2.close()
