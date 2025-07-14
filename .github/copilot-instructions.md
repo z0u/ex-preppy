@@ -1,6 +1,7 @@
 We are writing code to run AI experiments. Most of the code is in Python.
 
 ### Development Flow
+
 - Lint: `./go lint --fix` (ruff check)
 - Format: `./go format` (ruff format)
 - Typecheck: `./go types` (basedpyright)
@@ -10,13 +11,13 @@ We are writing code to run AI experiments. Most of the code is in Python.
 Run `./go -h` to discover other commands.
 
 ### Repository structure
+
 - `docs/**/*.ipynb`: Experiments, as Jupyter notebooks
 - `publications/*.md`: Articles resulting from our experiments
 - `src/**/*.py`: Reusable code
 - `tests/**/*.py`
 - `go`: Entrypoint for scripts (bash)
 - `scripts/`: Linting, formatting, etc.
-
 
 ---
 
@@ -93,11 +94,12 @@ Use sentence case for headings and descriptive lists.
 This project uses `uv` for package management. Dependency groups: `dev`, `local`; see `pyproject.toml` for others. By default, PyTorch GPU dependencies are not installed.
 
 When possible, use the built-in IDE tools rather than CLI commands:
+
 - Use `get_errors` to check files for type and lint errors
 - Use `insert_edit_into_file` to make changes (preserving unchanged code with `// ...existing code...`)
 - use `run_tests` to run tests
 
-Under the hood, these tools leverage ruff (formatting/linting), basedpyright (type-checking), and pytest (testing) — but the IDE integration is preferred over direct CLI calls.
+Under the hood, these tools use ruff (formatting/linting), basedpyright (type-checking), and pytest (testing).
 
 ### Writing tests
 
@@ -125,3 +127,21 @@ Use structural assertions.
 - assert 'z' in props and approx(props['z']) == 0.8  # ❌
 + assert approx(props) == {'x': 1.0, 'y': ANY, 'z': 0.8}  # ✅
 ```
+
+Use reserved domains to avoid accidentally fetching from real domains: `.example`, `.test`, `.invalid`.
+
+```diff
+- response = requests.get('test.com')  # ❌ this is a real domain!
++ response = requests.get('service.test')  # ✅ guaranteed not to resolve
+```
+
+### What to test?
+
+**We only write valuable tests.** We test for behavioral verification under uncertainty:
+
+- Exercise meaningful state transitions and invariants: Tests that verify your system maintains its promises; Boundary condition handling; State consistency across operations (e.g., after a series of mutations, derived state still makes sense)
+- Capture domain logic and business rules: Scenarios that encode actual user workflows or data processing pipelines; Edge cases that reflect real-world complexity your system needs to handle
+- Reveal integration assumptions: How your code behaves when dependencies return unexpected (but valid) responses; Error propagation and recovery behavior; Resource cleanup and lifecycle management
+- Executable documentation: Tests that demonstrate intended usage patterns, with clear naming that explains the "given/when/then" story
+
+Valuable tests fail _for interesting reasons_ — they break when you've actually broken something that matters to users. We rely on linters and type-checkers for everything else.

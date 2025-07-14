@@ -1,8 +1,10 @@
 Be as concise as possible.
 Single-line commit messages are acceptable.
-Don't just list out the changes; instead, try to capture the _intent_ of the commit.
+Capture the _reason_ for the change and the _intent_ of the commit.
 
 # Examples
+
+The foolowing diffs show what _not_ to do, and what to do instead.
 
 ```diff
 - updated README

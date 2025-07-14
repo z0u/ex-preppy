@@ -12,22 +12,6 @@
         "/usr/bin/python3",
         "/usr/local/bin/python"
     ],
-    "github.copilot.chat.codeGeneration.instructions": [
-        {
-            "language": "python",
-            "file": ".github/copilot-python-gen.md"
-        }
-    ],
-    "github.copilot.chat.testGeneration.instructions": [
-        {
-            "language": "python",
-            "file": ".github/copilot-python-gen.md"
-        },
-        {
-            "language": "python",
-            "file": ".github/copilot-python-test-gen.md"
-        }
-    ],
     "github.copilot.chat.commitMessageGeneration.instructions": [
         {
             "file": ".github/copilot-commit-msg-gen.md"
