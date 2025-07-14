@@ -1,6 +1,5 @@
 import asyncio
 import time
-import warnings
 from math import isfinite
 from typing import Any, Dict, Generic, Iterable, Iterator, Optional, TypeVar, cast
 
@@ -130,7 +129,7 @@ class Progress(Generic[T]):
             except RuntimeError:
                 # No event loop available, use manual rate limiting as fallback
                 self._display_with_manual_rate_limiting()
-    
+
     def _display_with_manual_rate_limiting(self) -> None:
         """Fallback display method with manual rate limiting."""
         now = time.monotonic()
