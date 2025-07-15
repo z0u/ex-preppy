@@ -47,7 +47,6 @@ class Progress(_Progress, Generic[T], AsyncIterable[T]):
         description: str = '',
         initial_metrics: dict[str, Any] | None = None,
         interval: float = 0.05,  # Min time between updates
-        auto_yield: bool = False,
     ):
         if total is not None and total < 0:
             raise ValueError('total must be non-negative')
@@ -67,8 +66,6 @@ class Progress(_Progress, Generic[T], AsyncIterable[T]):
             self._iterator = cast(Iterator[T], iter(range(total)))
         else:
             raise ValueError('Must provide either `iterable` or `total`.')
-
-        self._auto_yield = auto_yield
 
         self._show = displayer()
         self._debounced_draw = debounced(interval=interval)(lambda: self._draw())
@@ -126,7 +123,7 @@ class Progress(_Progress, Generic[T], AsyncIterable[T]):
         self.start_time = time.monotonic()
         self._display('debounced')
 
-        return AsyncIteratorWrapper(self, self._iterator, self._auto_yield)
+        return AsyncIteratorWrapper(self, self._iterator)
 
 
 async def noop():
