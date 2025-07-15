@@ -19,7 +19,7 @@ from IPython.display import HTML
 from utils.coro import debounced
 from utils.nb import displayer
 from utils.progress._progress import _Progress
-from utils.progress.html import format_progress_bar
+from utils.progress.html import render_progress_bar
 from utils.progress.iterators import AsyncIteratorWrapper
 from utils.progress.model import BarData
 
@@ -46,7 +46,7 @@ class Progress(_Progress, Generic[T], AsyncIterable[T]):
         total: int | None = None,
         description: str = '',
         initial_metrics: dict[str, Any] | None = None,
-        interval: float = 0.1,  # Min time between updates
+        interval: float = 0.05,  # Min time between updates
         auto_yield: bool = False,
     ):
         if total is not None and total < 0:
@@ -106,7 +106,7 @@ class Progress(_Progress, Generic[T], AsyncIterable[T]):
             suffix=self.suffix,
             elapsed_time=time.monotonic() - self.start_time,
         )
-        return format_progress_bar(data, self.metrics)
+        return render_progress_bar(data, self.metrics)
 
     @override
     def close(self) -> None:
