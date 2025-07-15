@@ -1,8 +1,6 @@
 import asyncio
 import time
-from dataclasses import dataclass
 from math import isfinite
-from types import MappingProxyType
 from typing import (
     Any,
     AsyncIterable,
@@ -15,91 +13,21 @@ from typing import (
     Mapping,
     TypeVar,
     cast,
-    overload,
+    override,
 )
 
 from IPython.display import HTML
 
 from utils.coro import debounced
 from utils.nb import displayer
+from utils.progress._progress import _Progress
+from utils.progress.iterators import AsyncIteratorWrapper
+from utils.progress.model import BarData
 
 T = TypeVar('T')
 
 
-class DisplayProp(Generic[T]):
-    """A descriptor that triggers a display update on set."""
-
-    private_name: str
-
-    def __set_name__(self, owner: type, name: str):
-        self.private_name = f'_{name}'
-
-    @overload
-    def __get__(self, instance: None, owner: type) -> 'DisplayProp[T]': ...
-
-    @overload
-    def __get__(self, instance: object, owner: type) -> T: ...
-
-    def __get__(self, instance: object | None, owner: type) -> T | 'DisplayProp[T]':
-        if instance is None:
-            return self
-        return getattr(instance, self.private_name)
-
-    def __set__(self, instance: 'Progress', value: T) -> None:
-        setattr(instance, self.private_name, value)
-        instance._display('debounced')
-
-
-class NotifyingDict(dict):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._on_change = lambda: None
-
-    def __setitem__(self, key, value):
-        super().__setitem__(key, value)
-        self._on_change()
-
-    def __delitem__(self, key):
-        super().__delitem__(key)
-        self._on_change()
-
-
-class DictDisplayProp(DisplayProp[dict]):
-    def __set__(self, instance: 'Progress', value: dict) -> None:
-        store = NotifyingDict(value)
-        store._on_change = lambda: instance._display('debounced')
-        super().__set__(instance, value)
-
-
-class _AsyncIteratorWrapper(Generic[T], AsyncIterator[T]):
-    def __init__(self, pbar: 'Progress[T]', iterator: Iterator[T] | AsyncIterator[T], auto_yield: bool):
-        self.pbar = pbar
-        self.iterator = iterator
-        self.auto_yield = auto_yield
-
-    def __aiter__(self) -> AsyncIterator[T]:
-        return self
-
-    async def __anext__(self) -> T:
-        try:
-            if isinstance(self.iterator, AsyncIterator):
-                value = await anext(self.iterator)
-            else:
-                try:
-                    value = next(self.iterator)
-                except StopIteration as e:
-                    raise StopAsyncIteration from e
-            self.pbar.count += 1
-            return value
-        except Exception:
-            self.pbar.close()
-            raise
-        finally:
-            if self.auto_yield:
-                await asyncio.sleep(0)
-
-
-class Progress(Generic[T], AsyncIterable[T]):
+class Progress(_Progress, Generic[T], AsyncIterable[T]):
     """
     A simple, Jupyter-friendly progress bar using HTML and display updates.
 
@@ -112,12 +40,6 @@ class Progress(Generic[T], AsyncIterable[T]):
     _show: Callable[[Any], None]
     _iterator: Iterator[T] | AsyncIterator[T]
     _draw_task: asyncio.Task
-
-    total = DisplayProp[int]()
-    count = DisplayProp[int]()
-    description = DisplayProp[str]()
-    suffix = DisplayProp[str]()
-    metrics = DictDisplayProp()
 
     def __init__(
         self,
@@ -153,13 +75,17 @@ class Progress(Generic[T], AsyncIterable[T]):
         self._debounced_draw = debounced(interval=interval)(lambda: self._draw())
         self._draw_task = asyncio.Task(noop())
 
-        # Setting these triggers a draw
+        # Setting these triggers a draw; see _Progress
         self.total = total
         self.description = description
         self.metrics = initial_metrics or {}
         self.suffix = ''
         self.start_time = time.monotonic()
         self.count = 0
+
+    @override
+    def _on_change(self):
+        self._display('debounced')
 
     def _display(self, mode: Literal['immediate', 'debounced']):
         if mode == 'immediate':
@@ -183,17 +109,15 @@ class Progress(Generic[T], AsyncIterable[T]):
         )
         return format_progress_bar(data, self.metrics)
 
+    @override
     def close(self) -> None:
-        """Finalize the progress bar, ensuring it is drawn one last time."""
+        """Ensuring the bar is drawn one last time."""
         self._display('immediate')
 
     async def __aenter__(self):
-        # self.start_time = time.monotonic()
-        # self._display('debounced')
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        # self._display('immediate')
         self.close()
         if exc_type is not None:
             raise
@@ -203,20 +127,7 @@ class Progress(Generic[T], AsyncIterable[T]):
         self.start_time = time.monotonic()
         self._display('debounced')
 
-        return _AsyncIteratorWrapper(self, self._iterator, self._auto_yield)
-
-
-@dataclass(slots=True)
-class BarData:
-    count: int
-    total: int
-    description: str
-    suffix: str
-    elapsed_time: float
-
-    @property
-    def fraction(self) -> float:
-        return (self.count / self.total) if self.total > 0 else 1
+        return AsyncIteratorWrapper(self, self._iterator, self._auto_yield)
 
 
 def format_time(seconds: float) -> str:
