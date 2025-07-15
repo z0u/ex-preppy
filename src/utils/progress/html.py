@@ -19,7 +19,7 @@ def format_time(seconds: float) -> str:
 
 def render_progress_bar(data: BarData, metrics: Mapping[str, Any]):
     a = Airium()
-    with a.div(style='width: 100%; padding: 5px 0; font-family: monospace;'):
+    with a.div(style=css(width='100%', padding='5px 0', font_family='monospace')):
         format_bar(a, data)
         format_metrics(a, metrics)
     return str(a)
@@ -43,88 +43,92 @@ def format_bar_text(data: BarData):
 
 
 def format_bar(a: Airium, data: BarData):
-    with a.div(style='position: relative; height: calc(1em * 5/3); width: 100%;'):
+    with a.div(style=css(position='relative', height='calc(1em * 5/3)', width='100%')):
         # Triangle indicator
-        with a.div(style=f'position: absolute; bottom: -4px; left: calc({data.fraction * 100:.1f}% - 4px);'):
+        with a.div(style=css(position='absolute', bottom='-4px', left=f'calc({data.fraction * 100:.1f}% - 4px)')):
             a.div(
-                style="""
-                width: 0;
-                height: 0;
-                border-left: 4px solid transparent;
-                border-right: 4px solid transparent;
-                border-bottom: 4px solid currentColor;
-                """
+                style=css(
+                    width=0,
+                    height=0,
+                    border_left='4px solid transparent',
+                    border_right='4px solid transparent',
+                    border_bottom='4px solid currentColor',
+                )
             )
 
         # Progress bar
         a.div(
-            style=f"""
-            position: absolute;
-            top: 0;
-            left: 0;
-            height: 100%;
-            width: {data.fraction * 100:.1f}%;
-            background-color: color(from currentColor srgb r g b / 0.1);
-            border-bottom: 1px solid currentColor;
-            """
+            style=css(
+                position='absolute',
+                top=0,
+                left=0,
+                height='100%',
+                width=f'{data.fraction * 100:.1f}%',
+                background_color='color(from currentColor srgb r g b / 0.1)',
+                border_bottom='1px solid currentColor',
+            )
         )
 
         # Text overlay
-        with a.div(
-            style="""
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            text-align: center;
-            line-height: calc(1em * 5/3);
-            font-size: 0.9em;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            border-bottom: 1px dashed color(from currentColor srgb r g b / 0.5);
-            """
-        ):
-            a(format_bar_text(data))
+        a.div(
+            style=css(
+                position='absolute',
+                top=0,
+                left=0,
+                width='100%',
+                height='100%',
+                text_align='center',
+                line_height='calc(1em * 5/3)',
+                font_size='0.9em',
+                white_space='nowrap',
+                overflow='hidden',
+                text_overflow='ellipsis',
+                border_bottom='1px dashed color(from currentColor srgb r g b / 0.5)',
+            ),
+            _t=format_bar_text(data),
+        )
 
 
 def format_metrics(a: Airium, metrics: Mapping[str, Any]):
     with a.div(
-        style=f"""
-        display: grid;
-        grid-template-columns: repeat({len(metrics)}, minmax(80px, 1fr));
-        gap: 5px 0px;
-        width: 100%;
-        margin-top: 10px;
-        font-size: 0.85em;
-        """
+        style=css(
+            display='grid',
+            grid_template_columns=f'repeat({len(metrics)}, minmax(80px, 1fr))',
+            gap='5px 0px',
+            width='100%',
+            margin_top='10px',
+            font_size='0.85em',
+        )
     ):
         for key in metrics.keys():
             a.div(
-                style="""
-                font-weight: bold;
-                border-bottom: 1px solid currentColor;
-                padding-block: 2px;
-                padding-inline: 10px;
-                text-align: left;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-                """,
+                style=css(
+                    font_weight='bold',
+                    border_bottom='1px solid currentColor',
+                    padding_block='2px',
+                    padding_inline='10px',
+                    text_align='left',
+                    overflow='hidden',
+                    text_overflow='ellipsis',
+                    white_space='nowrap',
+                ),
                 _t=key,
             )
 
         for value in metrics.values():
             val_str = f'{value:.4g}' if isinstance(value, float) else str(value)
             a.div(
-                style="""
-                padding-block: 2px;
-                padding-inline: 10px;
-                text-align: left;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-                """,
+                style=css(
+                    padding_block='2px',
+                    padding_inline='10px',
+                    text_align='left',
+                    overflow='hidden',
+                    text_overflow='ellipsis',
+                    white_space='nowrap',
+                ),
                 _t=val_str,
             )
+
+
+def css(**props):
+    return '; '.join(f'{k.replace("_", "-")}: {v}' for k, v in props.items())
