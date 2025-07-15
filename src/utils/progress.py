@@ -1,39 +1,105 @@
+import asyncio
 import time
 from dataclasses import dataclass
 from math import isfinite
-from typing import Any, Dict, Generic, Iterable, Iterator, Optional, TypeVar, cast
+from types import MappingProxyType
+from typing import (
+    Any,
+    AsyncIterable,
+    AsyncIterator,
+    Callable,
+    Generic,
+    Iterable,
+    Iterator,
+    Literal,
+    Mapping,
+    TypeVar,
+    cast,
+    overload,
+)
 
 from IPython.display import HTML
 
+from utils.coro import debounced
 from utils.nb import displayer
 
 T = TypeVar('T')
 
 
-class _IteratorWrapper(Generic[T], Iterator[T]):
-    def __init__(self, pbar: 'Progress[T]', iterator: Iterator[T]):
+class DisplayProp(Generic[T]):
+    """A descriptor that triggers a display update on set."""
+
+    private_name: str
+
+    def __set_name__(self, owner: type, name: str):
+        self.private_name = f'_{name}'
+
+    @overload
+    def __get__(self, instance: None, owner: type) -> 'DisplayProp[T]': ...
+
+    @overload
+    def __get__(self, instance: object, owner: type) -> T: ...
+
+    def __get__(self, instance: object | None, owner: type) -> T | 'DisplayProp[T]':
+        if instance is None:
+            return self
+        return getattr(instance, self.private_name)
+
+    def __set__(self, instance: 'Progress', value: T) -> None:
+        setattr(instance, self.private_name, value)
+        instance._display('debounced')
+
+
+class NotifyingDict(dict):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._on_change = lambda: None
+
+    def __setitem__(self, key, value):
+        super().__setitem__(key, value)
+        self._on_change()
+
+    def __delitem__(self, key):
+        super().__delitem__(key)
+        self._on_change()
+
+
+class DictDisplayProp(DisplayProp[dict]):
+    def __set__(self, instance: 'Progress', value: dict) -> None:
+        store = NotifyingDict(value)
+        store._on_change = lambda: instance._display('debounced')
+        super().__set__(instance, value)
+
+
+class _AsyncIteratorWrapper(Generic[T], AsyncIterator[T]):
+    def __init__(self, pbar: 'Progress[T]', iterator: Iterator[T] | AsyncIterator[T], auto_yield: bool):
         self.pbar = pbar
         self.iterator = iterator
+        self.auto_yield = auto_yield
 
-    def __iter__(self) -> Iterator[T]:
+    def __aiter__(self) -> AsyncIterator[T]:
         return self
 
-    def __next__(self) -> T:
-        if self.pbar._closed:
-            raise StopIteration
+    async def __anext__(self) -> T:
         try:
-            value = next(self.iterator)
-            self.pbar.update(1)
+            if isinstance(self.iterator, AsyncIterator):
+                value = await anext(self.iterator)
+            else:
+                try:
+                    value = next(self.iterator)
+                except StopIteration as e:
+                    raise StopAsyncIteration from e
+            self.pbar.count += 1
             return value
-        except StopIteration:
-            self.pbar.close()
-            raise
         except Exception:
             self.pbar.close()
             raise
+        finally:
+            if self.auto_yield:
+                await asyncio.sleep(0)
 
 
-class Progress(Generic[T]):
+class Progress(Generic[T], AsyncIterable[T]):
     """
     A simple, Jupyter-friendly progress bar using HTML and display updates.
 
@@ -43,79 +109,68 @@ class Progress(Generic[T]):
     Can be used as a context manager or an iterator source.
     """
 
-    _iterator: Iterator[T]
+    _show: Callable[[Any], None]
+    _iterator: Iterator[T] | AsyncIterator[T]
+    _draw_task: asyncio.Task
+
+    total = DisplayProp[int]()
+    count = DisplayProp[int]()
+    description = DisplayProp[str]()
+    suffix = DisplayProp[str]()
+    metrics = DictDisplayProp()
 
     def __init__(
         self,
-        iterable: Optional[Iterable[T]] = None,
-        total: Optional[int] = None,
+        items: Iterable[T] | AsyncIterable[T] | None = None,
+        total: int | None = None,
         description: str = '',
-        initial_metrics: Optional[Dict[str, Any]] = None,
-        min_interval_sec: float = 0.1,  # Min time between updates
+        initial_metrics: dict[str, Any] | None = None,
+        interval: float = 0.1,  # Min time between updates
+        auto_yield: bool = False,
     ):
-        if iterable is not None:
+        if total is not None and total < 0:
+            raise ValueError('total must be non-negative')
+
+        if items is not None:
             if total is None:
                 try:
-                    total = len(iterable)  # type: ignore
+                    total = len(items)  # type: ignore
                 except (TypeError, AttributeError) as e:
                     raise ValueError('Cannot determine total length of iterable, please provide `total`.') from e
-            self._iterator = iter(iterable)
+            if isinstance(items, (AsyncIterator, AsyncIterable)):
+                self._iterator = aiter(items)
+            else:
+                self._iterator = iter(items)
         elif total is not None:
             # When iterable is None, we know T must be int.
             self._iterator = cast(Iterator[T], iter(range(total)))
         else:
             raise ValueError('Must provide either `iterable` or `total`.')
 
-        if total <= 0:
-            raise ValueError('total must be positive')
+        self._auto_yield = auto_yield
 
+        self._show = displayer()
+        self._debounced_draw = debounced(interval=interval)(lambda: self._draw())
+        self._draw_task = asyncio.Task(noop())
+
+        # Setting these triggers a draw
         self.total = total
         self.description = description
-        self.metrics = initial_metrics.copy() if initial_metrics else {}
+        self.metrics = initial_metrics or {}
         self.suffix = ''
-        self.min_interval_sec = min_interval_sec
-
-        self.count = 0
         self.start_time = time.monotonic()
-        self.last_update_time = 0.0
-        self._update_display = displayer()
-        self._closed = False
-        self._display(force=True)
+        self.count = 0
 
-    def update(
-        self,
-        n: int = 1,
-        suffix: Optional[str] = None,
-        metrics: Optional[Dict[str, Any]] = None,
-    ) -> None:
-        """Increment progress and update the display."""
-        if self._closed:
-            return
-        self.count = min(self.count + n, self.total)
-        if suffix is not None:
-            self.suffix = suffix
-        if metrics is not None:
-            self.metrics = metrics.copy()
+    def _display(self, mode: Literal['immediate', 'debounced']):
+        if mode == 'immediate':
+            self._draw_task.cancel()
+            self._draw()
+        else:
+            self._draw_task = self._debounced_draw()
 
-        self._display()
-
-    def _display(self, force: bool = False) -> None:
-        """Render and update the HTML display, respecting rate limits."""
-        if self._closed:
-            return
-
-        now = time.monotonic()
-        if not force:
-            dt = now - self.last_update_time
-            if dt < self.min_interval_sec:
-                return
-            if self.count >= self.total:
-                return
-
+    def _draw(self):
         html_content = self._render_html()
-        self._update_display(HTML(html_content))
-
-        self.last_update_time = now
+        self._show(HTML(html_content))
 
     def _render_html(self) -> str:
         """Generate the HTML for the progress bar and metrics grid."""
@@ -129,26 +184,26 @@ class Progress(Generic[T]):
         return format_progress_bar(data, self.metrics)
 
     def close(self) -> None:
-        """Finalize the progress bar, ensuring it shows 100%."""
-        if not self._closed:
-            self._display(force=True)
-            self._closed = True
+        """Finalize the progress bar, ensuring it is drawn one last time."""
+        self._display('immediate')
 
-    def __enter__(self):
-        self._display(force=True)
+    async def __aenter__(self):
+        # self.start_time = time.monotonic()
+        # self._display('debounced')
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        # self._display('immediate')
         self.close()
+        if exc_type is not None:
+            raise
 
-    def __iter__(self) -> Iterator[T]:
+    def __aiter__(self) -> AsyncIterator[T]:
         self.count = 0
         self.start_time = time.monotonic()
-        self.last_update_time = 0.0
-        self._closed = False
-        self._display(force=True)
+        self._display('debounced')
 
-        return _IteratorWrapper(self, self._iterator)
+        return _AsyncIteratorWrapper(self, self._iterator, self._auto_yield)
 
 
 @dataclass(slots=True)
@@ -175,7 +230,7 @@ def format_time(seconds: float) -> str:
         return f'{h:d}:{m:02d}:{s:02d}'
 
 
-def format_progress_bar(data: BarData, metrics: dict[str, Any]):
+def format_progress_bar(data: BarData, metrics: Mapping[str, Any]):
     return f"""
     <div style="width: 100%; padding: 5px 0; font-family: monospace;">
         {format_bar(data, format_bar_text(data))}
@@ -190,7 +245,10 @@ def format_bar_text(data: BarData):
     elapsed_str = format_time(data.elapsed_time)
     eta_str = format_time(eta_sec) if data.count < data.total else format_time(0)
 
-    bar_text_elem = f'<b>{data.description}</b>: {data.fraction * 100:.1f}% [<b>{data.count}</b>/{data.total}]'
+    bar_text_elem = ''
+    if data.description:
+        bar_text_elem += f'<b>{data.description}</b>: '
+    bar_text_elem += f'{data.fraction * 100:.1f}% [<b>{data.count}</b>/{data.total}]'
     if data.suffix:
         bar_text_elem += f' | <b>{data.suffix}</b>'
     bar_text_elem += f' [<b>{elapsed_str}</b>/<{eta_str}, {items_per_sec:.2f} it/s]'
@@ -244,7 +302,7 @@ def format_bar(data: BarData, bar_text_elem: str) -> str:
     return html
 
 
-def format_metrics(metrics: dict[str, Any]):
+def format_metrics(metrics: Mapping[str, Any]):
     html = f"""
     <div style="
         display: grid;
@@ -284,6 +342,10 @@ def format_metrics(metrics: dict[str, Any]):
     html += '</div>'
 
     return html
+
+
+async def noop():
+    pass
 
 
 # Example Usage (for testing in a notebook cell):

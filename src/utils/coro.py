@@ -1,12 +1,25 @@
 import asyncio
 from functools import wraps
 from inspect import isawaitable
-from typing import Any, Callable, ParamSpec
+import time
+from typing import Any, Awaitable, Callable, ParamSpec, overload
 
 P = ParamSpec('P')
 
 
-def debounced(func: Callable[P, Any]) -> Callable[P, asyncio.Task]:
+@overload
+def debounced(func: Callable[P, Any]) -> Callable[P, asyncio.Task[None]]: ...
+
+
+@overload
+def debounced(*, interval: float = 0.0) -> Callable[[Callable[P, Any]], Callable[P, asyncio.Task[None]]]: ...
+
+
+def debounced(
+    func: Callable[P, Any] | None = None,
+    *,
+    interval: float = 0.0,
+) -> Callable[P, asyncio.Task[None]] | Callable[[Callable[P, Any]], Callable[P, asyncio.Task[None]]]:
     """
     Debounce decorator with leading and trailing edge execution.
 
@@ -14,39 +27,58 @@ def debounced(func: Callable[P, Any]) -> Callable[P, asyncio.Task]:
     - Trailing edge: If called during execution, runs again with latest arguments
     - Latest arguments: Always uses the most recent arguments for trailing execution
     """
-    pending: tuple[tuple, dict] | None = None
-    current_task: asyncio.Task | None = None
 
-    async def _execute_loop():
-        nonlocal pending, current_task
-        try:
-            while pending is not None:
-                current_args, current_kwargs = pending
-                pending = None
-                ret = func(*current_args, **current_kwargs)
-                if isawaitable(ret):
-                    await ret
-        finally:
-            current_task = None
+    def decorator(fn: Callable[P, Any | Awaitable[Any]]):
+        pending: tuple[tuple, dict] | None = None
+        current_task: asyncio.Task | None = None
+        last_execution_time: float = 0.0
 
-    @wraps(func)
-    def _debounced(*args: P.args, **kwargs: P.kwargs) -> asyncio.Task:
-        """
-        Call the debounced function.
+        async def _execute_loop():
+            nonlocal pending, current_task, last_execution_time
+            try:
+                while pending is not None:
+                    current_args, current_kwargs = pending
+                    pending = None
 
-        Returns:
-            - asyncio.Task if starting new execution (can be awaited)
-            - Current task if execution is already running
-        """
-        nonlocal pending, current_task
-        # Store the latest arguments
-        pending = (args, kwargs)
+                    # Respect minimum interval
+                    if interval > 0.0:
+                        now = time.monotonic()
+                        time_since_last = now - last_execution_time
+                        if time_since_last < interval:
+                            await asyncio.sleep(interval - time_since_last)
 
-        # If not running, start execution (leading edge)
-        if not current_task or current_task.done():
-            current_task = asyncio.create_task(_execute_loop())
+                    # Execute function
+                    ret = fn(*current_args, **current_kwargs)
+                    if isawaitable(ret):
+                        await ret
 
-        # Return current task (caller can await if desired)
-        return current_task
+                    last_execution_time = time.monotonic()
+            finally:
+                current_task = None
 
-    return _debounced
+        @wraps(fn)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> asyncio.Task:
+            """
+            Call the debounced function.
+
+            Returns:
+                - asyncio.Task if starting new execution (can be awaited)
+                - Current task if execution is already running
+            """
+            nonlocal pending, current_task
+            # Store the latest arguments
+            pending = (args, kwargs)
+
+            # If not running, start execution
+            if not current_task or current_task.done():
+                current_task = asyncio.create_task(_execute_loop())
+
+            # Return current task (caller can await if desired)
+            return current_task
+
+        return wrapper
+
+    if func is None:
+        return decorator
+    else:
+        return decorator(func)
