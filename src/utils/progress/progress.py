@@ -1,7 +1,6 @@
 import asyncio
 import time
 from typing import Any, AsyncIterable, AsyncIterator, Callable, Generic, Iterable, Iterator, TypeVar, cast, override
-import sys
 
 from utils.coro import debounced
 from utils.nb import displayer, is_graphical_notebook
@@ -14,15 +13,6 @@ T = TypeVar('T')
 
 
 class ProgressBase(_Progress, Generic[T]):
-    """
-    A simple, Jupyter-friendly progress bar using HTML and display updates.
-
-    Avoids ipywidgets for better notebook saving and compatibility.
-    Designed to be theme-agnostic (light/dark).
-    Supports suffix messages and a dictionary of metrics.
-    Can be used as a context manager or an iterator source.
-    """
-
     _show: Callable[[Any], None]
 
     def __init__(
@@ -53,11 +43,17 @@ class ProgressBase(_Progress, Generic[T]):
         self,
         total: int | None = None,
         count: int | None = None,
-        description: str| None = None,
+        description: str | None = None,
         metrics: dict[str, Any] | None = None,
-        suffix: str| None = None,
+        suffix: str | None = None,
     ):
-        """Update the progress bar with new values."""
+        """
+        Update the progress bar with new values.
+
+        Usually this isn't necessary: you can just mutate the values directly, and the
+        bar will redraw. But you might need to use this if you're using an API that
+        needs a progress update function.
+        """
         draw_was_enabled = self._draw_on_change
         self._draw_on_change = False
         try:
@@ -108,6 +104,21 @@ class ProgressBase(_Progress, Generic[T]):
 
 
 class Progress(ProgressBase, AsyncIterable[T]):
+    """
+    A simple, Jupyter-friendly progress bar using HTML and display updates.
+
+    - Avoids ipywidgets for better notebook saving and compatibility.
+    - Designed to be theme-agnostic (light/dark).
+    - Supports suffix messages and a dictionary of metrics.
+    - Can be used as a context manager or iterator source (`async with`, `async for`).
+
+    This progress bar features debounced updates, with redraws ocurring at both the
+    leading and trailing edges. Redraws execute in the asyncio event loop, so you must
+    yield control inside your loop with a truly asynchronous operation, like
+    `await asyncio.sleep(0)`. For convenience, you can wrap it in `co_op` to
+    automatically do that once per loop.
+    """
+
     def __init__(
         self,
         items: Iterable[T] | AsyncIterable[T] | None = None,
@@ -141,14 +152,6 @@ class Progress(ProgressBase, AsyncIterable[T]):
     def _debounced_draw(self) -> None:
         self.draw_task = self._debouncer()
 
-    # @override
-    # def _display(self, mode: Literal['immediate', 'debounced']):
-    #     if mode == 'immediate':
-    #         self._draw_task.cancel()
-    #         self._draw()
-    #     else:
-    #         self._draw_task = self._debounced_draw()
-
     async def __aenter__(self):
         return self
 
@@ -166,6 +169,18 @@ class Progress(ProgressBase, AsyncIterable[T]):
 
 
 class SyncProgress(ProgressBase, Iterable[T]):
+    """
+    A simple, Jupyter-friendly progress bar using HTML and display updates.
+
+    - Avoids ipywidgets for better notebook saving and compatibility.
+    - Designed to be theme-agnostic (light/dark).
+    - Supports suffix messages and a dictionary of metrics.
+    - Can be used as a context manager or iterator source (`with`, `for`).
+
+    This progress bar features debounced updates, but only draws on the leading edge —
+    so some updates may not display until the bar is closed.
+    """
+
     def __init__(
         self,
         items: Iterable[T] | None = None,

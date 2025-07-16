@@ -1,36 +1,13 @@
 import asyncio
-from typing import AsyncIterable, AsyncIterator, Generic, Iterable, Iterator, TypeVar
+from typing import AsyncIterable, Iterable, TypeVar
 
 from utils.progress._progress import _Progress
 
 T = TypeVar('T')
 
 
-class IteratorWrapper(Generic[T], Iterator[T]):
-    def __init__(self, pbar: _Progress, iterator: Iterator[T] | AsyncIterator[T]):
-        self.pbar = pbar
-        self.iterator = iterator
-
-    def __iter__(self) -> Iterator[T]:
-        return self
-
-    async def __next__(self) -> T:
-        try:
-            if isinstance(self.iterator, AsyncIterator):
-                value = await anext(self.iterator)
-            else:
-                try:
-                    value = next(self.iterator)
-                except StopIteration as e:
-                    raise StopAsyncIteration from e
-            self.pbar.count += 1
-            return value
-        except Exception:
-            self.pbar.close()
-            raise
-
-
 def sync_iterator_wrapper(pbar: _Progress, iterator: Iterable[T]):
+    """Yields items and closes the bar at the end."""
     try:
         for x in iterator:
             pbar.count += 1
@@ -40,6 +17,7 @@ def sync_iterator_wrapper(pbar: _Progress, iterator: Iterable[T]):
 
 
 async def async_iterator_wrapper(pbar: _Progress, iterator: Iterable[T] | AsyncIterable[T]):
+    """Yields items and closes the bar at the end."""
     if not isinstance(iterator, AsyncIterable):
         iterator = _as_async(iterator)
     try:
@@ -48,30 +26,6 @@ async def async_iterator_wrapper(pbar: _Progress, iterator: Iterable[T] | AsyncI
             yield x
     finally:
         pbar.close()
-
-
-class AsyncIteratorWrapper(Generic[T], AsyncIterator[T]):
-    def __init__(self, pbar: _Progress, iterator: Iterator[T] | AsyncIterator[T]):
-        self.pbar = pbar
-        self.iterator = iterator
-
-    def __aiter__(self) -> AsyncIterator[T]:
-        return self
-
-    async def __anext__(self) -> T:
-        try:
-            if isinstance(self.iterator, AsyncIterator):
-                value = await anext(self.iterator)
-            else:
-                try:
-                    value = next(self.iterator)
-                except StopIteration as e:
-                    raise StopAsyncIteration from e
-            self.pbar.count += 1
-            return value
-        except Exception:
-            self.pbar.close()
-            raise
 
 
 async def co_op(iterable: Iterable[T] | AsyncIterable[T]):
