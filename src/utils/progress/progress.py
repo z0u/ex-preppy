@@ -150,7 +150,7 @@ class Progress(ProgressBase, AsyncIterable[T]):
         super()._draw()
 
     def _debounced_draw(self) -> None:
-        self.draw_task = self._debouncer()
+        self._draw_task = self._debouncer()
 
     async def __aenter__(self):
         return self

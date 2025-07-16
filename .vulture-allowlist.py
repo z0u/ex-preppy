@@ -15,6 +15,9 @@ _.critical  # unused method (src/utils/logging.py:76)
 _.trace  # unused method (src/utils/logging.py:101)
 _.format  # unused method (src/utils/logging.py:26)
 
+_._repr_html_  # Jupyter renderer
+owner  # Descriptor protocol
+
 bottom  # unused variable (src/utils/theming.py:290)
 left  # unused variable (src/utils/theming.py:288)
 right  # unused variable (src/utils/theming.py:289)
@@ -40,3 +43,9 @@ azure  # unused variable (src/ex_color/data.py:125)
 pink  # unused variable (src/ex_color/data.py:129)
 phases  # unused variable (.vulture-cache/ex-1.4-color-mlp-anchoring.py:292)
 _.forward  # unused method (from models defined in notebooks)
+
+mock_connect # unused variable, test fixture
+_.side_effect # Mock
+
+torch.backends.cudnn.deterministic  # torch setting
+torch.backends.cudnn.benchmark  # torch setting

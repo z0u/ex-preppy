@@ -150,6 +150,8 @@ exclude = [
 ]
 ignore_decorators = [
     "@modal.asgi_app",
+    "@app.middleware",
+    "@app.get",
     "@functools.lru_cache",
     "@property",
     "@classmethod",
