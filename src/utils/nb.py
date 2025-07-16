@@ -112,3 +112,15 @@ def save_fig(
     safe_src = urllib.parse.quote(filepath.as_posix())
     escaped_style = html.escape(style)
     return f'<img src="{safe_src}?v={cache_buster}" alt="{escaped_alt}" style="{escaped_style}" />'
+
+
+def is_graphical_notebook():
+    try:
+        from IPython.core.getipython import get_ipython
+
+        ip = get_ipython()
+
+        # Check for Jupyter kernel environment
+        return 'ZMQInteractiveShell' in str(type(ip))
+    except Exception:
+        return False

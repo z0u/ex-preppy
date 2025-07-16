@@ -7,7 +7,7 @@ from typing import cast
 
 from IPython.core.formatters import DisplayFormatter
 from IPython.core.interactiveshell import InteractiveShell
-from IPython.display import HTML, display, update_display
+from IPython.display import HTML, DisplayHandle, display
 
 
 class Displayer:
@@ -18,20 +18,21 @@ class Displayer:
     in-place instead of creating a new output cell each time.
     """
 
-    handle: str
-    displayed: bool
+    handle: DisplayHandle | None
 
     def __init__(self):
-        self.handle = f'{type(self).__name__}-{secrets.token_hex(16)}'
-        self.displayed = False
+        self.handle = None
 
     def __call__(self, ob, **display_kwargs):
         """Display or update the given object in the notebook."""
-        if not self.displayed:
-            display(ob, display_id=self.handle, **display_kwargs)
+        if not self.handle:
+            self.handle = display(ob, display_id=True, **display_kwargs)
         else:
-            update_display(ob, display_id=self.handle, **display_kwargs)
-        self.displayed = True
+            self.handle.update(ob, **display_kwargs)
+
+    # DisplayHandle can't be pickled, so exclude it when serializing.
+    def __reduce__(self):
+        return (self.__class__, ())
 
 
 class ImageDisplayer:

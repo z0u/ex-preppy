@@ -1,20 +1,10 @@
 from math import isfinite
 from typing import Any, Mapping
+from html import escape
 
 from airium import Airium
 
 from utils.progress.model import BarData
-
-
-def format_time(seconds: float) -> str:
-    if not isinstance(seconds, (int, float)) or not isfinite(seconds) or seconds < 0:
-        return '??:??:??'
-    m, s = divmod(int(seconds), 60)
-    h, m = divmod(m, 60)
-    if h == 0:
-        return f'{m:02d}:{s:02d}'
-    else:
-        return f'{h:d}:{m:02d}:{s:02d}'
 
 
 def render_progress_bar(data: BarData, metrics: Mapping[str, Any]):
@@ -25,7 +15,7 @@ def render_progress_bar(data: BarData, metrics: Mapping[str, Any]):
     return str(a)
 
 
-def format_bar_text(data: BarData):
+def format_bar_html(data: BarData):
     items_per_sec = data.count / data.elapsed_time if data.elapsed_time > 0 else 0
     eta_sec = (data.total - data.count) / items_per_sec if items_per_sec > 0 and data.count < data.total else 0
     elapsed_str = format_time(data.elapsed_time)
@@ -33,11 +23,11 @@ def format_bar_text(data: BarData):
 
     text = ''
     if data.description:
-        text += f'{data.description}: '
-    text += f'{data.fraction * 100:.1f}% [{data.count}/{data.total}]'
+        text += f'<b>{esc(data.description)}</b>: '
+    text += f'{data.fraction:.1%} [{data.count:d}/{data.total:d}]'
     if data.suffix:
-        text += f' | {data.suffix}'
-    text += f' [{elapsed_str}/<{eta_str}, {items_per_sec:.2f} it/s]'
+        text += f' | {esc(data.suffix)}'
+    text += f' [<b>{esc(elapsed_str)}</b>/<{esc(eta_str)}, {items_per_sec:.2f} it/s]'
 
     return text
 
@@ -85,7 +75,7 @@ def format_bar(a: Airium, data: BarData):
                 text_overflow='ellipsis',
                 border_bottom='1px dashed color(from currentColor srgb r g b / 0.5)',
             ),
-            _t=format_bar_text(data),
+            _t=format_bar_html(data),
         )
 
 
@@ -105,30 +95,46 @@ def format_metrics(a: Airium, metrics: Mapping[str, Any]):
                 style=css(
                     font_weight='bold',
                     border_bottom='1px solid currentColor',
-                    padding_block='2px',
-                    padding_inline='10px',
+                    padding='2px 10px',
                     text_align='left',
                     overflow='hidden',
                     text_overflow='ellipsis',
                     white_space='nowrap',
                 ),
-                _t=key,
+                _t=esc(key),
             )
 
         for value in metrics.values():
             val_str = f'{value:.4g}' if isinstance(value, float) else str(value)
             a.div(
                 style=css(
-                    padding_block='2px',
-                    padding_inline='10px',
+                    padding='2px 10px',
                     text_align='left',
                     overflow='hidden',
                     text_overflow='ellipsis',
                     white_space='nowrap',
                 ),
-                _t=val_str,
+                _t=esc(val_str),
             )
 
 
+def format_time(seconds: float) -> str:
+    if not isinstance(seconds, (int, float)) or not isfinite(seconds) or seconds < 0:
+        return '??:??:??'
+    m, s = divmod(int(seconds), 60)
+    h, m = divmod(m, 60)
+    if h == 0:
+        return f'{m:02d}:{s:02d}'
+    else:
+        return f'{h:d}:{m:02d}:{s:02d}'
+
+
+def esc(value: Any) -> str:
+    """Escape HTML entities like < and >"""
+    # Don't need to scape quotes because Airium already does that for attribute values
+    return escape(str(value), quote=False)
+
+
 def css(**props):
+    """Convert a mapping of properties into a CSS string"""
     return '; '.join(f'{k.replace("_", "-")}: {v}' for k, v in props.items())

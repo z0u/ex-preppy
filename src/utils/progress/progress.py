@@ -1,32 +1,19 @@
 import asyncio
 import time
-from typing import (
-    Any,
-    AsyncIterable,
-    AsyncIterator,
-    Callable,
-    Generic,
-    Iterable,
-    Iterator,
-    Literal,
-    TypeVar,
-    cast,
-    override,
-)
-
-from IPython.display import HTML
+from typing import Any, AsyncIterable, AsyncIterator, Callable, Generic, Iterable, Iterator, TypeVar, cast, override
+import sys
 
 from utils.coro import debounced
-from utils.nb import displayer
+from utils.nb import displayer, is_graphical_notebook
 from utils.progress._progress import _Progress
 from utils.progress.html import render_progress_bar
-from utils.progress.iterators import AsyncIteratorWrapper
+from utils.progress.iterators import async_iterator_wrapper, sync_iterator_wrapper
 from utils.progress.model import BarData
 
 T = TypeVar('T')
 
 
-class Progress(_Progress, Generic[T], AsyncIterable[T]):
+class ProgressBase(_Progress, Generic[T]):
     """
     A simple, Jupyter-friendly progress bar using HTML and display updates.
 
@@ -37,64 +24,73 @@ class Progress(_Progress, Generic[T], AsyncIterable[T]):
     """
 
     _show: Callable[[Any], None]
-    _iterator: Iterator[T] | AsyncIterator[T]
-    _draw_task: asyncio.Task
 
     def __init__(
         self,
-        items: Iterable[T] | AsyncIterable[T] | None = None,
-        total: int | None = None,
+        total: int,
         description: str = '',
         initial_metrics: dict[str, Any] | None = None,
-        interval: float = 0.05,  # Min time between updates
     ):
-        if total is not None and total < 0:
+        if total < 0:
             raise ValueError('total must be non-negative')
 
-        if items is not None:
-            if total is None:
-                try:
-                    total = len(items)  # type: ignore
-                except (TypeError, AttributeError) as e:
-                    raise ValueError('Cannot determine total length of iterable, please provide `total`.') from e
-            if isinstance(items, (AsyncIterator, AsyncIterable)):
-                self._iterator = aiter(items)
-            else:
-                self._iterator = iter(items)
-        elif total is not None:
-            # When iterable is None, we know T must be int.
-            self._iterator = cast(Iterator[T], iter(range(total)))
+        if is_graphical_notebook():
+            self._show = displayer()
         else:
-            raise ValueError('Must provide either `iterable` or `total`.')
+            self._show = lambda ob: print(ob, end='')
 
-        self._show = displayer()
-        self._debounced_draw = debounced(interval=interval)(lambda: self._draw())
-        self._draw_task = asyncio.Task(noop())
-
-        # Setting these triggers a draw; see _Progress
+        # Setting these usually triggers a draw; see _Progress
+        self._draw_on_change = False
         self.total = total
         self.description = description
         self.metrics = initial_metrics or {}
         self.suffix = ''
         self.start_time = time.monotonic()
         self.count = 0
+        self._draw_on_change = True
+
+    def update(
+        self,
+        total: int | None = None,
+        count: int | None = None,
+        description: str| None = None,
+        metrics: dict[str, Any] | None = None,
+        suffix: str| None = None,
+    ):
+        """Update the progress bar with new values."""
+        draw_was_enabled = self._draw_on_change
+        self._draw_on_change = False
+        try:
+            if total is not None:
+                self.total = total
+            if count is not None:
+                self.count = count
+            if description is not None:
+                self.description = description
+            if metrics is not None:
+                self.metrics = metrics
+            if suffix is not None:
+                self.suffix = suffix
+        finally:
+            self._draw_on_change = draw_was_enabled
+        self._on_change()
 
     @override
     def _on_change(self):
-        self._display('debounced')
+        if self._draw_on_change:
+            self._debounced_draw()
 
-    def _display(self, mode: Literal['immediate', 'debounced']):
-        if mode == 'immediate':
-            self._draw_task.cancel()
-            self._draw()
-        else:
-            self._draw_task = self._debounced_draw()
+    def _debounced_draw(self) -> None:
+        raise NotImplementedError
 
     def _draw(self):
-        html_content = self._render_html()
-        self._show(HTML(html_content))
+        self._show(self)
 
-    def _render_html(self) -> str:
+    def __repr__(self) -> str:
+        fraction = self.count / self.total if self.total > 0 else 1
+        return f'\r{self.description}: {fraction:.1%} [{self.count:d}/{self.total:d}]'
+
+    def _repr_html_(self) -> str:
         """Generate the HTML for the progress bar and metrics grid."""
         data = BarData(
             count=self.count,
@@ -108,7 +104,50 @@ class Progress(_Progress, Generic[T], AsyncIterable[T]):
     @override
     def close(self) -> None:
         """Ensuring the bar is drawn one last time."""
-        self._display('immediate')
+        self._draw()
+
+
+class Progress(ProgressBase, AsyncIterable[T]):
+    def __init__(
+        self,
+        items: Iterable[T] | AsyncIterable[T] | None = None,
+        total: int | None = None,
+        description: str = '',
+        initial_metrics: dict[str, Any] | None = None,
+        interval: float = 0.05,  # Min time between updates
+    ):
+        if items is not None:
+            if total is None:
+                try:
+                    total = len(items)  # type: ignore
+                except (TypeError, AttributeError) as e:
+                    raise ValueError('Cannot determine total length of iterable, please provide `total`.') from e
+            self._iterator = aiter(items) if isinstance(items, AsyncIterable) else iter(items)
+        elif total is not None:
+            # When iterable is None, we know T must be int.
+            self._iterator = cast(Iterator[T], iter(range(total)))
+        else:
+            raise ValueError('Must provide either `iterable` or `total`.')
+
+        self._debouncer = debounced(interval=interval)(lambda: self._draw())
+        self._draw_task = asyncio.Task(noop())
+
+        super().__init__(total=total, description=description, initial_metrics=initial_metrics)
+
+    def _draw(self):
+        self._draw_task.cancel()
+        super()._draw()
+
+    def _debounced_draw(self) -> None:
+        self.draw_task = self._debouncer()
+
+    # @override
+    # def _display(self, mode: Literal['immediate', 'debounced']):
+    #     if mode == 'immediate':
+    #         self._draw_task.cancel()
+    #         self._draw()
+    #     else:
+    #         self._draw_task = self._debounced_draw()
 
     async def __aenter__(self):
         return self
@@ -121,9 +160,62 @@ class Progress(_Progress, Generic[T], AsyncIterable[T]):
     def __aiter__(self) -> AsyncIterator[T]:
         self.count = 0
         self.start_time = time.monotonic()
-        self._display('debounced')
+        self._debounced_draw()
 
-        return AsyncIteratorWrapper(self, self._iterator)
+        return async_iterator_wrapper(self, self._iterator)
+
+
+class SyncProgress(ProgressBase, Iterable[T]):
+    def __init__(
+        self,
+        items: Iterable[T] | None = None,
+        total: int | None = None,
+        description: str = '',
+        initial_metrics: dict[str, Any] | None = None,
+        interval: float = 0.05,  # Min time between updates
+    ):
+        if items is not None:
+            if total is None:
+                try:
+                    total = len(items)  # type: ignore
+                except (TypeError, AttributeError) as e:
+                    raise ValueError('Cannot determine total length of iterable, please provide `total`.') from e
+            self._iterator = iter(items)
+        elif total is not None:
+            # When iterable is None, we know T must be int.
+            self._iterator = cast(Iterator[T], iter(range(total)))
+        else:
+            raise ValueError('Must provide either `iterable` or `total`.')
+
+        self._last_draw_time = 0
+        self._interval = interval
+
+        super().__init__(total=total, description=description, initial_metrics=initial_metrics)
+
+    def _draw(self):
+        now = time.monotonic()
+        super()._draw()
+        self._last_draw_time = now
+
+    def _debounced_draw(self):
+        now = time.monotonic()
+        if now - self._last_draw_time >= self._interval:
+            self._draw()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        if exc_type is not None:
+            raise
+
+    def __iter__(self) -> Iterator[T]:
+        self.count = 0
+        self.start_time = time.monotonic()
+        self._debounced_draw()
+
+        return sync_iterator_wrapper(self, self._iterator)
 
 
 async def noop():
