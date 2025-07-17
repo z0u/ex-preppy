@@ -21,7 +21,7 @@ from ex_color.labelling import collate_with_generated_labels_catalyst
 from ex_color.model import ColorMLP
 from ex_color.record import MetricsRecorder
 from ex_color.seed import set_deterministic_mode
-from ex_color.catalyst_simple import train_color_model_simple_catalyst
+from ex_color.catalyst_runner import train_color_model_catalyst_runner
 from mini.temporal.dopesheet import Dopesheet
 from utils.logging import SimpleLoggingConfig
 
@@ -120,13 +120,12 @@ def train(
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     log.debug(f'Model initialized with {total_params:,} trainable parameters.')
 
-    # Train using simplified Catalyst approach
-    train_color_model_simple_catalyst(
+    # Train using standard Catalyst SupervisedRunner
+    train_color_model_catalyst_runner(
         model,
         hsv_loader,
         rgb_tensor,
         dopesheet,
-        loss_criterion=objective(torch.nn.MSELoss()),
         regularizers=regularizers,
         metrics_recorder=metrics_recorder,
     )
