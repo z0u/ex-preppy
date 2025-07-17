@@ -31,7 +31,7 @@ log = logging.getLogger(__name__)
 
 
 def load_dopesheet():
-    return Dopesheet.from_csv('docs/m1-color-mlp/ex-1.8-dopesheet.csv')
+    return Dopesheet.from_csv('docs/machinery-dopesheet.csv')
 
 
 def prep_data() -> tuple[DataLoader, Tensor]:
@@ -157,10 +157,10 @@ def main(dev=False):
         itertools.chain(*(itertools.combinations(all_regs, i) for i in range(1, len(all_regs) + 1)))
     )
 
-    if dev:
-        combinations = all_combinations[:1]  # For testing, select a subset
-    else:
-        combinations = all_combinations[:]
+    # if dev:
+    combinations = all_combinations[-1:]  # For testing, select a subset
+    # else:
+    #     combinations = all_combinations[:]
     log.info(f'Running {len(combinations):d}/{len(all_combinations):d} combinations of {len(all_regs)} regularizers.')
 
     runs: dict[str, MetricsRecorder] = {}
