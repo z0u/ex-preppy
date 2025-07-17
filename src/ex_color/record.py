@@ -41,8 +41,8 @@ class BatchRecorder(EventHandler):
         log.debug(f'Recorded batch at step {event.step}')
 
 
-class MetricsRecorder(EventHandler):
-    """Event handler to record training metrics."""
+class MetricsRecorder:
+    """Records training metrics in a simplified interface."""
 
     history: list[tuple[int, float, dict[str, float]]]
     """A list of tuples (step, total_loss, losses_dict)."""
@@ -50,10 +50,14 @@ class MetricsRecorder(EventHandler):
     def __init__(self):
         self.history = []
 
+    def record(self, step: int, total_loss: float, losses: dict[str, float]):
+        """Record metrics for a training step."""
+        self.history.append((step, total_loss, losses.copy()))
+        log.debug(f'Recorded metrics at step {step}: loss={total_loss:.4f}')
+
     def __call__(self, event: StepMetricsEvent):
+        """Backward compatibility with old event-based interface."""
         if not isinstance(event, StepMetricsEvent):
             log.warning(f'MetricsRecorder received unexpected event type: {type(event)}')
             return
-
-        self.history.append((event.step, event.total_loss, event.losses.copy()))
-        log.debug(f'Recorded metrics at step {event.step}: loss={event.total_loss:.4f}')
+        self.record(event.step, event.total_loss, event.losses)

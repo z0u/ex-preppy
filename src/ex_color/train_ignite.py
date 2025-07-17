@@ -4,11 +4,12 @@ from typing import Any
 import torch
 import torch.optim as optim
 from ignite.engine import Engine, Events
+from ignite.metrics import Loss, RunningAverage
 from torch import Tensor
 from torch.utils.data import DataLoader
 
 from ex_color.criteria.criteria import LossCriterion, RegularizerConfig
-from ex_color.events import StepMetricsEvent
+from ex_color.hooks import LatentHookManager
 from ex_color.loaders import reiterate
 from ex_color.model import ColorMLP
 from ex_color.result import InferenceResult
@@ -25,6 +26,7 @@ def create_train_step(  # noqa: C901
     regularizers: list[RegularizerConfig],
     timeline: Timeline,
     device: torch.device,
+    latent_hook_manager: LatentHookManager,
 ):
     """Create a training step function for Ignite Engine."""
 
@@ -35,18 +37,13 @@ def create_train_step(  # noqa: C901
         # Get current timeline state
         current_state = timeline.state
 
-        # Update learning rate from dopesheet
-        current_lr = current_state.props['lr']
-        for param_group in optimizer.param_groups:
-            param_group['lr'] = current_lr
-
         optimizer.zero_grad()
 
         # Forward pass - model now only returns outputs
         outputs = model(batch_data)
 
-        # Get latents from hook
-        latents = model.get_latents()
+        # Get latents from hook manager
+        latents = latent_hook_manager.get_latents()
         if latents is None:
             raise RuntimeError('Latents not captured. Make sure hook is registered.')
 
@@ -104,10 +101,6 @@ def create_train_step(  # noqa: C901
             total_loss.backward()
             optimizer.step()
 
-        # Advance timeline after each iteration
-        if engine.state.iteration < len(timeline):
-            timeline.step()
-
         return {
             'total_loss': total_loss.item(),
             'losses': losses,
@@ -139,18 +132,56 @@ def train_color_model_ignite(  # noqa: C901
     optimizer = optim.Adam(model.parameters(), lr=0)
     device = next(model.parameters()).device
 
-    # Register the latent hook
-    model.register_latent_hook()
+    # Create external hook manager for latent capture
+    with LatentHookManager() as latent_hook_manager:
+        # Register hook on the encoder's last layer (bottleneck)
+        latent_hook_manager.register_hook(model.encoder[-1])
 
-    try:
         # Create data iterator
         train_data = iter(reiterate(train_loader))
 
         # Create training step function
-        train_step = create_train_step(model, optimizer, loss_criterion, regularizers, timeline, device)
+        train_step = create_train_step(
+            model, optimizer, loss_criterion, regularizers, timeline, device, latent_hook_manager
+        )
 
         # Create Ignite engine
         trainer = Engine(train_step)
+
+        # Attach Ignite metrics for better tracking
+        running_avg_loss = RunningAverage(
+            output_transform=lambda x: x['total_loss'],
+            alpha=0.95,
+        )
+        running_avg_loss.attach(trainer, 'avg_loss')
+
+        # Attach metrics for each loss component
+        loss_metrics = {}
+        for regularizer in regularizers:
+            metric = RunningAverage(
+                output_transform=lambda x, name=regularizer.name: x['losses'].get(name, 0),
+                alpha=0.95,
+            )
+            metric.attach(trainer, f'avg_{regularizer.name}')
+            loss_metrics[regularizer.name] = metric
+
+        # Main reconstruction loss
+        recon_metric = RunningAverage(
+            output_transform=lambda x: x['losses'].get('recon', 0),
+            alpha=0.95,
+        )
+        recon_metric.attach(trainer, 'avg_recon')
+
+        # Add custom parameter scheduler using timeline
+        @trainer.on(Events.ITERATION_STARTED)
+        def update_parameters(engine: Engine):
+            """Update learning rates and regularizer weights from timeline."""
+            current_state = timeline.state
+            
+            # Update learning rate
+            current_lr = current_state.props['lr']
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = current_lr
 
         # Add event handlers for progress tracking and metrics
         @trainer.on(Events.ITERATION_STARTED)
@@ -172,25 +203,24 @@ def train_color_model_ignite(  # noqa: C901
             if progress_bar is not None:
                 progress_bar.update()
 
-            # Update progress bar with current loss
-            output = engine.state.output
-            if progress_bar is not None and isinstance(output, dict) and 'total_loss' in output:
-                progress_bar.set_postfix({'train-loss': output['total_loss']})
+            # Update progress bar with running average loss
+            if progress_bar is not None:
+                avg_loss = engine.state.metrics.get('avg_loss', 0)
+                progress_bar.set_postfix({'train-loss': avg_loss})
 
-            # Record metrics
-            if metrics_recorder is not None and isinstance(output, dict):
-                # Create a proper StepMetricsEvent for compatibility
-                step_metrics_event = StepMetricsEvent(
-                    name='step-metrics',
-                    step=engine.state.iteration - 1,  # 0-indexed
-                    model=model,
-                    timeline_state=output['timeline_state'],
-                    optimizer=optimizer,
-                    train_batch=output['batch_data'],
-                    total_loss=output['total_loss'],
-                    losses=output['losses'],
-                )
-                metrics_recorder(step_metrics_event)
+            # Record metrics using simplified interface
+            if metrics_recorder is not None:
+                output = engine.state.output
+                if isinstance(output, dict):
+                    metrics_recorder.record(
+                        step=engine.state.iteration - 1,  # 0-indexed
+                        total_loss=output['total_loss'],
+                        losses=output['losses'],
+                    )
+
+            # Advance timeline after each iteration
+            if engine.state.iteration < len(timeline):
+                timeline.step()
 
         @trainer.on(Events.ITERATION_COMPLETED)
         def handle_phase_end(engine: Engine):
@@ -204,7 +234,7 @@ def train_color_model_ignite(  # noqa: C901
                 with torch.no_grad():
                     model.eval()
                     model(val_data.to(device))
-                    val_latents = model.get_latents()
+                    val_latents = latent_hook_manager.get_latents()
 
                     if val_latents is not None:
                         log.debug(f'Validation completed for phase: {current_state.phase}')
@@ -221,7 +251,3 @@ def train_color_model_ignite(  # noqa: C901
         trainer.run(custom_data_loader(), max_epochs=1)
 
         log.debug('Training finished!')
-
-    finally:
-        # Always remove the hook
-        model.remove_latent_hook()
