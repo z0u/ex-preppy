@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 import torch
 import torch.nn as nn
@@ -25,11 +26,32 @@ class ColorMLP(nn.Module):
             nn.Sigmoid(),  # Keep RGB values in [0,1]
         )
 
-    # TODO: Don't return latents from here: use hooks or callbacks instead
-    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        # Hook storage for latents
+        self._latents: torch.Tensor | None = None
+        self._hook_handle: torch.utils.hooks.RemovableHandle | None = None
+
+    def register_latent_hook(self):
+        """Register a hook to capture bottleneck latents."""
+        def hook_fn(module: nn.Module, input: tuple[torch.Tensor, ...], output: torch.Tensor) -> None:
+            self._latents = output
+
+        # Register hook on the encoder's last layer (bottleneck)
+        self._hook_handle = self.encoder[-1].register_forward_hook(hook_fn)
+
+    def remove_latent_hook(self):
+        """Remove the latent hook."""
+        if self._hook_handle is not None:
+            self._hook_handle.remove()
+            self._hook_handle = None
+
+    def get_latents(self) -> torch.Tensor | None:
+        """Get the last captured latents."""
+        return self._latents
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         # Get our bottleneck representation
         bottleneck = self.encoder(x)
 
         # Decode back to RGB
         output = self.decoder(bottleneck)
-        return output, bottleneck
+        return output

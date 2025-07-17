@@ -575,6 +575,7 @@ dependencies = [
     { name = "numpy" },
     { name = "pandas" },
     { name = "pydantic" },
+    { name = "pytorch-ignite" },
     { name = "requests" },
     { name = "scikit-image" },
     { name = "scikit-learn" },
@@ -632,6 +633,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=2.2.3" },
     { name = "pandas", specifier = ">=2.2.3" },
     { name = "pydantic", specifier = ">=2.10.6" },
+    { name = "pytorch-ignite", specifier = ">=0.5.2" },
     { name = "requests", specifier = ">=2.32.3" },
     { name = "scikit-image", specifier = ">=0.25.2" },
     { name = "scikit-learn", specifier = ">=1.6.1" },
@@ -2160,6 +2162,21 @@ wheels = [
 ]
 
 [[package]]
+name = "pytorch-ignite"
+version = "0.5.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "packaging" },
+    { name = "torch", version = "2.6.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
+    { name = "torch", version = "2.6.0", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-20-ex-color-transformer-torch' or extra != 'extra-20-ex-color-transformer-torch-cpu'" },
+    { name = "torch", version = "2.6.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b7/8f/74ef67efa1d70eaf6734c95406515d51d85362e2055ca9d3be3a10316a0b/pytorch_ignite-0.5.2.tar.gz", hash = "sha256:63bdbafe3fb76bf243e4c7fa4b71c89a652fece6c4c2f6e3c5b448ac74447d98", size = 236746, upload-time = "2025-03-29T13:50:14.267Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/72/89/91d28b929f75c1205a8a37224fd25e7c97e295a56c8308ed47e9763fe4f4/pytorch_ignite-0.5.2-py3-none-any.whl", hash = "sha256:ae0843e7b45416041cc57700dcbdfae30ae6432f2dc5bc20dfbfe1dae3414c91", size = 343180, upload-time = "2025-03-29T13:50:06.905Z" },
+]
+
+[[package]]
 name = "pytz"
 version = "2025.2"
 source = { registry = "https://pypi.org/simple" }
@@ -2642,13 +2659,13 @@ resolution-markers = [
     "sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "filelock", marker = "sys_platform == 'darwin'" },
-    { name = "fsspec", marker = "sys_platform == 'darwin'" },
-    { name = "jinja2", marker = "sys_platform == 'darwin'" },
-    { name = "networkx", marker = "sys_platform == 'darwin'" },
-    { name = "setuptools", marker = "sys_platform == 'darwin'" },
-    { name = "sympy", marker = "sys_platform == 'darwin'" },
-    { name = "typing-extensions", marker = "sys_platform == 'darwin'" },
+    { name = "filelock", marker = "(sys_platform == 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
+    { name = "fsspec", marker = "(sys_platform == 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
+    { name = "jinja2", marker = "(sys_platform == 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
+    { name = "networkx", marker = "(sys_platform == 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
+    { name = "setuptools", marker = "(sys_platform == 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
+    { name = "sympy", marker = "(sys_platform == 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
+    { name = "typing-extensions", marker = "(sys_platform == 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
 ]
 wheels = [
     { url = "https://download.pytorch.org/whl/cpu/torch-2.6.0-cp312-none-macosx_11_0_arm64.whl", hash = "sha256:9a610afe216a85a8b9bc9f8365ed561535c93e804c2a317ef7fabcc5deda0989" },
@@ -2696,13 +2713,13 @@ resolution-markers = [
     "sys_platform != 'darwin'",
 ]
 dependencies = [
-    { name = "filelock", marker = "sys_platform != 'darwin'" },
-    { name = "fsspec", marker = "sys_platform != 'darwin'" },
-    { name = "jinja2", marker = "sys_platform != 'darwin'" },
-    { name = "networkx", marker = "sys_platform != 'darwin'" },
-    { name = "setuptools", marker = "sys_platform != 'darwin'" },
-    { name = "sympy", marker = "sys_platform != 'darwin'" },
-    { name = "typing-extensions", marker = "sys_platform != 'darwin'" },
+    { name = "filelock", marker = "(sys_platform != 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
+    { name = "fsspec", marker = "(sys_platform != 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
+    { name = "jinja2", marker = "(sys_platform != 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
+    { name = "networkx", marker = "(sys_platform != 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
+    { name = "setuptools", marker = "(sys_platform != 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
+    { name = "sympy", marker = "(sys_platform != 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
+    { name = "typing-extensions", marker = "(sys_platform != 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
 ]
 wheels = [
     { url = "https://download.pytorch.org/whl/cpu/torch-2.6.0%2Bcpu-cp312-cp312-linux_x86_64.whl", hash = "sha256:59e78aa0c690f70734e42670036d6b541930b8eabbaa18d94e090abf14cc4d91" },
