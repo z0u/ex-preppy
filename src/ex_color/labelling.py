@@ -71,6 +71,37 @@ def collate_with_generated_labels(
         return collated_data, labels
 
 
+def collate_with_generated_labels_catalyst(
+    batch,
+    *,
+    soft: bool = True,
+    scale: dict[str, float] | None = None,
+) -> dict[str, Tensor | dict[str, Tensor]]:
+    """
+    Custom collate function that generates labels for the samples, formatted for Catalyst.
+
+    Args:
+        batch: A list of ((data_tensor,), index_tensor) tuples from TensorDataset.
+               Note: TensorDataset wraps single tensors in a tuple.
+        soft: If True, return soft labels (0..1). Otherwise, return hard labels (0 or 1).
+        scale: Linear scaling factors for the labels (applied before discretizing).
+
+    Returns:
+        A dictionary with 'features' and 'targets' keys compatible with Catalyst.
+    """
+    # Use the original function to get data and labels
+    collated_data, labels = collate_with_generated_labels(batch, soft=soft, scale=scale)
+
+    # Return in Catalyst format
+    return {
+        'features': collated_data,
+        'targets': {
+            'features': collated_data,  # Also include in targets for reconstruction loss
+            **labels  # Include all the generated labels
+        }
+    }
+
+
 def discretize(probs: Tensor) -> Tensor:
     """
     Discretize probabilities into binary labels.

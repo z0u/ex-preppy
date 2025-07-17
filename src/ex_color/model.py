@@ -25,11 +25,10 @@ class ColorMLP(nn.Module):
             nn.Sigmoid(),  # Keep RGB values in [0,1]
         )
 
-    # TODO: Don't return latents from here: use hooks or callbacks instead
-    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         # Get our bottleneck representation
         bottleneck = self.encoder(x)
 
         # Decode back to RGB
         output = self.decoder(bottleneck)
-        return output, bottleneck
+        return output

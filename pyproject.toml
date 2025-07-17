@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = "~=3.12.0"
 dependencies = [
     "airium>=0.2.7",
+    "catalyst>=22.0",
     "ftfy>=6.3.1",
     "jaxtyping>=0.2.38",
     "modal>=0.73.67",
