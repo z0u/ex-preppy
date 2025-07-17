@@ -7,7 +7,6 @@ import numpy as np
 import torch
 from torch._tensor import Tensor
 from torch.utils.data import DataLoader, TensorDataset, WeightedRandomSampler
-from tqdm import tqdm
 
 from ex_color.criteria.anchor import Anchor
 from ex_color.criteria.criteria import RegularizerConfig
@@ -18,12 +17,11 @@ from ex_color.criteria.unitarity import unitarity
 from ex_color.data.color_cube import ColorCube
 from ex_color.data.cube_sampler import vibrancy
 from ex_color.data.cyclic import arange_cyclic
-from ex_color.events import EventHandlers
-from ex_color.labelling import collate_with_generated_labels
+from ex_color.labelling import collate_with_generated_labels_catalyst
 from ex_color.model import ColorMLP
 from ex_color.record import MetricsRecorder
 from ex_color.seed import set_deterministic_mode
-from ex_color.train import train_color_model
+from ex_color.catalyst_simple import train_color_model_simple_catalyst
 from mini.temporal.dopesheet import Dopesheet
 from utils.logging import SimpleLoggingConfig
 
@@ -50,7 +48,7 @@ def prep_data() -> tuple[DataLoader, Tensor]:
     hsv_dataset = TensorDataset(hsv_tensor, vibrancy_tensor)
 
     labeller = partial(
-        collate_with_generated_labels,
+        collate_with_generated_labels_catalyst,
         soft=False,  # Use binary labels (stochastic) to simulate the labelling of internet text
         scale={'red': 0.5, 'vibrant': 0.5},
     )
@@ -122,31 +120,16 @@ def train(
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     log.debug(f'Model initialized with {total_params:,} trainable parameters.')
 
-    with tqdm(total=dopesheet.as_df()['STEP'].max()) as p:
-        event_handlers = EventHandlers()
-        event_handlers.phase_start.add_handler(
-            'phase-start',
-            lambda event: p.set_description(event.timeline_state.phase),
-        )
-        event_handlers.pre_step.add_handler('pre-step', lambda event: p.update())
-        # event_handlers.pre_step.add_handler('pre-step', recorder)
-        event_handlers.step_metrics.add_handler('step-metrics', metrics_recorder)
-        event_handlers.step_metrics.add_handler(
-            'step-metrics',
-            lambda event: p.set_postfix({'train-loss': event.total_loss}),
-        )
-        # event_handlers.step_metrics.add_handler('step-metrics', batch_recorder)
-
-        train_color_model(
-            model,
-            hsv_loader,
-            rgb_tensor,
-            dopesheet,
-            # loss_criterion=objective(nn.MSELoss(reduction='none')),  # No reduction; allows per-sample loss weights
-            loss_criterion=objective(torch.nn.MSELoss()),
-            regularizers=regularizers,
-            event_handlers=event_handlers,
-        )
+    # Train using simplified Catalyst approach
+    train_color_model_simple_catalyst(
+        model,
+        hsv_loader,
+        rgb_tensor,
+        dopesheet,
+        loss_criterion=objective(torch.nn.MSELoss()),
+        regularizers=regularizers,
+        metrics_recorder=metrics_recorder,
+    )
 
     return metrics_recorder
 
