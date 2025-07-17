@@ -18,8 +18,7 @@ from ex_color.data.color_cube import ColorCube
 from ex_color.data.cube_sampler import vibrancy
 from ex_color.data.cyclic import arange_cyclic
 from ex_color.labelling import collate_with_generated_labels
-from ex_color.model import ColorMLP
-from ex_color.record import MetricsRecorder
+from ex_color.model import ColorMLPTrainingModule
 from ex_color.seed import set_deterministic_mode
 from ex_color.train_lightning import train_color_model_lightning
 from mini.temporal.dopesheet import Dopesheet
@@ -114,9 +113,9 @@ def train(
 
     hsv_loader, rgb_tensor = prep_data()
 
-    # Create a temporary model just to count parameters
-    temp_model = ColorMLP(dopesheet, objective(torch.nn.MSELoss()), regularizers)
-    total_params = sum(p.numel() for p in temp_model.parameters() if p.requires_grad)
+    # Create a temporary training module just to count parameters
+    temp_module = ColorMLPTrainingModule(dopesheet, objective(torch.nn.MSELoss()), regularizers)
+    total_params = sum(p.numel() for p in temp_module.parameters() if p.requires_grad)
     log.debug(f'Model initialized with {total_params:,} trainable parameters.')
 
     metrics_callback = train_color_model_lightning(
@@ -127,7 +126,7 @@ def train(
         regularizers=regularizers,
     )
 
-    return metrics_callback.metrics_recorder
+    return metrics_callback.history
 
 
 def main(dev=False):
@@ -142,7 +141,7 @@ def main(dev=False):
     #     combinations = all_combinations[:]
     log.info(f'Running {len(combinations):d}/{len(all_combinations):d} combinations of {len(all_regs)} regularizers.')
 
-    runs: dict[str, MetricsRecorder] = {}
+    runs: dict[str, list] = {}
     for combo in combinations:
         dopesheet = load_dopesheet()
         combo_list = list(combo)

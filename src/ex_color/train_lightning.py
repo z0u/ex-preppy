@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 
 from ex_color.criteria.criteria import LossCriterion, RegularizerConfig
 from ex_color.lightning_callbacks import MetricsCallback, PhaseCallback, ValidationCallback
-from ex_color.model import ColorMLP
+from ex_color.model import ColorMLPTrainingModule
 from mini.temporal.dopesheet import Dopesheet
 
 log = logging.getLogger(__name__)
@@ -21,8 +21,8 @@ def train_color_model_lightning(
     regularizers: list[RegularizerConfig],
 ) -> MetricsCallback:
     """Train the color model using PyTorch Lightning."""
-    # Create the Lightning module
-    model = ColorMLP(dopesheet, loss_criterion, regularizers)
+    # Create the Lightning training module
+    training_module = ColorMLPTrainingModule(dopesheet, loss_criterion, regularizers)
 
     # Set up callbacks
     metrics_callback = MetricsCallback()
@@ -50,6 +50,6 @@ def train_color_model_lightning(
     )
 
     # Train the model
-    trainer.fit(model, train_loader)
+    trainer.fit(training_module, train_loader)
 
     return metrics_callback

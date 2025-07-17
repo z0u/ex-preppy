@@ -1,4 +1,5 @@
 import logging
+from dataclasses import dataclass
 
 import lightning as L
 import torch
@@ -16,22 +17,29 @@ E = 4
 log = logging.getLogger(__name__)
 
 
-class ColorMLP(L.LightningModule):
-    def __init__(
-        self,
-        dopesheet: Dopesheet,
-        loss_criterion: LossCriterion,
-        regularizers: list[RegularizerConfig],
-    ):
-        super().__init__()
-        # Store configuration
-        self.loss_criterion = loss_criterion
-        self.regularizers = regularizers
-        self.timeline = Timeline(dopesheet)
+@dataclass
+class ModelOutput:
+    """Structured output from the model."""
+    rgb: torch.Tensor
+    latents: torch.Tensor
 
-        # Store latents for regularization via hooks
+
+class LatentCaptureHook:
+    """Hook class to capture latent representations externally."""
+
+    def __init__(self):
         self.current_latents: Tensor | None = None
 
+    def __call__(self, module, input, output):
+        """Hook function to capture latent representations."""
+        self.current_latents = output
+
+
+class ColorMLP(nn.Module):
+    """Pure neural network model for color transformation."""
+
+    def __init__(self):
+        super().__init__()
         # RGB input (3D) → hidden layer → bottleneck → hidden layer → RGB output
         self.encoder = nn.Sequential(
             nn.Linear(3, 16),
@@ -46,21 +54,42 @@ class ColorMLP(L.LightningModule):
             nn.Sigmoid(),  # Keep RGB values in [0,1]
         )
 
-        # Register forward hook to capture latents
-        self.encoder.register_forward_hook(self._capture_latents_hook)
-
-    def _capture_latents_hook(self, module, input, output):
-        """Hook to capture latent representations from the encoder."""
-        self.current_latents = output
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward pass returning only the reconstructed RGB values."""
+    def forward(self, x: torch.Tensor) -> ModelOutput:
+        """Forward pass returning structured output."""
         # Get our bottleneck representation
-        bottleneck = self.encoder(x)
+        latents = self.encoder(x)
 
         # Decode back to RGB
-        output = self.decoder(bottleneck)
-        return output
+        rgb = self.decoder(latents)
+
+        return ModelOutput(rgb=rgb, latents=latents)
+
+
+class ColorMLPTrainingModule(L.LightningModule):
+    """Lightning module that handles training logic."""
+
+    def __init__(
+        self,
+        dopesheet: Dopesheet,
+        loss_criterion: LossCriterion,
+        regularizers: list[RegularizerConfig],
+    ):
+        super().__init__()
+        # Store training configuration
+        self.loss_criterion = loss_criterion
+        self.regularizers = regularizers
+        self.timeline = Timeline(dopesheet)
+
+        # Create the pure neural network model
+        self.model = ColorMLP()
+
+        # Set up external latent capture hook
+        self.latent_hook = LatentCaptureHook()
+        self.model.encoder.register_forward_hook(self.latent_hook)
+
+    def forward(self, x: torch.Tensor) -> ModelOutput:
+        """Forward pass through the model."""
+        return self.model(x)
 
     def training_step(self, batch, batch_idx):
         """Lightning training step."""
@@ -70,8 +99,8 @@ class ColorMLP(L.LightningModule):
         current_state = self.timeline.state
 
         # Forward pass
-        outputs = self(batch_data)
-        current_results = InferenceResult(outputs, self.current_latents)
+        model_output = self(batch_data)
+        current_results = InferenceResult(model_output.rgb, model_output.latents)
 
         # Calculate primary reconstruction loss
         primary_loss = self.loss_criterion(batch_data, current_results).mean()
@@ -123,12 +152,12 @@ class ColorMLP(L.LightningModule):
                 continue
             total_loss += term_loss * weight
 
-        # Log metrics
+        # Log metrics using Lightning's built-in logging
         self.log('train_loss', total_loss, prog_bar=True)
         for loss_name, loss_value in losses.items():
             self.log(f'train_{loss_name}', loss_value)
 
-        return total_loss
+        return {'loss': total_loss, 'losses': losses}
 
     def configure_optimizers(self):
         """Configure optimizers and learning rate schedulers."""

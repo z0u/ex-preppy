@@ -1,22 +1,28 @@
 import logging
+from dataclasses import dataclass
 from typing import Any
 
 import lightning as L
 import torch
 from lightning.pytorch.callbacks import Callback
 
-from ex_color.events import StepMetricsEvent
-from ex_color.record import MetricsRecorder
-
 log = logging.getLogger(__name__)
 
 
+@dataclass
+class MetricsRecord:
+    """Simple metrics record without backward compatibility."""
+    step: int
+    total_loss: float
+    losses: dict[str, float]
+
+
 class MetricsCallback(Callback):
-    """Lightning callback to replace the metrics recording functionality."""
+    """Simplified metrics callback using Lightning's built-in systems."""
 
     def __init__(self):
         super().__init__()
-        self.metrics_recorder = MetricsRecorder()
+        self.history: list[MetricsRecord] = []
 
     def on_train_batch_end(
         self,
@@ -27,37 +33,24 @@ class MetricsCallback(Callback):
         batch_idx: int,
     ) -> None:
         """Record metrics after each training step."""
-        batch_data, batch_labels = batch
-
         # Extract loss information from outputs
         if isinstance(outputs, dict):
             total_loss = outputs.get('loss', 0.0)
+            losses = outputs.get('losses', {})
         else:
             total_loss = outputs if outputs is not None else 0.0
+            losses = {}
 
         if torch.is_tensor(total_loss):
             total_loss = total_loss.item()
 
-        # Get losses from logged metrics (if available)
-        losses = {}
-        if hasattr(trainer.logged_metrics, 'items'):
-            for key, value in trainer.logged_metrics.items():
-                if key.startswith('train_') and key != 'train_loss':
-                    losses[key.replace('train_', '')] = value.item() if torch.is_tensor(value) else value
-
-        # Create a proper StepMetricsEvent for the metrics recorder
-        step_metrics_event = StepMetricsEvent(
-            name='step-metrics',
+        # Create metrics record
+        record = MetricsRecord(
             step=trainer.global_step,
-            model=pl_module,
-            timeline_state=pl_module.timeline.state,
-            optimizer=trainer.optimizers[0] if trainer.optimizers else None,
-            train_batch=batch_data,
             total_loss=total_loss,
-            losses=losses,
+            losses=losses.copy()
         )
-
-        self.metrics_recorder(step_metrics_event)
+        self.history.append(record)
 
 
 class PhaseCallback(Callback):
@@ -71,6 +64,12 @@ class PhaseCallback(Callback):
         batch_idx: int,
     ) -> None:
         """Handle phase start events."""
+        # Import here to avoid circular imports
+        from ex_color.model import ColorMLPTrainingModule
+        
+        if not isinstance(pl_module, ColorMLPTrainingModule):
+            return
+            
         current_state = pl_module.timeline.state
 
         if current_state.is_phase_start:
@@ -93,6 +92,12 @@ class ValidationCallback(Callback):
         batch_idx: int,
     ) -> None:
         """Handle phase end validation."""
+        # Import here to avoid circular imports
+        from ex_color.model import ColorMLPTrainingModule
+        
+        if not isinstance(pl_module, ColorMLPTrainingModule):
+            return
+            
         current_state = pl_module.timeline.state
 
         if current_state.is_phase_end:
