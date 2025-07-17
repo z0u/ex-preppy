@@ -20,6 +20,7 @@ log = logging.getLogger(__name__)
 @dataclass
 class ModelOutput:
     """Structured output from the model."""
+
     rgb: torch.Tensor
     latents: torch.Tensor
 
@@ -120,9 +121,7 @@ class ColorMLPTrainingModule(L.LightningModule):
             if regularizer.label_affinities is not None:
                 # Soft labels that indicate how much effect this regularizer has
                 label_probs = [
-                    batch_labels[k] * v
-                    for k, v in regularizer.label_affinities.items()
-                    if k in batch_labels
+                    batch_labels[k] * v for k, v in regularizer.label_affinities.items() if k in batch_labels
                 ]
                 if not label_probs:
                     continue

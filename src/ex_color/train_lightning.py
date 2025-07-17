@@ -39,6 +39,7 @@ def train_color_model_lightning(
 
     # Create trainer with correct number of steps
     from mini.temporal.timeline import Timeline
+
     total_steps = len(Timeline(dopesheet))
     trainer = L.Trainer(
         max_steps=total_steps,

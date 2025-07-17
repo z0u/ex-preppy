@@ -12,6 +12,7 @@ log = logging.getLogger(__name__)
 @dataclass
 class MetricsRecord:
     """Simple metrics record without backward compatibility."""
+
     step: int
     total_loss: float
     losses: dict[str, float]
@@ -45,11 +46,7 @@ class MetricsCallback(Callback):
             total_loss = total_loss.item()
 
         # Create metrics record
-        record = MetricsRecord(
-            step=trainer.global_step,
-            total_loss=total_loss,
-            losses=losses.copy()
-        )
+        record = MetricsRecord(step=trainer.global_step, total_loss=total_loss, losses=losses.copy())
         self.history.append(record)
 
 
@@ -66,10 +63,10 @@ class PhaseCallback(Callback):
         """Handle phase start events."""
         # Import here to avoid circular imports
         from ex_color.model import ColorMLPTrainingModule
-        
+
         if not isinstance(pl_module, ColorMLPTrainingModule):
             return
-            
+
         current_state = pl_module.timeline.state
 
         if current_state.is_phase_start:
@@ -94,10 +91,10 @@ class ValidationCallback(Callback):
         """Handle phase end validation."""
         # Import here to avoid circular imports
         from ex_color.model import ColorMLPTrainingModule
-        
+
         if not isinstance(pl_module, ColorMLPTrainingModule):
             return
-            
+
         current_state = pl_module.timeline.state
 
         if current_state.is_phase_end:
