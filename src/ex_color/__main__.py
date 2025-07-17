@@ -7,7 +7,6 @@ import numpy as np
 import torch
 from torch._tensor import Tensor
 from torch.utils.data import DataLoader, TensorDataset, WeightedRandomSampler
-from tqdm import tqdm
 
 from ex_color.criteria.anchor import Anchor
 from ex_color.criteria.criteria import RegularizerConfig
@@ -18,12 +17,11 @@ from ex_color.criteria.unitarity import unitarity
 from ex_color.data.color_cube import ColorCube
 from ex_color.data.cube_sampler import vibrancy
 from ex_color.data.cyclic import arange_cyclic
-from ex_color.events import EventHandlers
 from ex_color.labelling import collate_with_generated_labels
 from ex_color.model import ColorMLP
 from ex_color.record import MetricsRecorder
 from ex_color.seed import set_deterministic_mode
-from ex_color.train import train_color_model
+from ex_color.train_lightning import train_color_model_lightning
 from mini.temporal.dopesheet import Dopesheet
 from utils.logging import SimpleLoggingConfig
 
@@ -110,45 +108,26 @@ def train(
 ):
     """Train the model with the given dopesheet and variant."""
     log.info(f'Training with: {[r.name for r in regularizers]}')
-    # recorder = ModelRecorder()
-    metrics_recorder = MetricsRecorder()
-    # batch_recorder = BatchRecorder()
 
     seed = 0
     set_deterministic_mode(seed)
 
     hsv_loader, rgb_tensor = prep_data()
-    model = ColorMLP()
-    total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+    # Create a temporary model just to count parameters
+    temp_model = ColorMLP(dopesheet, objective(torch.nn.MSELoss()), regularizers)
+    total_params = sum(p.numel() for p in temp_model.parameters() if p.requires_grad)
     log.debug(f'Model initialized with {total_params:,} trainable parameters.')
 
-    with tqdm(total=dopesheet.as_df()['STEP'].max()) as p:
-        event_handlers = EventHandlers()
-        event_handlers.phase_start.add_handler(
-            'phase-start',
-            lambda event: p.set_description(event.timeline_state.phase),
-        )
-        event_handlers.pre_step.add_handler('pre-step', lambda event: p.update())
-        # event_handlers.pre_step.add_handler('pre-step', recorder)
-        event_handlers.step_metrics.add_handler('step-metrics', metrics_recorder)
-        event_handlers.step_metrics.add_handler(
-            'step-metrics',
-            lambda event: p.set_postfix({'train-loss': event.total_loss}),
-        )
-        # event_handlers.step_metrics.add_handler('step-metrics', batch_recorder)
+    metrics_callback = train_color_model_lightning(
+        hsv_loader,
+        rgb_tensor,
+        dopesheet,
+        loss_criterion=objective(torch.nn.MSELoss()),
+        regularizers=regularizers,
+    )
 
-        train_color_model(
-            model,
-            hsv_loader,
-            rgb_tensor,
-            dopesheet,
-            # loss_criterion=objective(nn.MSELoss(reduction='none')),  # No reduction; allows per-sample loss weights
-            loss_criterion=objective(torch.nn.MSELoss()),
-            regularizers=regularizers,
-            event_handlers=event_handlers,
-        )
-
-    return metrics_recorder
+    return metrics_callback.metrics_recorder
 
 
 def main(dev=False):

@@ -16,6 +16,7 @@ dependencies = [
     "scikit-image>=0.25.2",
     "scikit-learn>=1.6.1",
     "sympy>=1.13.1",
+    "lightning>=2.4.0",
 ]
 
 [project.optional-dependencies]
