@@ -4,7 +4,8 @@ from typing import Any
 import torch
 import torch.optim as optim
 from ignite.engine import Engine, Events
-from ignite.metrics import Loss, RunningAverage
+from ignite.handlers import TerminateOnNan
+from ignite.metrics import RunningAverage
 from torch import Tensor
 from torch.utils.data import DataLoader
 
@@ -172,12 +173,17 @@ def train_color_model_ignite(  # noqa: C901
         )
         recon_metric.attach(trainer, 'avg_recon')
 
+        # Add useful Ignite handlers
+        trainer.add_event_handler(
+            Events.ITERATION_COMPLETED, TerminateOnNan(output_transform=lambda x: x['total_loss'])
+        )
+
         # Add custom parameter scheduler using timeline
         @trainer.on(Events.ITERATION_STARTED)
         def update_parameters(engine: Engine):
             """Update learning rates and regularizer weights from timeline."""
             current_state = timeline.state
-            
+
             # Update learning rate
             current_lr = current_state.props['lr']
             for param_group in optimizer.param_groups:

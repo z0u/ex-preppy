@@ -25,8 +25,6 @@ class ColorMLP(nn.Module):
             nn.Sigmoid(),  # Keep RGB values in [0,1]
         )
 
-
-
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # Get our bottleneck representation
         bottleneck = self.encoder(x)
