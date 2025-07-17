@@ -33,6 +33,7 @@ class ColorMLP(nn.Module):
         """Register a hook to capture bottleneck latents."""
 
         def hook_fn(module: nn.Module, input: tuple[torch.Tensor, ...], output: torch.Tensor) -> None:  # noqa: ARG001
+            del module, input  # Unused parameters required by hook signature
             self._latents = output
 
         # Register hook on the encoder's last layer (bottleneck)

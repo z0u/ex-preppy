@@ -51,7 +51,7 @@ torch.backends.cudnn.deterministic  # torch setting
 torch.backends.cudnn.benchmark  # torch setting
 
 # Ignite event handlers - used via decorators
-src/ex_color/train_ignite.py:156: unused function 'handle_iteration_started'
-src/ex_color/train_ignite.py:170: unused function 'handle_iteration_completed' 
-src/ex_color/train_ignite.py:195: unused function 'handle_phase_end'
+handle_iteration_started  # src/ex_color/train_ignite.py - Ignite decorator
+handle_iteration_completed  # src/ex_color/train_ignite.py - Ignite decorator  
+handle_phase_end  # src/ex_color/train_ignite.py - Ignite decorator
 
