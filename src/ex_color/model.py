@@ -1,5 +1,4 @@
 import logging
-from typing import Any
 
 import torch
 import torch.nn as nn
@@ -32,7 +31,8 @@ class ColorMLP(nn.Module):
 
     def register_latent_hook(self):
         """Register a hook to capture bottleneck latents."""
-        def hook_fn(module: nn.Module, input: tuple[torch.Tensor, ...], output: torch.Tensor) -> None:
+
+        def hook_fn(module: nn.Module, input: tuple[torch.Tensor, ...], output: torch.Tensor) -> None:  # noqa: ARG001
             self._latents = output
 
         # Register hook on the encoder's last layer (bottleneck)
