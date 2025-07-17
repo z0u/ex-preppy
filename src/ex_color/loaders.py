@@ -3,6 +3,7 @@ from typing import Iterable, Iterator
 
 log = logging.getLogger(__name__)
 
+
 def reiterate[T](it: Iterable[T]) -> Iterator[T]:
     """
     Iterates over an iterable indefinitely.
