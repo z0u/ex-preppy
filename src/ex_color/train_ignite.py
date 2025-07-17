@@ -180,7 +180,7 @@ def train_color_model_ignite(  # noqa: C901
 
         # Add custom parameter scheduler using timeline
         @trainer.on(Events.ITERATION_STARTED)
-        def update_parameters(engine: Engine):
+        def update_parameters(engine: Engine):  # noqa: ARG001
             """Update learning rates and regularizer weights from timeline."""
             current_state = timeline.state
 
