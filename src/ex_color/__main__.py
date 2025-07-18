@@ -8,7 +8,7 @@ from torch._tensor import Tensor
 from torch.utils.data import DataLoader, TensorDataset, WeightedRandomSampler
 
 from ex_color.regularizers.anchor import Anchor
-from ex_color.regularizers.criteria import RegularizerConfig
+from ex_color.regularizers.regularizer import RegularizerConfig
 from ex_color.regularizers.planarity import planarity
 from ex_color.regularizers.separate import Separate
 from ex_color.regularizers.unitarity import unitarity
@@ -73,27 +73,27 @@ def prep_data() -> tuple[DataLoader, Tensor]:
 ALL_REGULARIZERS = [
     RegularizerConfig(
         name='reg-polar',
-        criterion=Anchor(torch.tensor([1, 0, 0, 0], dtype=torch.float32)),
+        regularizer=Anchor(torch.tensor([1, 0, 0, 0], dtype=torch.float32)),
         label_affinities={'red': 1.0},
     ),
     RegularizerConfig(
         name='reg-separate',
-        criterion=Separate(power=10.0, shift=False),
+        regularizer=Separate(power=10.0, shift=False),
         label_affinities=None,
     ),
     RegularizerConfig(
         name='reg-planar',
-        criterion=planarity,
+        regularizer=planarity,
         label_affinities={'vibrant': 1.0},
     ),
     RegularizerConfig(
         name='reg-norm-v',
-        criterion=unitarity,
+        regularizer=unitarity,
         label_affinities={'vibrant': 1.0},
     ),
     RegularizerConfig(
         name='reg-norm',
-        criterion=unitarity,
+        regularizer=unitarity,
         label_affinities=None,
     ),
 ]

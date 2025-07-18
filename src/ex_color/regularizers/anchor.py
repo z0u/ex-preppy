@@ -3,7 +3,7 @@ import logging
 import torch
 from torch import Tensor
 
-from ex_color.regularizers.criteria import Regularizer
+from ex_color.regularizers.regularizer import Regularizer
 
 log = logging.getLogger(__name__)
 

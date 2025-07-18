@@ -5,7 +5,7 @@ import torch
 from lightning.pytorch.callbacks import TQDMProgressBar
 from torch.utils.data import DataLoader
 
-from ex_color.regularizers.criteria import RegularizerConfig
+from ex_color.regularizers.regularizer import RegularizerConfig
 from ex_color.lightning_callbacks import MetricsCallback, PhaseCallback, ValidationCallback
 from ex_color.model import ColorMLPTrainingModule, Objective
 from mini.temporal.dopesheet import Dopesheet

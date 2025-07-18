@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch import Tensor
 
-from ex_color.regularizers.criteria import RegularizerConfig
+from ex_color.regularizers.regularizer import RegularizerConfig
 from mini.temporal.dopesheet import Dopesheet
 from mini.temporal.timeline import Timeline
 
@@ -126,7 +126,7 @@ class ColorMLPTrainingModule(L.LightningModule):
             else:
                 sample_affinities = torch.ones(batch_data.shape[0], device=batch_data.device)
 
-            per_sample_loss = regularizer.criterion(self.latent_hook.current_latents)
+            per_sample_loss = regularizer.regularizer(self.latent_hook.current_latents)
             if len(per_sample_loss.shape) == 0:
                 # If the loss is a scalar, we need to expand it to match the batch size
                 per_sample_loss = per_sample_loss.expand(batch_data.shape[0])
