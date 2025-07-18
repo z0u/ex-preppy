@@ -150,6 +150,7 @@ exclude = [
     "*.egg-info/*"
 ]
 ignore_decorators = [
+    "@override",
     "@modal.asgi_app",
     "@app.middleware",
     "@app.get",

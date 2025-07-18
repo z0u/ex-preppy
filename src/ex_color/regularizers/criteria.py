@@ -4,14 +4,13 @@ from typing import Protocol, runtime_checkable
 
 from torch import Tensor
 
-from ex_color.result import InferenceResult
 
 log = logging.getLogger(__name__)
 
 
 @runtime_checkable
-class LossCriterion(Protocol):
-    def __call__(self, data: Tensor, res: InferenceResult) -> Tensor: ...
+class Regularizer(Protocol):
+    def __call__(self, activations: Tensor) -> Tensor: ...
 
 
 @dataclass
@@ -20,6 +19,6 @@ class RegularizerConfig:
 
     name: str
     """Matched with hyperparameter for weighting"""
-    criterion: LossCriterion
+    criterion: Regularizer
     label_affinities: dict[str, float] | None
     """Maps label names to affinity strengths"""

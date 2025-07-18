@@ -1,6 +1,5 @@
 import itertools
 import logging
-import sys
 from functools import partial
 
 import numpy as np
@@ -8,12 +7,11 @@ import torch
 from torch._tensor import Tensor
 from torch.utils.data import DataLoader, TensorDataset, WeightedRandomSampler
 
-from ex_color.criteria.anchor import Anchor
-from ex_color.criteria.criteria import RegularizerConfig
-from ex_color.criteria.objective import objective
-from ex_color.criteria.planarity import planarity
-from ex_color.criteria.separate import Separate
-from ex_color.criteria.unitarity import unitarity
+from ex_color.regularizers.anchor import Anchor
+from ex_color.regularizers.criteria import RegularizerConfig
+from ex_color.regularizers.planarity import planarity
+from ex_color.regularizers.separate import Separate
+from ex_color.regularizers.unitarity import unitarity
 from ex_color.data.color_cube import ColorCube
 from ex_color.data.cube_sampler import vibrancy
 from ex_color.data.cyclic import arange_cyclic
@@ -114,7 +112,7 @@ def train(
     hsv_loader, rgb_tensor = prep_data()
 
     # Create a temporary training module just to count parameters
-    temp_module = ColorMLPTrainingModule(dopesheet, objective(torch.nn.MSELoss()), regularizers)
+    temp_module = ColorMLPTrainingModule(dopesheet, torch.nn.MSELoss(), regularizers)
     total_params = sum(p.numel() for p in temp_module.parameters() if p.requires_grad)
     log.debug(f'Model initialized with {total_params:,} trainable parameters.')
 
@@ -122,23 +120,20 @@ def train(
         hsv_loader,
         rgb_tensor,
         dopesheet,
-        loss_criterion=objective(torch.nn.MSELoss()),
-        regularizers=regularizers,
+        torch.nn.MSELoss(),
+        regularizers,
     )
 
     return metrics_callback.history
 
 
-def main(dev=False):
+def main():
     all_regs = ALL_REGULARIZERS
     all_combinations = list(
         itertools.chain(*(itertools.combinations(all_regs, i) for i in range(1, len(all_regs) + 1)))
     )
 
-    # if dev:
     combinations = all_combinations[-1:]  # For testing, select a subset
-    # else:
-    #     combinations = all_combinations[:]
     log.info(f'Running {len(combinations):d}/{len(all_combinations):d} combinations of {len(all_regs)} regularizers.')
 
     runs: dict[str, list] = {}
@@ -152,4 +147,4 @@ def main(dev=False):
 
 if __name__ == '__main__':
     SimpleLoggingConfig().info('__main__', 'ex_color', 'utils').apply()
-    main(dev='--dev' in sys.argv)
+    main()

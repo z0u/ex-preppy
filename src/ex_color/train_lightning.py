@@ -5,9 +5,9 @@ import torch
 from lightning.pytorch.callbacks import TQDMProgressBar
 from torch.utils.data import DataLoader
 
-from ex_color.criteria.criteria import LossCriterion, RegularizerConfig
+from ex_color.regularizers.criteria import RegularizerConfig
 from ex_color.lightning_callbacks import MetricsCallback, PhaseCallback, ValidationCallback
-from ex_color.model import ColorMLPTrainingModule
+from ex_color.model import ColorMLPTrainingModule, Objective
 from mini.temporal.dopesheet import Dopesheet
 
 log = logging.getLogger(__name__)
@@ -17,12 +17,12 @@ def train_color_model_lightning(
     train_loader: DataLoader,
     val_data: torch.Tensor,
     dopesheet: Dopesheet,
-    loss_criterion: LossCriterion,
+    objective: Objective,
     regularizers: list[RegularizerConfig],
 ) -> MetricsCallback:
     """Train the color model using PyTorch Lightning."""
     # Create the Lightning training module
-    training_module = ColorMLPTrainingModule(dopesheet, loss_criterion, regularizers)
+    training_module = ColorMLPTrainingModule(dopesheet, objective, regularizers)
 
     # Set up callbacks
     metrics_callback = MetricsCallback()

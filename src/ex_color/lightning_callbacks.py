@@ -1,10 +1,12 @@
 import logging
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, override
 
 import lightning as L
 import torch
 from lightning.pytorch.callbacks import Callback
+
+from ex_color.model import ColorMLPTrainingModule
 
 log = logging.getLogger(__name__)
 
@@ -25,6 +27,7 @@ class MetricsCallback(Callback):
         super().__init__()
         self.history: list[MetricsRecord] = []
 
+    @override
     def on_train_batch_end(
         self,
         trainer: L.Trainer,
@@ -34,6 +37,7 @@ class MetricsCallback(Callback):
         batch_idx: int,
     ) -> None:
         """Record metrics after each training step."""
+        del batch_idx
         # Extract loss information from outputs
         if isinstance(outputs, dict):
             total_loss = outputs.get('loss', 0.0)
@@ -53,6 +57,7 @@ class MetricsCallback(Callback):
 class PhaseCallback(Callback):
     """Lightning callback to handle phase transitions."""
 
+    @override
     def on_train_batch_start(
         self,
         trainer: L.Trainer,
@@ -61,9 +66,7 @@ class PhaseCallback(Callback):
         batch_idx: int,
     ) -> None:
         """Handle phase start events."""
-        # Import here to avoid circular imports
-        from ex_color.model import ColorMLPTrainingModule
-
+        del batch_idx
         if not isinstance(pl_module, ColorMLPTrainingModule):
             return
 
@@ -80,6 +83,7 @@ class ValidationCallback(Callback):
         super().__init__()
         self.val_data = val_data
 
+    @override
     def on_train_batch_end(
         self,
         trainer: L.Trainer,
@@ -89,9 +93,7 @@ class ValidationCallback(Callback):
         batch_idx: int,
     ) -> None:
         """Handle phase end validation."""
-        # Import here to avoid circular imports
-        from ex_color.model import ColorMLPTrainingModule
-
+        del batch_idx
         if not isinstance(pl_module, ColorMLPTrainingModule):
             return
 

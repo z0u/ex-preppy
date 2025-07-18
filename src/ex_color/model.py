@@ -1,5 +1,5 @@
 import logging
-from dataclasses import dataclass
+from typing import Protocol, override
 
 import lightning as L
 import torch
@@ -7,33 +7,13 @@ import torch.nn as nn
 import torch.optim as optim
 from torch import Tensor
 
-from ex_color.criteria.criteria import LossCriterion, RegularizerConfig
-from ex_color.result import InferenceResult
+from ex_color.regularizers.criteria import RegularizerConfig
 from mini.temporal.dopesheet import Dopesheet
 from mini.temporal.timeline import Timeline
 
 E = 4
 
 log = logging.getLogger(__name__)
-
-
-@dataclass
-class ModelOutput:
-    """Structured output from the model."""
-
-    rgb: torch.Tensor
-    latents: torch.Tensor
-
-
-class LatentCaptureHook:
-    """Hook class to capture latent representations externally."""
-
-    def __init__(self):
-        self.current_latents: Tensor | None = None
-
-    def __call__(self, module, input, output):
-        """Hook function to capture latent representations."""
-        self.current_latents = output
 
 
 class ColorMLP(nn.Module):
@@ -55,15 +35,28 @@ class ColorMLP(nn.Module):
             nn.Sigmoid(),  # Keep RGB values in [0,1]
         )
 
-    def forward(self, x: torch.Tensor) -> ModelOutput:
-        """Forward pass returning structured output."""
+    @override
+    def forward(self, x: Tensor) -> Tensor:
         # Get our bottleneck representation
         latents = self.encoder(x)
 
         # Decode back to RGB
-        rgb = self.decoder(latents)
+        return self.decoder(latents)
 
-        return ModelOutput(rgb=rgb, latents=latents)
+
+class LatentCaptureHook:
+    """Hook class to capture latent representations externally."""
+
+    def __init__(self):
+        self.current_latents: Tensor | None = None
+
+    def __call__(self, _module, _input, output):
+        """Hook function to capture latent representations."""
+        self.current_latents = output
+
+
+class Objective(Protocol):
+    def __call__(self, y_pred: Tensor, y_true: Tensor) -> Tensor: ...
 
 
 class ColorMLPTrainingModule(L.LightningModule):
@@ -72,12 +65,12 @@ class ColorMLPTrainingModule(L.LightningModule):
     def __init__(
         self,
         dopesheet: Dopesheet,
-        loss_criterion: LossCriterion,
+        objective: Objective,
         regularizers: list[RegularizerConfig],
     ):
         super().__init__()
         # Store training configuration
-        self.loss_criterion = loss_criterion
+        self.objective = objective
         self.regularizers = regularizers
         self.timeline = Timeline(dopesheet)
 
@@ -88,23 +81,24 @@ class ColorMLPTrainingModule(L.LightningModule):
         self.latent_hook = LatentCaptureHook()
         self.model.encoder.register_forward_hook(self.latent_hook)
 
-    def forward(self, x: torch.Tensor) -> ModelOutput:
-        """Forward pass through the model."""
+    @override
+    def forward(self, x: Tensor) -> Tensor:
         return self.model(x)
 
-    def training_step(self, batch, batch_idx):
-        """Lightning training step."""
+    @override
+    def training_step(self, batch: tuple[Tensor, dict[str, Tensor]], batch_idx):
         batch_data, batch_labels = batch
+        assert all(isinstance(k, str) and isinstance(v, Tensor) for k, v in batch_labels.items())
 
         # Get current timeline state
         current_state = self.timeline.state
 
         # Forward pass
-        model_output = self(batch_data)
-        current_results = InferenceResult(model_output.rgb, model_output.latents)
+        outputs: Tensor = self(batch_data)
+        assert self.latent_hook.current_latents is not None
 
         # Calculate primary reconstruction loss
-        primary_loss = self.loss_criterion(batch_data, current_results).mean()
+        primary_loss = self.objective(outputs, batch_data).mean()
         losses = {'recon': primary_loss.item()}
         total_loss = primary_loss
         zeros = torch.tensor(0.0, device=batch_data.device)
@@ -112,7 +106,6 @@ class ColorMLPTrainingModule(L.LightningModule):
         # Calculate regularizer losses
         for regularizer in self.regularizers:
             name = regularizer.name
-            criterion = regularizer.criterion
 
             weight = current_state.props.get(name, 1.0)
             if weight == 0:
@@ -133,7 +126,7 @@ class ColorMLPTrainingModule(L.LightningModule):
             else:
                 sample_affinities = torch.ones(batch_data.shape[0], device=batch_data.device)
 
-            per_sample_loss = criterion(batch_data, current_results)
+            per_sample_loss = regularizer.criterion(self.latent_hook.current_latents)
             if len(per_sample_loss.shape) == 0:
                 # If the loss is a scalar, we need to expand it to match the batch size
                 per_sample_loss = per_sample_loss.expand(batch_data.shape[0])
@@ -158,20 +151,19 @@ class ColorMLPTrainingModule(L.LightningModule):
 
         return {'loss': total_loss, 'losses': losses}
 
+    @override
     def configure_optimizers(self):
-        """Configure optimizers and learning rate schedulers."""
-        optimizer = optim.Adam(self.parameters(), lr=1e-8)  # Initial LR will be overridden
-        return optimizer
+        return optim.Adam(self.parameters(), lr=1e-8)  # Initial LR will be overridden
 
+    @override
     def on_before_optimizer_step(self, optimizer):
-        """Update learning rate based on timeline before optimizer step."""
         current_state = self.timeline.state
         current_lr = current_state.props.get('lr', 1e-8)
 
         for param_group in optimizer.param_groups:
             param_group['lr'] = current_lr
 
+    @override
     def on_train_batch_end(self, outputs, batch, batch_idx):
-        """Advance timeline after each training step."""
         if self.global_step < len(self.timeline) - 1:
             self.timeline.step()
