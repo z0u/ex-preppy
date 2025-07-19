@@ -99,7 +99,7 @@ ALL_REGULARIZERS = [
         name='reg-norm',
         compute_loss_term=unitarity,
         label_affinities=None,
-        # No layer_affinities specified - will default to ['encoder'] for backwards compatibility
+        layer_affinities=['encoder'],  # Explicit layer specification
     ),
 ]
 

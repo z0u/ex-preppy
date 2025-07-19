@@ -93,10 +93,6 @@ class TrainingModule(L.LightningModule):
             if reg.layer_affinities is not None:
                 unique_layers.update(reg.layer_affinities)
 
-        # If no layer affinities specified, default to 'encoder' for backwards compatibility
-        if not unique_layers:
-            unique_layers = {'encoder'}
-
         # Register hooks for all unique layers
         for layer_name in unique_layers:
             try:
@@ -105,8 +101,8 @@ class TrainingModule(L.LightningModule):
                 layer_module.register_forward_hook(hook)
                 self.latent_hooks[layer_name] = hook
                 log.debug(f'Registered hook for layer: {layer_name}')
-            except AttributeError:
-                log.warning(f'Layer {layer_name} not found in model, skipping hook registration')
+            except AttributeError as e:
+                raise AttributeError(f'Layer {layer_name} not found in model') from e
 
     def on_save_checkpoint(self, checkpoint):
         log.info('Saving timeline state')
@@ -149,13 +145,16 @@ class TrainingModule(L.LightningModule):
                 continue
 
             # Determine which layers to apply this regularizer to
-            target_layers = reg.layer_affinities if reg.layer_affinities is not None else ['encoder']
+            target_layers = reg.layer_affinities
+            if target_layers is None:
+                raise ValueError(f'Regularizer {reg.name} must specify layer_affinities')
 
             # Apply regularizer to each specified layer
             for layer_name in target_layers:
                 if layer_name not in self.latent_hooks:
-                    log.warning(f'Layer {layer_name} not found in hooks, skipping regularizer {reg.name}')
-                    continue
+                    raise RuntimeError(
+                        f'Layer {layer_name} not found in hooks, regularizer {reg.name} cannot be applied'
+                    )
 
                 hook = self.latent_hooks[layer_name]
                 if hook.current_latents is None:
@@ -209,9 +208,22 @@ class ColorMLPTrainingModule(TrainingModule):
         objective: Objective,
         regularizers: list[RegularizerConfig],
     ):
+        # Handle backwards compatibility: add default layer_affinities for regularizers that don't have them
+        from copy import deepcopy
+
+        compat_regularizers = []
+        for reg in regularizers:
+            if reg.layer_affinities is None:
+                # Create a new regularizer config with encoder as default layer
+                compat_reg = deepcopy(reg)
+                compat_reg.layer_affinities = ['encoder']
+                compat_regularizers.append(compat_reg)
+            else:
+                compat_regularizers.append(reg)
+
         # Create the ColorMLP model
         model = ColorMLP()
-        super().__init__(model, dopesheet, objective, regularizers)
+        super().__init__(model, dopesheet, objective, compat_regularizers)
 
 
 def compute_loss_term(regularizer: RegularizerConfig, batch_labels, latents: Tensor):
