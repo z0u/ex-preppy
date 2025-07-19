@@ -59,11 +59,12 @@ class Objective(Protocol):
     def __call__(self, y_pred: Tensor, y_true: Tensor) -> Tensor: ...
 
 
-class ColorMLPTrainingModule(L.LightningModule):
-    """Lightning module that handles training logic."""
+class TrainingModule(L.LightningModule):
+    """Lightning module that handles training logic for any model architecture."""
 
     def __init__(
         self,
+        model: nn.Module,
         dopesheet: Dopesheet,
         objective: Objective,
         regularizers: list[RegularizerConfig],
@@ -76,13 +77,36 @@ class ColorMLPTrainingModule(L.LightningModule):
         self.regularizers = regularizers
         self.timeline = Timeline(dopesheet)
 
-        # Create the pure neural network model (without training logic)
-        self.model = ColorMLP()
+        # Store the pure neural network model (passed as parameter)
+        self.model = model
 
-        # Set up external latent capture hook
-        # TODO: How to regularize the activations of layers in a deep network, without hardcoding it here? Maybe bind regularizers to layers with self.model.get_submodule('some.module')
-        self.latent_hook = LatentCaptureHook()
-        self.model.encoder.register_forward_hook(self.latent_hook)
+        # Set up latent capture hooks for all unique layer names
+        self.latent_hooks: dict[str, LatentCaptureHook] = {}
+        self._setup_latent_hooks()
+
+    def _setup_latent_hooks(self):
+        """Set up hooks for all unique layers specified in regularizer layer_affinities."""
+        unique_layers = set()
+
+        # Collect all unique layer names from regularizers
+        for reg in self.regularizers:
+            if reg.layer_affinities is not None:
+                unique_layers.update(reg.layer_affinities)
+
+        # If no layer affinities specified, default to 'encoder' for backwards compatibility
+        if not unique_layers:
+            unique_layers = {'encoder'}
+
+        # Register hooks for all unique layers
+        for layer_name in unique_layers:
+            try:
+                layer_module = self.model.get_submodule(layer_name)
+                hook = LatentCaptureHook()
+                layer_module.register_forward_hook(hook)
+                self.latent_hooks[layer_name] = hook
+                log.debug(f'Registered hook for layer: {layer_name}')
+            except AttributeError:
+                log.warning(f'Layer {layer_name} not found in model, skipping hook registration')
 
     def on_save_checkpoint(self, checkpoint):
         log.info('Saving timeline state')
@@ -110,7 +134,6 @@ class ColorMLPTrainingModule(L.LightningModule):
 
         # Forward pass
         outputs: Tensor = self(batch_data)
-        assert self.latent_hook.current_latents is not None
 
         # Calculate primary reconstruction loss
         primary_loss = self.objective(outputs, batch_data).mean()
@@ -125,15 +148,33 @@ class ColorMLPTrainingModule(L.LightningModule):
                 # Regularizer has been disabled for this timestep
                 continue
 
-            term_loss = compute_loss_term(reg, batch_labels, self.latent_hook.current_latents)
-            if term_loss is None:
-                continue
+            # Determine which layers to apply this regularizer to
+            target_layers = reg.layer_affinities if reg.layer_affinities is not None else ['encoder']
 
-            if not torch.isfinite(term_loss):
-                raise RuntimeError(f'Loss term {reg.name} at step {self.global_step} is not finite: {term_loss}')
+            # Apply regularizer to each specified layer
+            for layer_name in target_layers:
+                if layer_name not in self.latent_hooks:
+                    log.warning(f'Layer {layer_name} not found in hooks, skipping regularizer {reg.name}')
+                    continue
 
-            losses[reg.name] = term_loss.item()
-            total_loss += term_loss * weight
+                hook = self.latent_hooks[layer_name]
+                if hook.current_latents is None:
+                    log.warning(f'No latents captured for layer {layer_name}, skipping regularizer {reg.name}')
+                    continue
+
+                term_loss = compute_loss_term(reg, batch_labels, hook.current_latents)
+                if term_loss is None:
+                    continue
+
+                if not torch.isfinite(term_loss):
+                    raise RuntimeError(
+                        f'Loss term {reg.name} for layer {layer_name} at step {self.global_step} is not finite: {term_loss}'
+                    )
+
+                # Use layer-specific loss name for logging
+                loss_key = f'{reg.name}:{layer_name}' if len(target_layers) > 1 else reg.name
+                losses[loss_key] = term_loss.item()
+                total_loss += term_loss * weight
 
         # Log metrics using Lightning's built-in logging
         self.log('train_loss', total_loss, prog_bar=True)
@@ -156,6 +197,21 @@ class ColorMLPTrainingModule(L.LightningModule):
     def on_train_batch_end(self, outputs, batch, batch_idx):
         if self.global_step < len(self.timeline) - 1:
             self.timeline.step()
+
+
+# Keep ColorMLPTrainingModule as a backwards compatibility wrapper
+class ColorMLPTrainingModule(TrainingModule):
+    """Legacy wrapper for backwards compatibility. Use TrainingModule instead."""
+
+    def __init__(
+        self,
+        dopesheet: Dopesheet,
+        objective: Objective,
+        regularizers: list[RegularizerConfig],
+    ):
+        # Create the ColorMLP model
+        model = ColorMLP()
+        super().__init__(model, dopesheet, objective, regularizers)
 
 
 def compute_loss_term(regularizer: RegularizerConfig, batch_labels, latents: Tensor):
