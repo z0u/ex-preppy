@@ -1,14 +1,14 @@
 from typing import Type
 
-from mini.temporal.dopesheet import Dopesheet, Step
+from mini.temporal.dopesheet import Dopesheet
+from mini.temporal.model import TStep, Frame
 from mini.temporal.timing_fn import (
     LinearTimingFunction,
     MinimumJerkTimingFunction,
     StepEndTimingFunction,
     TimingFunction,
 )
-from mini.temporal.transitions import LogDynamicProp, DynamicProp
-from mini.temporal.model import Frame
+from mini.temporal.transitions import DynamicProp, LogDynamicProp
 
 # Map interpolator names to classes
 INTERPOLATOR_MAP: dict[str, Type[TimingFunction]] = {
@@ -48,7 +48,7 @@ class Timeline:
             prop_config = dopesheet.get_prop_config(prop)
 
             # Look up the timing function class based on the config name
-            timing_function_cls = INTERPOLATOR_MAP.get(prop_config.interpolator_name, DEFAULT_TIMING_FUNCTION)
+            timing_function_cls = INTERPOLATOR_MAP.get(prop_config.timing_fn, DEFAULT_TIMING_FUNCTION)
 
             # Use the initial value if available, otherwise default to 0.0
             initial_value = initial_values.get(prop, 0.0)
@@ -76,7 +76,7 @@ class Timeline:
 
     def _process_keyframes(self) -> None:
         """Process keyframes at the current step."""
-        current_step: Step = self.dopesheet[self._step]
+        current_step: Frame = self.dopesheet[self._step]
 
         for key in current_step.keyed_props:
             # Only proceed if we have a valid next target
@@ -90,7 +90,7 @@ class Timeline:
             # The appropriate space transformation is handled by the SmoothProp or LogSpaceSmoothProp
             self.props[prop_name].set(value=key.next_value, duration=duration)
 
-    def step(self) -> Frame:
+    def step(self) -> TStep:
         """Advance the timeline by one step."""
         if self._step >= self._max_steps:
             raise IndexError('Timeline has reached the end.')
@@ -102,11 +102,11 @@ class Timeline:
         return self.state
 
     @property
-    def state(self) -> Frame:
+    def state(self) -> TStep:
         """Get the current state of the timeline."""
         static_info = self.dopesheet[self._step]
         props = {prop: self.props[prop].value for prop in self.props}
-        return Frame(
+        return TStep(
             step=self._step,
             phase=static_info.phase,
             actions=static_info.actions,

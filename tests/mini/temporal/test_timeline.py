@@ -5,7 +5,7 @@ import pytest
 from pytest import approx
 
 from mini.temporal.dopesheet import Dopesheet
-from mini.temporal.model import Frame
+from mini.temporal.model import TStep
 from mini.temporal.timeline import Timeline
 
 
@@ -52,7 +52,7 @@ def test_timeline_step_progression(timeline):
     # Step forward
     state = timeline.step()
     assert timeline._step == 1
-    assert state == Frame(
+    assert state == TStep(
         step=1,
         phase='One',
         actions=[],
@@ -133,7 +133,7 @@ def test_timeline_phase_transitions(timeline):
 
     # Check initial state (step 0)
     state = timeline.state
-    assert state == Frame(
+    assert state == TStep(
         step=0,
         phase='One',
         actions=ANY,
@@ -144,7 +144,7 @@ def test_timeline_phase_transitions(timeline):
 
     # Step to 1 (middle of phase "One")
     state = timeline.step()
-    assert state == Frame(
+    assert state == TStep(
         step=1,
         phase='One',
         actions=ANY,
@@ -157,7 +157,7 @@ def test_timeline_phase_transitions(timeline):
     for _ in range(8):  # Already at step 1, need 8 more steps to get to 9
         timeline.step()
     state = timeline.state
-    assert state == Frame(
+    assert state == TStep(
         step=9,
         phase='One',
         actions=ANY,
@@ -168,7 +168,7 @@ def test_timeline_phase_transitions(timeline):
 
     # Step to 10 (both start and end of phase "Two")
     state = timeline.step()
-    assert state == Frame(
+    assert state == TStep(
         step=10,
         phase='Two',
         actions=ANY,
@@ -179,7 +179,7 @@ def test_timeline_phase_transitions(timeline):
 
     # Step to 11 (start of phase "Fin" - final step)
     state = timeline.step()
-    assert state == Frame(
+    assert state == TStep(
         step=11,
         phase='Fin',
         actions=ANY,
@@ -190,7 +190,7 @@ def test_timeline_phase_transitions(timeline):
 
     # Step to 12 (start and end of phase "Fin" - final step)
     state = timeline.step()
-    assert state == Frame(
+    assert state == TStep(
         step=12,
         phase='Fin',
         actions=ANY,
