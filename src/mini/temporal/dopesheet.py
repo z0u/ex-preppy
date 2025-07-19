@@ -16,7 +16,7 @@ DEFAULT_SPACE = 'linear'
 DEFAULT_INTERPOLATOR = 'minjerk'
 
 
-@dataclass
+@dataclass(slots=True)
 class PropConfig:
     """Configuration for a single property column."""
 
@@ -25,7 +25,7 @@ class PropConfig:
     interpolator_name: str = DEFAULT_INTERPOLATOR
 
 
-@dataclass
+@dataclass(slots=True)
 class Key:
     prop: str
     """Name of the property this keyframe is for."""
@@ -46,7 +46,7 @@ class Key:
         return self.next_t - self.t
 
 
-@dataclass
+@dataclass(slots=True)
 class Step:
     t: int
     phase: str
@@ -115,11 +115,9 @@ class Dopesheet:
             if match:
                 parts = match.groupdict()
                 prop_name = parts['prop']
-                config = PropConfig(
-                    prop=prop_name,
-                    space=parts.get('space') or DEFAULT_SPACE,
-                    interpolator_name=parts.get('interpolator') or DEFAULT_INTERPOLATOR,
-                )
+                space = parts.get('space') or DEFAULT_SPACE
+                interpolator_name = parts.get('interpolator') or DEFAULT_INTERPOLATOR
+                config = PropConfig(prop=prop_name, space=space, interpolator_name=interpolator_name)
                 prop_configs[prop_name] = config
                 if col != prop_name:
                     rename_map[col] = prop_name
@@ -221,7 +219,7 @@ class Dopesheet:
 
     def get_prop_config(self, prop_name: str) -> PropConfig:
         """Get the parsed configuration for a specific property."""
-        return self._prop_configs.get(prop_name, PropConfig(prop=prop_name))
+        return self._prop_configs.get(prop_name) or PropConfig(prop=prop_name)
 
     @property
     def phases(self) -> set[str]:

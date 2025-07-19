@@ -29,7 +29,7 @@ class RegularizerConfig:
 
     name: str
     """Matched with hyperparameter for weighting"""
-    regularizer: Regularizer
+    compute_loss_term: Regularizer
     """Function to compute a loss term based on hidden layer activations"""
     label_affinities: dict[str, float] | None
     """Maps label names to affinity strengths"""

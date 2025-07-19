@@ -17,6 +17,7 @@ _.format  # unused method (src/utils/logging.py:26)
 
 _._repr_html_  # Jupyter renderer
 owner  # Descriptor protocol
+__call__  # Function protocol
 
 bottom  # unused variable (src/utils/theming.py:290)
 left  # unused variable (src/utils/theming.py:288)

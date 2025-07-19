@@ -74,12 +74,17 @@ class ColorMLPTrainingModule(L.LightningModule):
         self.regularizers = regularizers
         self.timeline = Timeline(dopesheet)
 
-        # Create the pure neural network model
+        # Create the pure neural network model (without training logic)
         self.model = ColorMLP()
 
         # Set up external latent capture hook
+        # TODO: How to regularize the activations of layers in a deep network, without hardcoding it here? Maybe bind regularizers to layers with self.model.get_submodule('some.module')
         self.latent_hook = LatentCaptureHook()
         self.model.encoder.register_forward_hook(self.latent_hook)
+
+    @property
+    def schedule(self) -> dict[str, float]:
+        return self.timeline.state.props
 
     @override
     def forward(self, x: Tensor) -> Tensor:
@@ -90,9 +95,6 @@ class ColorMLPTrainingModule(L.LightningModule):
         batch_data, batch_labels = batch
         assert all(isinstance(k, str) and isinstance(v, Tensor) for k, v in batch_labels.items())
 
-        # Get current timeline state
-        current_state = self.timeline.state
-
         # Forward pass
         outputs: Tensor = self(batch_data)
         assert self.latent_hook.current_latents is not None
@@ -101,47 +103,23 @@ class ColorMLPTrainingModule(L.LightningModule):
         primary_loss = self.objective(outputs, batch_data).mean()
         losses = {'recon': primary_loss.item()}
         total_loss = primary_loss
-        zeros = torch.tensor(0.0, device=batch_data.device)
 
         # Calculate regularizer losses
-        for regularizer in self.regularizers:
-            name = regularizer.name
-
-            weight = current_state.props.get(name, 1.0)
+        for reg in self.regularizers:
+            # Default to full weight for regularizers that aren't in the timeline
+            weight = self.schedule.get(reg.name, 1.0)
             if weight == 0:
+                # Regularizer has been disabled for this timestep
                 continue
 
-            if regularizer.label_affinities is not None:
-                # Soft labels that indicate how much effect this regularizer has
-                label_probs = [
-                    batch_labels[k] * v for k, v in regularizer.label_affinities.items() if k in batch_labels
-                ]
-                if not label_probs:
-                    continue
+            term_loss = compute_loss_term(reg, batch_labels, self.latent_hook.current_latents)
+            if term_loss is None:
+                continue
 
-                sample_affinities = torch.stack(label_probs, dim=0).sum(dim=0)
-                sample_affinities = torch.clamp(sample_affinities, 0.0, 1.0)
-                if torch.allclose(sample_affinities, zeros):
-                    continue
-            else:
-                sample_affinities = torch.ones(batch_data.shape[0], device=batch_data.device)
-
-            per_sample_loss = regularizer.regularizer(self.latent_hook.current_latents)
-            if len(per_sample_loss.shape) == 0:
-                # If the loss is a scalar, we need to expand it to match the batch size
-                per_sample_loss = per_sample_loss.expand(batch_data.shape[0])
-            assert per_sample_loss.shape[0] == batch_data.shape[0], f'Loss should be per-sample OR scalar: {name}'
-
-            # Apply sample affinities
-            weighted_loss = per_sample_loss * sample_affinities
-
-            # Calculate mean only over selected samples
-            term_loss = weighted_loss.sum() / (sample_affinities.sum() + 1e-8)
-
-            losses[name] = term_loss.item()
             if not torch.isfinite(term_loss):
-                log.warning(f'Loss term {name} at step {self.global_step} is not finite: {term_loss}')
-                continue
+                raise RuntimeError(f'Loss term {reg.name} at step {self.global_step} is not finite: {term_loss}')
+
+            losses[reg.name] = term_loss.item()
             total_loss += term_loss * weight
 
         # Log metrics using Lightning's built-in logging
@@ -157,9 +135,7 @@ class ColorMLPTrainingModule(L.LightningModule):
 
     @override
     def on_before_optimizer_step(self, optimizer):
-        current_state = self.timeline.state
-        current_lr = current_state.props.get('lr', 1e-8)
-
+        current_lr = self.schedule.get('lr', 1e-8)
         for param_group in optimizer.param_groups:
             param_group['lr'] = current_lr
 
@@ -167,3 +143,39 @@ class ColorMLPTrainingModule(L.LightningModule):
     def on_train_batch_end(self, outputs, batch, batch_idx):
         if self.global_step < len(self.timeline) - 1:
             self.timeline.step()
+
+
+def compute_loss_term(regularizer: RegularizerConfig, batch_labels, latents: Tensor):
+    per_sample_loss = regularizer.compute_loss_term(latents)
+
+    if regularizer.label_affinities is None:
+        return regularizer.compute_loss_term(latents).mean()
+
+    sample_affinities = get_sample_affinities(batch_labels, regularizer.label_affinities)
+    if sample_affinities is None:
+        # No labels match
+        return None
+
+    # Weight per-sample loss by the regularizer's affinity for its labels
+    if len(per_sample_loss.shape) == 0:
+        # If the loss is a scalar, we need to expand it to match the batch size
+        per_sample_loss = per_sample_loss.expand(sample_affinities.shape[0])
+    elif per_sample_loss.shape[0] != sample_affinities.shape[0]:
+        raise RuntimeError(f'Loss should be per-sample OR scalar: {regularizer.name}')
+    weighted_loss = per_sample_loss * sample_affinities
+    return weighted_loss.sum() / (sample_affinities.sum() + 1e-8)
+
+
+def get_sample_affinities(batch_labels: dict[str, Tensor], label_affinities: dict[str, float]):
+    # Soft labels that indicate how much effect this regularizer has (in practice, labels may be binary)
+    label_probs = [
+        batch_labels[k] * v  #
+        for k, v in label_affinities.items()
+        if k in batch_labels
+    ]
+    if not label_probs:
+        return None
+
+    sample_affinities = torch.stack(label_probs, dim=0).sum(dim=0)
+    sample_affinities = torch.clamp(sample_affinities, 0.0, 1.0)
+    return sample_affinities

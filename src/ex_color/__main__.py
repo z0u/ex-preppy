@@ -73,27 +73,27 @@ def prep_data() -> tuple[DataLoader, Tensor]:
 ALL_REGULARIZERS = [
     RegularizerConfig(
         name='reg-polar',
-        regularizer=Anchor(torch.tensor([1, 0, 0, 0], dtype=torch.float32)),
+        compute_loss_term=Anchor(torch.tensor([1, 0, 0, 0], dtype=torch.float32)),
         label_affinities={'red': 1.0},
     ),
     RegularizerConfig(
         name='reg-separate',
-        regularizer=Separate(power=10.0, shift=False),
+        compute_loss_term=Separate(power=10.0, shift=False),
         label_affinities=None,
     ),
     RegularizerConfig(
         name='reg-planar',
-        regularizer=planarity,
+        compute_loss_term=planarity,
         label_affinities={'vibrant': 1.0},
     ),
     RegularizerConfig(
         name='reg-norm-v',
-        regularizer=unitarity,
+        compute_loss_term=unitarity,
         label_affinities={'vibrant': 1.0},
     ),
     RegularizerConfig(
         name='reg-norm',
-        regularizer=unitarity,
+        compute_loss_term=unitarity,
         label_affinities=None,
     ),
 ]

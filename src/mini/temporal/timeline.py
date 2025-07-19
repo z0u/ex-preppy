@@ -1,15 +1,14 @@
-from dataclasses import dataclass
 from typing import Type
 
 from mini.temporal.dopesheet import Dopesheet, Step
-from mini.temporal.transitions import (
+from mini.temporal.timing_fn import (
     LinearTimingFunction,
-    LogSpaceSmoothProp,
     MinimumJerkTimingFunction,
-    SmoothProp,
     StepEndTimingFunction,
     TimingFunction,
 )
+from mini.temporal.transitions import LogDynamicProp, DynamicProp
+from mini.temporal.model import Frame
 
 # Map interpolator names to classes
 INTERPOLATOR_MAP: dict[str, Type[TimingFunction]] = {
@@ -21,16 +20,6 @@ INTERPOLATOR_MAP: dict[str, Type[TimingFunction]] = {
 DEFAULT_TIMING_FUNCTION = MinimumJerkTimingFunction
 
 
-@dataclass
-class State:
-    step: int
-    phase: str
-    actions: list[str]
-    props: dict[str, float]
-    is_phase_start: bool
-    is_phase_end: bool
-
-
 class Timeline:
     """
     Evolves property values over time.
@@ -40,7 +29,7 @@ class Timeline:
     and updating the properties at each step.
     """
 
-    props: dict[str, SmoothProp]
+    props: dict[str, DynamicProp]
     _step: int
     _max_steps: int
 
@@ -67,13 +56,13 @@ class Timeline:
             # Create appropriate SmoothProp based on space setting
             if prop_config.space == 'log':
                 # Use LogSpaceSmoothProp for logarithmic space
-                self.props[prop] = LogSpaceSmoothProp(
+                self.props[prop] = LogDynamicProp(
                     value=initial_value,
                     timing_function_cls=timing_function_cls,
                 )
             else:
                 # Use regular SmoothProp for linear space (the default)
-                self.props[prop] = SmoothProp(
+                self.props[prop] = DynamicProp(
                     value=initial_value,
                     timing_function_cls=timing_function_cls,
                 )
@@ -101,7 +90,7 @@ class Timeline:
             # The appropriate space transformation is handled by the SmoothProp or LogSpaceSmoothProp
             self.props[prop_name].set(value=key.next_value, duration=duration)
 
-    def step(self) -> State:
+    def step(self) -> Frame:
         """Advance the timeline by one step."""
         if self._step >= self._max_steps:
             raise IndexError('Timeline has reached the end.')
@@ -113,11 +102,11 @@ class Timeline:
         return self.state
 
     @property
-    def state(self) -> State:
+    def state(self) -> Frame:
         """Get the current state of the timeline."""
         static_info = self.dopesheet[self._step]
         props = {prop: self.props[prop].value for prop in self.props}
-        return State(
+        return Frame(
             step=self._step,
             phase=static_info.phase,
             actions=static_info.actions,
