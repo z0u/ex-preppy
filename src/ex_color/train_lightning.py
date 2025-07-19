@@ -5,9 +5,9 @@ import torch
 from lightning.pytorch.callbacks import TQDMProgressBar
 from torch.utils.data import DataLoader
 
-from ex_color.regularizers.regularizer import RegularizerConfig
 from ex_color.lightning_callbacks import MetricsCallback, PhaseCallback, ValidationCallback
-from ex_color.model import TrainingModule, ColorMLP, Objective
+from ex_color.model import Objective, TrainingModule
+from ex_color.regularizers.regularizer import RegularizerConfig
 from mini.temporal.dopesheet import Dopesheet
 
 log = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ def train_color_model_lightning(
     dopesheet: Dopesheet,
     objective: Objective,
     regularizers: list[RegularizerConfig],
-    model: torch.nn.Module | None = None,
+    model: torch.nn.Module,
 ) -> MetricsCallback:
     """
     Train the color model using PyTorch Lightning.
@@ -30,11 +30,8 @@ def train_color_model_lightning(
         dopesheet: Training schedule
         objective: Loss function
         regularizers: List of regularizers to apply
-        model: Optional model to use. If None, creates a ColorMLP model.
+        model: PyTorch model to use
     """
-    # Create the Lightning training module
-    if model is None:
-        model = ColorMLP()
     training_module = TrainingModule(model, dopesheet, objective, regularizers)
 
     # Set up callbacks
@@ -50,12 +47,8 @@ def train_color_model_lightning(
         progress_bar,
     ]
 
-    # Create trainer with correct number of steps
-    from mini.temporal.timeline import Timeline
-
-    total_steps = len(Timeline(dopesheet))
     trainer = L.Trainer(
-        max_steps=total_steps,
+        max_steps=len(dopesheet),
         callbacks=callbacks,
         enable_checkpointing=False,
         enable_model_summary=False,

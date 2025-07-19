@@ -44,15 +44,14 @@ class ColorMLP(nn.Module):
         return self.decoder(latents)
 
 
-class LatentCaptureHook:
-    """Hook class to capture latent representations externally."""
+class ActivationCaptureHook:
+    """Hook class to capture latent representations."""
 
     def __init__(self):
-        self.current_latents: Tensor | None = None
+        self.activations: Tensor | None = None
 
     def __call__(self, _module, _input, output):
-        """Hook function to capture latent representations."""
-        self.current_latents = output
+        self.activations = output
 
 
 class Objective(Protocol):
@@ -70,7 +69,12 @@ class TrainingModule(L.LightningModule):
         regularizers: list[RegularizerConfig],
     ):
         super().__init__()
-        self.save_hyperparameters()
+
+        # Save params for rehydration. Modules are saved automatically.
+        ignore = ['model']
+        if isinstance(objective, nn.Module):
+            ignore.append('objective')
+        self.save_hyperparameters(ignore=ignore)
 
         # Store training configuration
         self.objective = objective
@@ -81,28 +85,31 @@ class TrainingModule(L.LightningModule):
         self.model = model
 
         # Set up latent capture hooks for all unique layer names
-        self.latent_hooks: dict[str, LatentCaptureHook] = {}
+        self.latent_hooks: dict[str, ActivationCaptureHook] = {}
         self._setup_latent_hooks()
 
     def _setup_latent_hooks(self):
         """Set up hooks for all unique layers specified in regularizer layer_affinities."""
-        unique_layers = set()
-
-        # Collect all unique layer names from regularizers
         for reg in self.regularizers:
-            if reg.layer_affinities is not None:
-                unique_layers.update(reg.layer_affinities)
+            if len(reg.layer_affinities) == 0:
+                log.warning(f'Regularizer {reg.name} has no layer affinities and will not run')
 
-        # Register hooks for all unique layers
+        unique_layers = {
+            name  #
+            for reg in self.regularizers
+            for name in reg.layer_affinities
+        }
+
         for layer_name in unique_layers:
             try:
                 layer_module = self.model.get_submodule(layer_name)
-                hook = LatentCaptureHook()
-                layer_module.register_forward_hook(hook)
-                self.latent_hooks[layer_name] = hook
-                log.debug(f'Registered hook for layer: {layer_name}')
             except AttributeError as e:
-                raise AttributeError(f'Layer {layer_name} not found in model') from e
+                reg_names = [reg.name for reg in self.regularizers if layer_name in reg.layer_affinities]
+                raise AttributeError(f'Layer {layer_name} not found in model; needed by {", ".join(reg_names)}') from e
+            hook = ActivationCaptureHook()
+            layer_module.register_forward_hook(hook)
+            self.latent_hooks[layer_name] = hook
+            log.debug(f'Registered hook for layer: {layer_name}')
 
     def on_save_checkpoint(self, checkpoint):
         log.info('Saving timeline state')
@@ -144,34 +151,22 @@ class TrainingModule(L.LightningModule):
                 # Regularizer has been disabled for this timestep
                 continue
 
-            # Determine which layers to apply this regularizer to
-            target_layers = reg.layer_affinities
-            if target_layers is None:
-                raise ValueError(f'Regularizer {reg.name} must specify layer_affinities')
-
             # Apply regularizer to each specified layer
-            for layer_name in target_layers:
-                if layer_name not in self.latent_hooks:
-                    raise RuntimeError(
-                        f'Layer {layer_name} not found in hooks, regularizer {reg.name} cannot be applied'
-                    )
-
+            for layer_name in reg.layer_affinities:
                 hook = self.latent_hooks[layer_name]
-                if hook.current_latents is None:
+                if hook.activations is None:
                     log.warning(f'No latents captured for layer {layer_name}, skipping regularizer {reg.name}')
                     continue
 
-                term_loss = compute_loss_term(reg, batch_labels, hook.current_latents)
+                term_loss = compute_loss_term(reg, batch_labels, hook.activations)
                 if term_loss is None:
                     continue
 
                 if not torch.isfinite(term_loss):
-                    raise RuntimeError(
-                        f'Loss term {reg.name} for layer {layer_name} at step {self.global_step} is not finite: {term_loss}'
-                    )
+                    raise RuntimeError(f'Loss term {reg.name}:{layer_name} at step {self.global_step} is {term_loss:f}')
 
                 # Use layer-specific loss name for logging
-                loss_key = f'{reg.name}:{layer_name}' if len(target_layers) > 1 else reg.name
+                loss_key = f'{reg.name}:{layer_name}' if len(reg.layer_affinities) > 1 else reg.name
                 losses[loss_key] = term_loss.item()
                 total_loss += term_loss * weight
 

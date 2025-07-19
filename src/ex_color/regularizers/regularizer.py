@@ -33,5 +33,5 @@ class RegularizerConfig:
     """Function to compute a loss term based on hidden layer activations"""
     label_affinities: dict[str, float] | None
     """Maps label names to affinity strengths"""
-    layer_affinities: list[str] | None = None
+    layer_affinities: list[str]
     """List of layer names to apply this regularizer to, e.g. ['encoder', 'decoder.0']"""

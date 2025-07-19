@@ -121,12 +121,14 @@ def train(
     total_params = sum(p.numel() for p in temp_module.parameters() if p.requires_grad)
     log.debug(f'Model initialized with {total_params:,} trainable parameters.')
 
+    model = ColorMLP()
     metrics_callback = train_color_model_lightning(
         hsv_loader,
         rgb_tensor,
         dopesheet,
         torch.nn.MSELoss(),
         regularizers,
+        model,
     )
 
     return metrics_callback.history

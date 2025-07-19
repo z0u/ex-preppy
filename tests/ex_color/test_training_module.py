@@ -1,10 +1,13 @@
 """Tests for the generalized TrainingModule."""
 
+from pathlib import Path
+from unittest.mock import MagicMock
+
 import pytest
 import torch
 from torch import Tensor
 
-from ex_color.model import TrainingModule, ColorMLP, ColorMLPTrainingModule
+from ex_color.model import ColorMLP, TrainingModule
 from ex_color.regularizers.regularizer import RegularizerConfig
 from mini.temporal.dopesheet import Dopesheet
 
@@ -26,7 +29,7 @@ def sample_model():
 @pytest.fixture
 def sample_dopesheet():
     """Create a minimal dopesheet for testing."""
-    return Dopesheet.from_csv('/tmp/test_dopesheet.csv')
+    return Dopesheet.from_csv(Path(__file__).parent / 'fixtures' / 'dopesheet.csv')
 
 
 @pytest.fixture
@@ -36,25 +39,23 @@ def sample_objective():
 
 
 def test_training_module_with_layer_affinities(sample_model, sample_dopesheet, sample_objective):
-    """Test that TrainingModule correctly handles layer_affinities."""
+    """Test that TrainingModule creates hooks based on layer_affinities."""
     regularizers = [
         RegularizerConfig(
-            name='test-reg-encoder',
+            name='reg-encoder',
             compute_loss_term=MockRegularizer(),
             label_affinities=None,
             layer_affinities=['encoder'],
         ),
         RegularizerConfig(
-            name='test-reg-decoder',
+            name='reg-decoder',
             compute_loss_term=MockRegularizer(),
             label_affinities=None,
             layer_affinities=['decoder'],
         ),
     ]
 
-    training_module = TrainingModule(
-        model=sample_model, dopesheet=sample_dopesheet, objective=sample_objective, regularizers=regularizers
-    )
+    training_module = TrainingModule(sample_model, sample_dopesheet, sample_objective, regularizers)
 
     # Check that hooks were registered for both layers
     assert 'encoder' in training_module.latent_hooks
@@ -62,47 +63,18 @@ def test_training_module_with_layer_affinities(sample_model, sample_dopesheet, s
     assert len(training_module.latent_hooks) == 2
 
 
-def test_training_module_backwards_compatibility(sample_dopesheet, sample_objective):
-    """Test that ColorMLPTrainingModule provides backwards compatibility for regularizers without layer_affinities."""
-    regularizers = [
-        RegularizerConfig(
-            name='test-reg-old',
-            compute_loss_term=MockRegularizer(),
-            label_affinities=None,
-            # No layer_affinities - should work with ColorMLPTrainingModule but not TrainingModule
-        ),
-    ]
-
-    # This should work with ColorMLPTrainingModule (backwards compatibility)
-    training_module = ColorMLPTrainingModule(
-        dopesheet=sample_dopesheet, objective=sample_objective, regularizers=regularizers
-    )
-
-    # Should default to encoder hook for backwards compatibility
-    assert 'encoder' in training_module.latent_hooks
-    assert len(training_module.latent_hooks) == 1
-
-    # TrainingModule should raise an error for regularizers without layer_affinities
-    with pytest.raises(ValueError, match='must specify layer_affinities'):
-        TrainingModule(
-            model=ColorMLP(), dopesheet=sample_dopesheet, objective=sample_objective, regularizers=regularizers
-        ).training_step((torch.randn(4, 3), {}), 0)
-
-
 def test_training_module_with_multiple_layers_per_regularizer(sample_model, sample_dopesheet, sample_objective):
     """Test that a regularizer can be applied to multiple layers."""
     regularizers = [
         RegularizerConfig(
-            name='test-reg-multi',
+            name='reg-multi',
             compute_loss_term=MockRegularizer(),
             label_affinities=None,
             layer_affinities=['encoder', 'decoder'],
         ),
     ]
 
-    training_module = TrainingModule(
-        model=sample_model, dopesheet=sample_dopesheet, objective=sample_objective, regularizers=regularizers
-    )
+    training_module = TrainingModule(sample_model, sample_dopesheet, sample_objective, regularizers)
 
     # Should register hooks for both layers
     assert 'encoder' in training_module.latent_hooks
@@ -114,7 +86,7 @@ def test_training_module_invalid_layer_names(sample_model, sample_dopesheet, sam
     """Test that TrainingModule raises an exception for invalid layer names."""
     regularizers = [
         RegularizerConfig(
-            name='test-reg-invalid',
+            name='reg-invalid',
             compute_loss_term=MockRegularizer(),
             label_affinities=None,
             layer_affinities=['nonexistent_layer'],
@@ -123,25 +95,22 @@ def test_training_module_invalid_layer_names(sample_model, sample_dopesheet, sam
 
     # Should raise an exception during initialization
     with pytest.raises(AttributeError, match='Layer nonexistent_layer not found in model'):
-        TrainingModule(
-            model=sample_model, dopesheet=sample_dopesheet, objective=sample_objective, regularizers=regularizers
-        )
+        TrainingModule(sample_model, sample_dopesheet, sample_objective, regularizers)
 
 
 def test_training_step_with_layer_affinities(sample_model, sample_dopesheet, sample_objective):
     """Test that training_step correctly applies regularizers to specified layers."""
     regularizers = [
         RegularizerConfig(
-            name='test-reg-encoder',
+            name='reg-encoder',
             compute_loss_term=MockRegularizer(),
             label_affinities=None,
             layer_affinities=['encoder'],
         ),
     ]
 
-    training_module = TrainingModule(
-        model=sample_model, dopesheet=sample_dopesheet, objective=sample_objective, regularizers=regularizers
-    )
+    training_module = TrainingModule(sample_model, sample_dopesheet, sample_objective, regularizers)
+    training_module.log = MagicMock()  # Requires a Trainer, which this test doesn't use
 
     # Create sample batch
     batch_size = 4
@@ -160,23 +129,4 @@ def test_training_step_with_layer_affinities(sample_model, sample_dopesheet, sam
 
     # Should have reconstruction loss and regularizer loss
     assert 'recon' in result['losses']
-    assert 'test-reg-encoder' in result['losses']
-
-
-def test_training_module_no_layer_affinities(sample_model, sample_dopesheet, sample_objective):
-    """Test that TrainingModule creates no hooks when no regularizers specify layer_affinities."""
-    regularizers = [
-        RegularizerConfig(
-            name='test-reg-no-layers',
-            compute_loss_term=MockRegularizer(),
-            label_affinities=None,
-            # No layer_affinities specified
-        ),
-    ]
-
-    training_module = TrainingModule(
-        model=sample_model, dopesheet=sample_dopesheet, objective=sample_objective, regularizers=regularizers
-    )
-
-    # Should not register any hooks when no layer_affinities are specified
-    assert len(training_module.latent_hooks) == 0
+    assert 'reg-encoder' in result['losses']
