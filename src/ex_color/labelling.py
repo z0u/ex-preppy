@@ -3,7 +3,6 @@ from torch import Tensor
 from torch.utils.data.dataloader import default_collate
 
 
-
 def generate_color_labels(data: Tensor, vibrancies: Tensor) -> dict[str, Tensor]:
     """
     Generate label probabilities based on RGB values.

@@ -4,13 +4,12 @@ from types import EllipsisType
 import torch
 from torch import Tensor
 
-from ex_color.criteria.criteria import LossCriterion
-from ex_color.result import InferenceResult
+from ex_color.regularizers.regularizer import Regularizer
 
 log = logging.getLogger(__name__)
 
 
-class Separate(LossCriterion):
+class Separate(Regularizer):
     """Regularize latents to be rotationally separated from each other."""
 
     def __init__(self, channels: tuple[int, ...] | EllipsisType = ..., power: float = 1.0, shift: bool = True):
@@ -18,8 +17,8 @@ class Separate(LossCriterion):
         self.power = power
         self.shift = shift
 
-    def __call__(self, data: Tensor, res: InferenceResult) -> Tensor:
-        embeddings = res.latents[:, self.channels]  # [B, C]
+    def __call__(self, activations: Tensor) -> Tensor:
+        embeddings = activations[:, self.channels]  # [B, C]
 
         # Normalize to unit hypersphere, so it's only the angular distance that matters
         embeddings = embeddings / (torch.norm(embeddings, dim=-1, keepdim=True) + 1e-8)

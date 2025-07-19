@@ -1,6 +1,6 @@
 import logging
 import re
-from dataclasses import dataclass, field
+from dataclasses import field
 from io import BytesIO, StringIO
 from pathlib import Path
 from typing import Literal, overload
@@ -9,56 +9,13 @@ import numpy as np
 import pandas as pd
 from pandas.io.formats.style import Styler
 
+from mini.temporal.model import Keyframe, PropConfig, Frame
+
 log = logging.getLogger(__name__)
 
 RESERVED_COLS = ('STEP', 'PHASE', 'ACTION')
 DEFAULT_SPACE = 'linear'
-DEFAULT_INTERPOLATOR = 'minjerk'
-
-
-@dataclass
-class PropConfig:
-    """Configuration for a single property column."""
-
-    prop: str  # Base name, e.g., 'x'
-    space: str = DEFAULT_SPACE
-    interpolator_name: str = DEFAULT_INTERPOLATOR
-
-
-@dataclass
-class Key:
-    prop: str
-    """Name of the property this keyframe is for."""
-    t: int
-    """The frame number."""
-    value: float
-    """The value at this step."""
-    next_t: int | None
-    """Frame number of the next keyframe for this property."""
-    next_value: float | None
-    """Value at the next keyframe for this property."""
-
-    @property
-    def duration(self) -> int | None:
-        """Duration of the transition starting at this key."""
-        if self.next_t is None:
-            return None
-        return self.next_t - self.t
-
-
-@dataclass
-class Step:
-    t: int
-    phase: str
-    """The current phase active *at* this step."""
-    is_phase_start: bool
-    """Whether this is the first step of the phase."""
-    is_phase_end: bool
-    """Whether this is the last step of the phase."""
-    actions: list[str]
-    """Actions listed at this step."""
-    keyed_props: list[Key]
-    """All properties that are keyed (have a non-NaN value) on this step."""
+DEFAULT_TF = 'minjerk'
 
 
 class Dopesheet:
@@ -115,16 +72,14 @@ class Dopesheet:
             if match:
                 parts = match.groupdict()
                 prop_name = parts['prop']
-                config = PropConfig(
-                    prop=prop_name,
-                    space=parts.get('space') or DEFAULT_SPACE,
-                    interpolator_name=parts.get('interpolator') or DEFAULT_INTERPOLATOR,
-                )
+                space = parts.get('space') or DEFAULT_SPACE
+                interpolator_name = parts.get('interpolator') or DEFAULT_TF
+                config = PropConfig(prop=prop_name, space=space, timing_fn=interpolator_name)
                 prop_configs[prop_name] = config
                 if col != prop_name:
                     rename_map[col] = prop_name
             else:
-                prop_configs[col] = PropConfig(prop=col)
+                prop_configs[col] = PropConfig(prop=col, space=DEFAULT_SPACE, timing_fn=DEFAULT_TF)
                 log.warning(f"Column '{col}' doesn't match 'prop:space:interpolator' format. Assuming defaults.")
 
         if rename_map:
@@ -133,7 +88,7 @@ class Dopesheet:
         final_props = [c for c in df.columns if c not in RESERVED_COLS]
         for prop in final_props:
             if prop not in prop_configs:
-                prop_configs[prop] = PropConfig(prop=prop)
+                prop_configs[prop] = PropConfig(prop=prop, space=DEFAULT_SPACE, timing_fn=DEFAULT_TF)
 
         return df, prop_configs
 
@@ -141,7 +96,7 @@ class Dopesheet:
         """Get the number of steps in the dope sheet."""
         return self._df['STEP'].max() + 1
 
-    def __getitem__(self, step: int) -> Step:
+    def __getitem__(self, step: int) -> Frame:
         """
         Get the step details for the given step number.
 
@@ -174,7 +129,7 @@ class Dopesheet:
 
         _t: int = steps_col[idx]
         if _t != step:
-            return Step(
+            return Frame(
                 t=step,
                 phase=phase,
                 is_phase_start=False,
@@ -196,7 +151,7 @@ class Dopesheet:
             if pd.isna(value):
                 continue
             next_idx = series[series.index > idx].first_valid_index()
-            k = Key(
+            k = Keyframe(
                 prop=prop,
                 t=step,
                 value=value,
@@ -205,7 +160,7 @@ class Dopesheet:
             )
             keyed_props.append(k)
 
-        return Step(
+        return Frame(
             t=step,
             phase=phase,
             is_phase_start=phase_start,
@@ -221,7 +176,10 @@ class Dopesheet:
 
     def get_prop_config(self, prop_name: str) -> PropConfig:
         """Get the parsed configuration for a specific property."""
-        return self._prop_configs.get(prop_name, PropConfig(prop=prop_name))
+        try:
+            return self._prop_configs[prop_name]
+        except KeyError:
+            return PropConfig(prop=prop_name, space=DEFAULT_SPACE, timing_fn=DEFAULT_TF)
 
     @property
     def phases(self) -> set[str]:

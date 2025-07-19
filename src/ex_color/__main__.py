@@ -1,29 +1,24 @@
 import itertools
 import logging
-import sys
 from functools import partial
 
 import numpy as np
 import torch
 from torch._tensor import Tensor
 from torch.utils.data import DataLoader, TensorDataset, WeightedRandomSampler
-from tqdm import tqdm
 
-from ex_color.criteria.anchor import Anchor
-from ex_color.criteria.criteria import RegularizerConfig
-from ex_color.criteria.objective import objective
-from ex_color.criteria.planarity import planarity
-from ex_color.criteria.separate import Separate
-from ex_color.criteria.unitarity import unitarity
+from ex_color.regularizers.anchor import Anchor
+from ex_color.regularizers.regularizer import RegularizerConfig
+from ex_color.regularizers.planarity import planarity
+from ex_color.regularizers.separate import Separate
+from ex_color.regularizers.unitarity import unitarity
 from ex_color.data.color_cube import ColorCube
 from ex_color.data.cube_sampler import vibrancy
 from ex_color.data.cyclic import arange_cyclic
-from ex_color.events import EventHandlers
 from ex_color.labelling import collate_with_generated_labels
-from ex_color.model import ColorMLP
-from ex_color.record import MetricsRecorder
+from ex_color.model import ColorMLPTrainingModule
 from ex_color.seed import set_deterministic_mode
-from ex_color.train import train_color_model
+from ex_color.train_lightning import train_color_model_lightning
 from mini.temporal.dopesheet import Dopesheet
 from utils.logging import SimpleLoggingConfig
 
@@ -78,27 +73,27 @@ def prep_data() -> tuple[DataLoader, Tensor]:
 ALL_REGULARIZERS = [
     RegularizerConfig(
         name='reg-polar',
-        criterion=Anchor(torch.tensor([1, 0, 0, 0], dtype=torch.float32)),
+        compute_loss_term=Anchor(torch.tensor([1, 0, 0, 0], dtype=torch.float32)),
         label_affinities={'red': 1.0},
     ),
     RegularizerConfig(
         name='reg-separate',
-        criterion=Separate(power=10.0, shift=False),
+        compute_loss_term=Separate(power=10.0, shift=False),
         label_affinities=None,
     ),
     RegularizerConfig(
         name='reg-planar',
-        criterion=planarity,
+        compute_loss_term=planarity,
         label_affinities={'vibrant': 1.0},
     ),
     RegularizerConfig(
         name='reg-norm-v',
-        criterion=unitarity,
+        compute_loss_term=unitarity,
         label_affinities={'vibrant': 1.0},
     ),
     RegularizerConfig(
         name='reg-norm',
-        criterion=unitarity,
+        compute_loss_term=unitarity,
         label_affinities=None,
     ),
 ]
@@ -110,68 +105,46 @@ def train(
 ):
     """Train the model with the given dopesheet and variant."""
     log.info(f'Training with: {[r.name for r in regularizers]}')
-    # recorder = ModelRecorder()
-    metrics_recorder = MetricsRecorder()
-    # batch_recorder = BatchRecorder()
 
     seed = 0
     set_deterministic_mode(seed)
 
     hsv_loader, rgb_tensor = prep_data()
-    model = ColorMLP()
-    total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+    # Create a temporary training module just to count parameters
+    temp_module = ColorMLPTrainingModule(dopesheet, torch.nn.MSELoss(), regularizers)
+    total_params = sum(p.numel() for p in temp_module.parameters() if p.requires_grad)
     log.debug(f'Model initialized with {total_params:,} trainable parameters.')
 
-    with tqdm(total=dopesheet.as_df()['STEP'].max()) as p:
-        event_handlers = EventHandlers()
-        event_handlers.phase_start.add_handler(
-            'phase-start',
-            lambda event: p.set_description(event.timeline_state.phase),
-        )
-        event_handlers.pre_step.add_handler('pre-step', lambda event: p.update())
-        # event_handlers.pre_step.add_handler('pre-step', recorder)
-        event_handlers.step_metrics.add_handler('step-metrics', metrics_recorder)
-        event_handlers.step_metrics.add_handler(
-            'step-metrics',
-            lambda event: p.set_postfix({'train-loss': event.total_loss}),
-        )
-        # event_handlers.step_metrics.add_handler('step-metrics', batch_recorder)
+    metrics_callback = train_color_model_lightning(
+        hsv_loader,
+        rgb_tensor,
+        dopesheet,
+        torch.nn.MSELoss(),
+        regularizers,
+    )
 
-        train_color_model(
-            model,
-            hsv_loader,
-            rgb_tensor,
-            dopesheet,
-            # loss_criterion=objective(nn.MSELoss(reduction='none')),  # No reduction; allows per-sample loss weights
-            loss_criterion=objective(torch.nn.MSELoss()),
-            regularizers=regularizers,
-            event_handlers=event_handlers,
-        )
-
-    return metrics_recorder
+    return metrics_callback.history
 
 
-def main(dev=False):
+def main():
     all_regs = ALL_REGULARIZERS
     all_combinations = list(
         itertools.chain(*(itertools.combinations(all_regs, i) for i in range(1, len(all_regs) + 1)))
     )
 
-    # if dev:
     combinations = all_combinations[-1:]  # For testing, select a subset
-    # else:
-    #     combinations = all_combinations[:]
     log.info(f'Running {len(combinations):d}/{len(all_combinations):d} combinations of {len(all_regs)} regularizers.')
 
-    runs: dict[str, MetricsRecorder] = {}
+    runs: dict[str, list] = {}
     for combo in combinations:
         dopesheet = load_dopesheet()
         combo_list = list(combo)
         combo_name = ' + '.join(r.name for r in combo_list)
         runs[combo_name] = train(dopesheet, combo_list)
-    print(runs)
+    # print(runs)
 
 
 if __name__ == '__main__':
     SimpleLoggingConfig().info('__main__', 'ex_color', 'utils').apply()
-    main(dev='--dev' in sys.argv)
+    main()
