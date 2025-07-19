@@ -142,7 +142,7 @@ def main():
         combo_list = list(combo)
         combo_name = ' + '.join(r.name for r in combo_list)
         runs[combo_name] = train(dopesheet, combo_list)
-    print(runs)
+    # print(runs)
 
 
 if __name__ == '__main__':

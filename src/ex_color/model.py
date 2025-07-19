@@ -69,6 +69,8 @@ class ColorMLPTrainingModule(L.LightningModule):
         regularizers: list[RegularizerConfig],
     ):
         super().__init__()
+        self.save_hyperparameters()
+
         # Store training configuration
         self.objective = objective
         self.regularizers = regularizers
@@ -81,6 +83,17 @@ class ColorMLPTrainingModule(L.LightningModule):
         # TODO: How to regularize the activations of layers in a deep network, without hardcoding it here? Maybe bind regularizers to layers with self.model.get_submodule('some.module')
         self.latent_hook = LatentCaptureHook()
         self.model.encoder.register_forward_hook(self.latent_hook)
+
+    def on_save_checkpoint(self, checkpoint):
+        log.info('Saving timeline state')
+        checkpoint['timeline_step'] = self.timeline._step
+
+    def on_load_checkpoint(self, checkpoint):
+        if 'timeline_step' in checkpoint:
+            log.info('Restoring timeline state')
+            # Fast-forward timeline to saved position
+            for _ in range(checkpoint['timeline_step']):
+                self.timeline.step()
 
     @property
     def schedule(self) -> dict[str, float]:
