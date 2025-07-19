@@ -56,6 +56,7 @@ def test_training_module_with_layer_affinities(sample_model, sample_dopesheet, s
     ]
 
     training_module = TrainingModule(sample_model, sample_dopesheet, sample_objective, regularizers)
+    training_module.on_fit_start()  # Set up hooks
 
     # Check that hooks were registered for both layers
     assert 'encoder' in training_module.latent_hooks
@@ -75,6 +76,7 @@ def test_training_module_with_multiple_layers_per_regularizer(sample_model, samp
     ]
 
     training_module = TrainingModule(sample_model, sample_dopesheet, sample_objective, regularizers)
+    training_module.on_fit_start()  # Set up hooks
 
     # Should register hooks for both layers
     assert 'encoder' in training_module.latent_hooks
@@ -93,9 +95,10 @@ def test_training_module_invalid_layer_names(sample_model, sample_dopesheet, sam
         ),
     ]
 
-    # Should raise an exception during initialization
+    # Should raise an exception when hooks are set up
+    training_module = TrainingModule(sample_model, sample_dopesheet, sample_objective, regularizers)
     with pytest.raises(AttributeError, match='Layer nonexistent_layer not found in model'):
-        TrainingModule(sample_model, sample_dopesheet, sample_objective, regularizers)
+        training_module.on_fit_start()
 
 
 def test_training_step_with_layer_affinities(sample_model, sample_dopesheet, sample_objective):
@@ -110,6 +113,7 @@ def test_training_step_with_layer_affinities(sample_model, sample_dopesheet, sam
     ]
 
     training_module = TrainingModule(sample_model, sample_dopesheet, sample_objective, regularizers)
+    training_module.on_fit_start()  # Set up hooks
     training_module.log = MagicMock()  # Requires a Trainer, which this test doesn't use
 
     # Create sample batch
@@ -130,3 +134,33 @@ def test_training_step_with_layer_affinities(sample_model, sample_dopesheet, sam
     # Should have reconstruction loss and regularizer loss
     assert 'recon' in result['losses']
     assert 'reg-encoder' in result['losses']
+
+
+def test_hook_cleanup_on_fit_end(sample_model, sample_dopesheet, sample_objective):
+    """Test that hooks are properly cleaned up in on_fit_end."""
+    regularizers = [
+        RegularizerConfig(
+            name='reg-encoder',
+            compute_loss_term=MockRegularizer(),
+            label_affinities=None,
+            layer_affinities=['encoder'],
+        ),
+    ]
+
+    training_module = TrainingModule(sample_model, sample_dopesheet, sample_objective, regularizers)
+    
+    # Initially, no hooks should be registered
+    assert len(training_module.latent_hooks) == 0
+    assert len(training_module.hook_handles) == 0
+    
+    # Set up hooks
+    training_module.on_fit_start()
+    assert len(training_module.latent_hooks) == 1
+    assert len(training_module.hook_handles) == 1
+    assert 'encoder' in training_module.latent_hooks
+    assert 'encoder' in training_module.hook_handles
+    
+    # Clean up hooks
+    training_module.on_fit_end()
+    assert len(training_module.latent_hooks) == 0
+    assert len(training_module.hook_handles) == 0

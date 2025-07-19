@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch import Tensor
+from torch.utils.hooks import RemovableHandle
 
 from ex_color.regularizers.regularizer import RegularizerConfig
 from mini.temporal.dopesheet import Dopesheet
@@ -86,7 +87,7 @@ class TrainingModule(L.LightningModule):
 
         # Set up latent capture hooks for all unique layer names
         self.latent_hooks: dict[str, ActivationCaptureHook] = {}
-        self._setup_latent_hooks()
+        self.hook_handles: dict[str, RemovableHandle] = {}
 
     def _setup_latent_hooks(self):
         """Set up hooks for all unique layers specified in regularizer layer_affinities."""
@@ -107,9 +108,21 @@ class TrainingModule(L.LightningModule):
                 reg_names = [reg.name for reg in self.regularizers if layer_name in reg.layer_affinities]
                 raise AttributeError(f'Layer {layer_name} not found in model; needed by {", ".join(reg_names)}') from e
             hook = ActivationCaptureHook()
-            layer_module.register_forward_hook(hook)
+            handle = layer_module.register_forward_hook(hook)
             self.latent_hooks[layer_name] = hook
+            self.hook_handles[layer_name] = handle
             log.debug(f'Registered hook for layer: {layer_name}')
+
+    def on_fit_start(self):
+        """Called at the very beginning of fit. Set up hooks here for DDP compatibility."""
+        self._setup_latent_hooks()
+
+    def on_fit_end(self):
+        """Called at the very end of fit. Clean up hooks."""
+        for handle in self.hook_handles.values():
+            handle.remove()
+        self.latent_hooks.clear()
+        self.hook_handles.clear()
 
     def on_save_checkpoint(self, checkpoint):
         log.info('Saving timeline state')
