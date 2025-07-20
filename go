@@ -39,11 +39,15 @@ case "${1:-all}" in
         "$SCRIPT_DIR/test.sh" "$@"
         ;;
     check)
-        "$SCRIPT_DIR/format.sh"
-        "$SCRIPT_DIR/lint.sh"
+        "$SCRIPT_DIR/format.sh" --check
+        "$SCRIPT_DIR/lint.sh" --no-fix
         "$SCRIPT_DIR/typecheck.sh"
         "$SCRIPT_DIR/test.sh"
         "$SCRIPT_DIR/deadcode.sh"
+        ;;
+    precommit)
+        "$SCRIPT_DIR/format.sh"
+        "$SCRIPT_DIR/lint.sh" --fix-only
         ;;
     build|site)
         shift
@@ -61,6 +65,7 @@ case "${1:-all}" in
 			  tests  [...args]:  run tests (pytest)
 			  dead   [...args]:  look for dead code (vulture)
 			  check:             run all checks
+			  precommit:         auto-format and fix linting errors
 			  track  [...args]:  start experiment tracker app (modal deploy)
 			  build  [...args]:  build static site
 			EOF

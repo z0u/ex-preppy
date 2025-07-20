@@ -15,6 +15,9 @@ set -euo pipefail
     # Initialize Python environment.
     uv venv --allow-existing < /dev/null
     ./go install --device=cpu < /dev/null
+
+    # Workflow hooks
+    cp scripts/git-hooks/pre-commit .git/hooks/pre-commit
 )
 
 echo "Virtual environment created. You may need to restart the Python language server."
