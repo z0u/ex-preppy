@@ -16,7 +16,7 @@ from ex_color.data.color_cube import ColorCube
 from ex_color.data.cube_sampler import vibrancy
 from ex_color.data.cyclic import arange_cyclic
 from ex_color.labelling import collate_with_generated_labels
-from ex_color.model import ColorMLPTrainingModule
+from ex_color.model import TrainingModule, ColorMLP
 from ex_color.seed import set_deterministic_mode
 from ex_color.train_lightning import train_color_model_lightning
 from mini.temporal.dopesheet import Dopesheet
@@ -75,26 +75,31 @@ ALL_REGULARIZERS = [
         name='reg-polar',
         compute_loss_term=Anchor(torch.tensor([1, 0, 0, 0], dtype=torch.float32)),
         label_affinities={'red': 1.0},
+        layer_affinities=['encoder'],  # Apply to encoder layer
     ),
     RegularizerConfig(
         name='reg-separate',
         compute_loss_term=Separate(power=10.0, shift=False),
         label_affinities=None,
+        layer_affinities=['encoder'],  # Apply to encoder layer
     ),
     RegularizerConfig(
         name='reg-planar',
         compute_loss_term=planarity,
         label_affinities={'vibrant': 1.0},
+        layer_affinities=['encoder'],  # Apply to encoder layer
     ),
     RegularizerConfig(
         name='reg-norm-v',
         compute_loss_term=unitarity,
         label_affinities={'vibrant': 1.0},
+        layer_affinities=['encoder'],  # Apply to encoder layer
     ),
     RegularizerConfig(
         name='reg-norm',
         compute_loss_term=unitarity,
         label_affinities=None,
+        layer_affinities=['encoder'],  # Explicit layer specification
     ),
 ]
 
@@ -112,16 +117,18 @@ def train(
     hsv_loader, rgb_tensor = prep_data()
 
     # Create a temporary training module just to count parameters
-    temp_module = ColorMLPTrainingModule(dopesheet, torch.nn.MSELoss(), regularizers)
+    temp_module = TrainingModule(ColorMLP(), dopesheet, torch.nn.MSELoss(), regularizers)
     total_params = sum(p.numel() for p in temp_module.parameters() if p.requires_grad)
     log.debug(f'Model initialized with {total_params:,} trainable parameters.')
 
+    model = ColorMLP()
     metrics_callback = train_color_model_lightning(
         hsv_loader,
         rgb_tensor,
         dopesheet,
         torch.nn.MSELoss(),
         regularizers,
+        model,
     )
 
     return metrics_callback.history
