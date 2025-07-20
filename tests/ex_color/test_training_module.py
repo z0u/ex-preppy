@@ -148,18 +148,18 @@ def test_hook_cleanup_on_fit_end(sample_model, sample_dopesheet, sample_objectiv
     ]
 
     training_module = TrainingModule(sample_model, sample_dopesheet, sample_objective, regularizers)
-    
+
     # Initially, no hooks should be registered
     assert len(training_module.latent_hooks) == 0
     assert len(training_module.hook_handles) == 0
-    
+
     # Set up hooks
     training_module.on_fit_start()
     assert len(training_module.latent_hooks) == 1
     assert len(training_module.hook_handles) == 1
     assert 'encoder' in training_module.latent_hooks
     assert 'encoder' in training_module.hook_handles
-    
+
     # Clean up hooks
     training_module.on_fit_end()
     assert len(training_module.latent_hooks) == 0
