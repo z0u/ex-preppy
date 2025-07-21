@@ -5,9 +5,6 @@ set -euo pipefail
 (
     set -x
 
-    # Initialize git LFS hooks for this repository (see .gitattributes)
-    git lfs install
-
     # Make the volume mounts writable. Even though the uv cache is a subdirectory, the parent is created by Docker as root, so we need to change the owner of that too.
     sudo chown -R "$USER:$USER" ~/.cache
     sudo chown -R "$USER:$USER" .venv
@@ -17,7 +14,7 @@ set -euo pipefail
     ./go install --device=cpu < /dev/null
 
     # Workflow hooks
-    cp scripts/git-hooks/pre-commit .git/hooks/pre-commit
+    ./scripts/git-hooks/install.sh
 )
 
 echo "Virtual environment created. You may need to restart the Python language server."

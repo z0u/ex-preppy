@@ -45,10 +45,6 @@ case "${1:-all}" in
         "$SCRIPT_DIR/test.sh"
         "$SCRIPT_DIR/deadcode.sh"
         ;;
-    precommit)
-        "$SCRIPT_DIR/format.sh"
-        "$SCRIPT_DIR/lint.sh" --fix-only
-        ;;
     build|site)
         shift
         "$SCRIPT_DIR/build_site.py" "$@"
@@ -65,7 +61,6 @@ case "${1:-all}" in
 			  tests  [...args]:  run tests (pytest)
 			  dead   [...args]:  look for dead code (vulture)
 			  check:             run all checks
-			  precommit:         auto-format and fix linting errors
 			  track  [...args]:  start experiment tracker app (modal deploy)
 			  build  [...args]:  build static site
 			EOF
