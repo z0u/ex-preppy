@@ -2,7 +2,7 @@
 # Universal hook dispatcher: runs hooks in .git/hooks/<hook>.d/*
 # Works for any git hook
 
-set -e
+set -euo pipefail
 
 hook_name="$(basename "$0")"
 hook_dir="$(dirname "$0")/${hook_name}.d"
