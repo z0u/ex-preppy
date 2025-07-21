@@ -25,7 +25,7 @@ echo "Installing Git LFS hooks" >&2
 
 echo "Moving LFS hooks into dispatch directories" >&2
 ( set -x; mkdir -p .git/hooks/pre-commit.d .git/hooks/pre-push.d )
-( set -x; mv .git/hooks/pre-push .git/hooks/pre-commit.d/50-lfs )
+( set -x; mv .git/hooks/pre-push .git/hooks/pre-push.d/50-lfs )
 
 for hook in pre-commit pre-push; do
     echo "Installing $hook dispatch hook" >&2
