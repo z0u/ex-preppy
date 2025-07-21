@@ -7,8 +7,9 @@ import pytest
 import torch
 from torch import Tensor
 
-from ex_color.model import ColorMLP, TrainingModule
-from ex_color.regularizers.regularizer import RegularizerConfig
+from ex_color.model import ColorMLP
+from ex_color.training import TrainingModule
+from ex_color.loss.regularizer import RegularizerConfig
 from mini.temporal.dopesheet import Dopesheet
 
 

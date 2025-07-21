@@ -2,23 +2,26 @@ import itertools
 import logging
 from functools import partial
 
+import lightning as L
 import numpy as np
 import torch
+from lightning.pytorch.callbacks import TQDMProgressBar
 from torch._tensor import Tensor
 from torch.utils.data import DataLoader, TensorDataset, WeightedRandomSampler
 
-from ex_color.regularizers.anchor import Anchor
-from ex_color.regularizers.regularizer import RegularizerConfig
-from ex_color.regularizers.planarity import planarity
-from ex_color.regularizers.separate import Separate
-from ex_color.regularizers.unitarity import unitarity
 from ex_color.data.color_cube import ColorCube
 from ex_color.data.cube_sampler import vibrancy
 from ex_color.data.cyclic import arange_cyclic
 from ex_color.labelling import collate_with_generated_labels
-from ex_color.model import TrainingModule, ColorMLP
+from ex_color.lightning_callbacks import MetricsCallback, ValidationCallback
+from ex_color.model import ColorMLP
+from ex_color.loss.anchor import Anchor
+from ex_color.loss.planarity import planarity
+from ex_color.loss.regularizer import RegularizerConfig
+from ex_color.loss.separate import Separate
+from ex_color.loss.unitarity import unitarity
 from ex_color.seed import set_deterministic_mode
-from ex_color.train_lightning import train_color_model_lightning
+from ex_color.training import TrainingModule
 from mini.temporal.dopesheet import Dopesheet
 from utils.logging import SimpleLoggingConfig
 
@@ -116,20 +119,33 @@ def train(
 
     hsv_loader, rgb_tensor = prep_data()
 
-    # Create a temporary training module just to count parameters
-    temp_module = TrainingModule(ColorMLP(), dopesheet, torch.nn.MSELoss(), regularizers)
-    total_params = sum(p.numel() for p in temp_module.parameters() if p.requires_grad)
+    model = ColorMLP()
+    total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     log.debug(f'Model initialized with {total_params:,} trainable parameters.')
 
-    model = ColorMLP()
-    metrics_callback = train_color_model_lightning(
-        hsv_loader,
-        rgb_tensor,
-        dopesheet,
-        torch.nn.MSELoss(),
-        regularizers,
-        model,
+    training_module = TrainingModule(model, dopesheet, torch.nn.MSELoss(), regularizers)
+
+    metrics_callback = MetricsCallback()
+    validation_callback = ValidationCallback(rgb_tensor)
+    progress_bar = TQDMProgressBar()
+
+    callbacks = [
+        metrics_callback,
+        validation_callback,
+        progress_bar,
+    ]
+
+    trainer = L.Trainer(
+        max_steps=len(dopesheet),
+        callbacks=callbacks,
+        enable_checkpointing=False,
+        enable_model_summary=False,
+        enable_progress_bar=True,
+        logger=False,
     )
+
+    # Train the model
+    trainer.fit(training_module, hsv_loader)
 
     return metrics_callback.history
 

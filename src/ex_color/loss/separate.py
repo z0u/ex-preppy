@@ -4,7 +4,7 @@ from types import EllipsisType
 import torch
 from torch import Tensor
 
-from ex_color.regularizers.regularizer import Regularizer
+from ex_color.loss.regularizer import Regularizer
 
 log = logging.getLogger(__name__)
 
