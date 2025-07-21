@@ -84,9 +84,9 @@ if [ "$o_format" = "true" ]; then
 fi
 
 if [ "$o_typecheck" = "true" ]; then
-    ( set -x; uv run basedpyright --no-cache )
+    ( set -x; uv run basedpyright )
 fi
 
 if [ "$o_test" = "true" ]; then
-    ( set -x; uv run pytest --no-cache )
+    ( set -x; uv run pytest )
 fi

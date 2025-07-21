@@ -2,36 +2,35 @@
 
 # Install git hooks used by this repo
 
-set -e
+set -euo pipefail
+
+HOOKS_SRC_DIR=scripts/git-hooks
+DISPATCHER="$HOOKS_SRC_DIR/dispatcher.sh"
 
 is_dispatcher() {
     local link
     link=$(readlink "$1" 2>/dev/null || true)
-    [[ "$link" == *"scripts/git-hooks/dispatcher.sh"* ]]
+    [[ "$link" == *"$DISPATCHER"* ]]
 }
 
-for hook in pre-commit post-commit; do
+for hook in pre-commit pre-push; do
     if is_dispatcher ".git/hooks/$hook"; then
-        echo "Temporarily removing $hook dispatch hook" > &2
-        rm ".git/hooks/$hook"
+        echo "Temporarily removing $hook dispatch hook" >&2
+        ( set -x; rm ".git/hooks/$hook" )
     fi
 done
 
-# Initialize git LFS hooks for this repository (see .gitattributes)
-( set -x git lfs install )
-
-# Move LFS hooks into dispatch directories
-mkdir -p .git/hooks/pre-commit.d .git/hooks/pre-push.d
+echo "Installing Git LFS hooks" >&2
+( set -x; git lfs install )
 
 echo "Moving LFS hooks into dispatch directories" >&2
-mv .git/hooks/pre-commit .git/hooks/pre-commit.d/50-lfs
-mv .git/hooks/pre-push .git/hooks/pre-commit.d/50-lfs
+( set -x; mkdir -p .git/hooks/pre-commit.d .git/hooks/pre-push.d )
+( set -x; mv .git/hooks/pre-push .git/hooks/pre-commit.d/50-lfs )
 
-for hook in pre-commit post-commit; do
+for hook in pre-commit pre-push; do
     echo "Installing $hook dispatch hook" >&2
-    ln -rsf scripts/git-hooks/dispatch.sh -t ".git/hooks/$hook"
-    echo "Installing project $hook hooks" >&2
-    ln -rsf "scripts/git-hooks/$hook.d"/* -t ".git/hooks/$hook.d/"
+    ( set -x; ln -rsf "$DISPATCHER" ".git/hooks/$hook" )
+    ( set -x; ln -rsf "$HOOKS_SRC_DIR/$hook.d"/* -t ".git/hooks/$hook.d/" )
 done
 
 echo "Hooks installed" >&2
