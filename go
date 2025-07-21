@@ -50,7 +50,7 @@ case "${1:-all}" in
         "$SCRIPT_DIR/build_site.py" "$@"
         ;;
     *)
-        # Important: heredoc indented with tab characters.
+        # Important: here-doc indented with tab characters.
         cat <<-EOF 1>&2
 			Usage: $0 {check|lint|format|types|tests|dead|build}
 			  install:           install dependencies (uv sync)

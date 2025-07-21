@@ -18,7 +18,7 @@ stash_pop() {
 }
 
 show_usage() {
-    # Important: heredoc indented with tab characters.
+    # Important: here-doc indented with tab characters.
     cat <<-EOF 1>&2
 	Usage: $0 [opts]
 	  --lint:            run linters
