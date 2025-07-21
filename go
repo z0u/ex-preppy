@@ -45,16 +45,12 @@ case "${1:-all}" in
         "$SCRIPT_DIR/test.sh"
         "$SCRIPT_DIR/deadcode.sh"
         ;;
-    precommit)
-        "$SCRIPT_DIR/format.sh"
-        "$SCRIPT_DIR/lint.sh" --fix-only
-        ;;
     build|site)
         shift
         "$SCRIPT_DIR/build_site.py" "$@"
         ;;
     *)
-        # Important: heredoc indented with tab characters.
+        # Important: here-doc indented with tab characters.
         cat <<-EOF 1>&2
 			Usage: $0 {check|lint|format|types|tests|dead|build}
 			  install:           install dependencies (uv sync)
@@ -65,7 +61,6 @@ case "${1:-all}" in
 			  tests  [...args]:  run tests (pytest)
 			  dead   [...args]:  look for dead code (vulture)
 			  check:             run all checks
-			  precommit:         auto-format and fix linting errors
 			  track  [...args]:  start experiment tracker app (modal deploy)
 			  build  [...args]:  build static site
 			EOF

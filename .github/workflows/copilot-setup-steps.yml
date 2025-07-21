@@ -42,6 +42,5 @@ jobs:
       - name: Install dependencies
         run: ./go install --device=cpu
 
-      - name: Install pre-commit hook
-        run: |
-          cp scripts/git-hooks/pre-commit .git/hooks/pre-commit
+      - name: Install git hooks
+        run: ./scripts/git-hooks/install.sh
