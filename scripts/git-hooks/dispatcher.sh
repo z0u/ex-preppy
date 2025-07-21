@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Universal hook dispatcher: runs hooks in .git/hooks/<hook>.d/*
 # Works for any git hook
 
