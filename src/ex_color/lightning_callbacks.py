@@ -5,7 +5,7 @@ from typing import Mapping, override
 import torch
 from lightning.pytorch.callbacks import Callback
 
-from ex_color.model import TrainingModule
+from ex_color.training import TrainingModule
 
 log = logging.getLogger(__name__)
 
