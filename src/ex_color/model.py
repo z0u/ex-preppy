@@ -46,7 +46,7 @@ class ColorMLP(nn.Module):
 
 
 class ActivationCaptureHook:
-    """Hook class to capture latent representations."""
+    """Captures latent representations, i.e. layer activations."""
 
     def __init__(self):
         self.activations: Tensor | None = None
@@ -95,13 +95,13 @@ class TrainingModule(L.LightningModule):
             if len(reg.layer_affinities) == 0:
                 log.warning(f'Regularizer {reg.name} has no layer affinities and will not run')
 
-        unique_layers = {
+        regularized_layers = {
             name  #
             for reg in self.regularizers
             for name in reg.layer_affinities
         }
 
-        for layer_name in unique_layers:
+        for layer_name in regularized_layers:
             try:
                 layer_module = self.model.get_submodule(layer_name)
             except AttributeError as e:
@@ -113,22 +113,30 @@ class TrainingModule(L.LightningModule):
             self.hook_handles[layer_name] = handle
             log.debug(f'Registered hook for layer: {layer_name}')
 
+    @override
     def on_fit_start(self):
         """Called at the very beginning of fit. Set up hooks here for DDP compatibility."""
+        super().on_fit_start()
         self._setup_latent_hooks()
 
+    @override
     def on_fit_end(self):
         """Called at the very end of fit. Clean up hooks."""
+        super().on_fit_end()
         for handle in self.hook_handles.values():
             handle.remove()
         self.latent_hooks.clear()
         self.hook_handles.clear()
 
+    @override
     def on_save_checkpoint(self, checkpoint):
+        super().on_save_checkpoint(checkpoint)
         log.info('Saving timeline state')
         checkpoint['timeline_step'] = self.timeline._step
 
+    @override
     def on_load_checkpoint(self, checkpoint):
+        super().on_load_checkpoint(checkpoint)
         if 'timeline_step' in checkpoint:
             log.info('Restoring timeline state')
             # Fast-forward timeline to saved position
@@ -196,42 +204,22 @@ class TrainingModule(L.LightningModule):
 
     @override
     def on_before_optimizer_step(self, optimizer):
+        super().on_before_optimizer_step(optimizer)
         current_lr = self.schedule.get('lr', 1e-8)
         for param_group in optimizer.param_groups:
             param_group['lr'] = current_lr
 
     @override
+    def on_train_batch_start(self, batch, batch_idx):
+        super().on_train_batch_start(batch, batch_idx)
+        if self.timeline.state.is_phase_start:
+            self.print(f'Starting phase: {self.timeline.state.phase}')
+
+    @override
     def on_train_batch_end(self, outputs, batch, batch_idx):
+        super().on_train_batch_end(outputs, batch, batch_idx)
         if self.global_step < len(self.timeline) - 1:
             self.timeline.step()
-
-
-# Keep ColorMLPTrainingModule as a backwards compatibility wrapper
-class ColorMLPTrainingModule(TrainingModule):
-    """Legacy wrapper for backwards compatibility. Use TrainingModule instead."""
-
-    def __init__(
-        self,
-        dopesheet: Dopesheet,
-        objective: Objective,
-        regularizers: list[RegularizerConfig],
-    ):
-        # Handle backwards compatibility: add default layer_affinities for regularizers that don't have them
-        from copy import deepcopy
-
-        compat_regularizers = []
-        for reg in regularizers:
-            if reg.layer_affinities is None:
-                # Create a new regularizer config with encoder as default layer
-                compat_reg = deepcopy(reg)
-                compat_reg.layer_affinities = ['encoder']
-                compat_regularizers.append(compat_reg)
-            else:
-                compat_regularizers.append(reg)
-
-        # Create the ColorMLP model
-        model = ColorMLP()
-        super().__init__(model, dopesheet, objective, compat_regularizers)
 
 
 def compute_loss_term(regularizer: RegularizerConfig, batch_labels, latents: Tensor):

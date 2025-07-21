@@ -1,17 +1,16 @@
 import logging
 from dataclasses import dataclass
-from typing import Any, override
+from typing import Mapping, override
 
-import lightning as L
 import torch
 from lightning.pytorch.callbacks import Callback
 
-from ex_color.model import ColorMLPTrainingModule
+from ex_color.model import TrainingModule
 
 log = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(slots=True)
 class MetricsRecord:
     """Simple metrics record without backward compatibility."""
 
@@ -28,52 +27,22 @@ class MetricsCallback(Callback):
         self.history: list[MetricsRecord] = []
 
     @override
-    def on_train_batch_end(
-        self,
-        trainer: L.Trainer,
-        pl_module: L.LightningModule,
-        outputs: Any,
-        batch: Any,
-        batch_idx: int,
-    ) -> None:
+    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
         """Record metrics after each training step."""
         del batch_idx
         # Extract loss information from outputs
-        if isinstance(outputs, dict):
+        if isinstance(outputs, Mapping):
             total_loss = outputs.get('loss', 0.0)
             losses = outputs.get('losses', {})
         else:
             total_loss = outputs if outputs is not None else 0.0
             losses = {}
 
-        if torch.is_tensor(total_loss):
+        if isinstance(total_loss, torch.Tensor):
             total_loss = total_loss.item()
 
-        # Create metrics record
         record = MetricsRecord(step=trainer.global_step, total_loss=total_loss, losses=losses.copy())
         self.history.append(record)
-
-
-class PhaseCallback(Callback):
-    """Lightning callback to handle phase transitions."""
-
-    @override
-    def on_train_batch_start(
-        self,
-        trainer: L.Trainer,
-        pl_module: L.LightningModule,
-        batch: Any,
-        batch_idx: int,
-    ) -> None:
-        """Handle phase start events."""
-        del batch_idx
-        if not isinstance(pl_module, ColorMLPTrainingModule):
-            return
-
-        current_state = pl_module.timeline.state
-
-        if current_state.is_phase_start:
-            log.info(f'Starting phase: {current_state.phase}')
 
 
 class ValidationCallback(Callback):
@@ -84,18 +53,11 @@ class ValidationCallback(Callback):
         self.val_data = val_data
 
     @override
-    def on_train_batch_end(
-        self,
-        trainer: L.Trainer,
-        pl_module: L.LightningModule,
-        outputs: Any,
-        batch: Any,
-        batch_idx: int,
-    ) -> None:
+    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
         """Handle phase end validation."""
         del batch_idx
-        if not isinstance(pl_module, ColorMLPTrainingModule):
-            return
+        if not isinstance(pl_module, TrainingModule):
+            raise ValueError(f'{ValidationCallback.__name__} only works with {TrainingModule.__name__}')
 
         current_state = pl_module.timeline.state
 
