@@ -39,8 +39,12 @@ case "${1:-all}" in
         "$SCRIPT_DIR/test.sh" "$@"
         ;;
     check)
-        shift
-        "$SCRIPT_DIR/check.sh" "${@:- --lint --format --typecheck --test}"
+        if [[ $# -gt 1 ]]; then
+            shift
+            "$SCRIPT_DIR/check.sh" "$@"
+        else
+            "$SCRIPT_DIR/check.sh" --lint --format --typecheck --test
+        fi
         ;;
     build|site)
         shift
