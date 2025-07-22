@@ -39,7 +39,8 @@ case "${1:-all}" in
         "$SCRIPT_DIR/test.sh" "$@"
         ;;
     check)
-        "$SCRIPT_DIR/check.sh" --lint --format --typecheck --test
+        shift
+        "$SCRIPT_DIR/check.sh" "${@:- --lint --format --typecheck --test}"
         ;;
     build|site)
         shift
@@ -56,7 +57,7 @@ case "${1:-all}" in
 			  types  [...args]:  check types (basedpyright)
 			  tests  [...args]:  run tests (pytest)
 			  dead   [...args]:  look for dead code (vulture)
-			  check  [...args]:  run checks
+			  check  [...args]:  run checks (default: all checks)
 			  track  [...args]:  start experiment tracker app (modal deploy)
 			  build  [...args]:  build static site
 			EOF

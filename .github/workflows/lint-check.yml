@@ -26,7 +26,7 @@ jobs:
   # Run tasks in groups with one slow step per group to speed up the build
 
   lint:
-    name: Linting
+    name: Linters
     runs-on: ubuntu-latest
     needs: setup  # Reduces costs by waiting for cache
     steps:
@@ -51,7 +51,7 @@ jobs:
         run: ./go deadcode
 
   test:
-    name: Linting
+    name: Tests
     runs-on: ubuntu-latest
     needs: setup  # Reduces costs by waiting for cache
     steps:
