@@ -6,9 +6,13 @@ We are writing code to run AI experiments. Most of the code is in Python.
 - Format: `./go format` (ruff format)
 - Typecheck: `./go types` (basedpyright)
 - Test: `./go test` (pytest)
-- Full CI check: `./go check` (includes build, fmt, lint, test)
+- Full CI check: `./go check`
 
 Run `./go -h` to discover other commands.
+
+Git hooks:
+- pre-commit: runs quick checks (lint, format)
+- pre-push: runs slow checks (typecheck, test)
 
 ### Repository structure
 

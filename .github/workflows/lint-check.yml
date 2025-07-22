@@ -13,30 +13,54 @@ on:
     # Allows manual triggering of the workflow from the GitHub UI
 
 jobs:
-  check:
-    name: Run all checks
+  setup:
+    name: Install and cache dependencies
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-
       - name: Install uv
         uses: astral-sh/setup-uv@v6
-
       - name: Install dependencies
         run: ./go install --device=cpu
 
-      - name: Formatting
-        run: ./go format --check
+  # Run tasks in groups with one slow step per group to speed up the build
 
-      - name: Linting
-        run: ./go lint
+  lint:
+    name: Linting
+    runs-on: ubuntu-latest
+    needs: setup  # Reduces costs by waiting for cache
+    steps:
+      # Needs the same setup steps as setup
+      - uses: actions/checkout@v3
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+      - name: Install dependencies
+        run: ./go install --device=cpu
 
-      - name: Type checking
-        run: ./go types
+      - name: Formatting  # Fast
+        run: ./go check --format
 
-      - name: Run tests
-        run: ./go test -v
+      - name: Linting  # Fast
+        run: ./go check --lint
 
-      - name: Dead code detection
+      - name: Type checking  # Slow
+        run: ./go check --typecheck
+
+      - name: Dead code detection  # Fast
         continue-on-error: true
         run: ./go deadcode
+
+  test:
+    name: Linting
+    runs-on: ubuntu-latest
+    needs: setup  # Reduces costs by waiting for cache
+    steps:
+      # Needs the same setup steps as setup
+      - uses: actions/checkout@v3
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+      - name: Install dependencies
+        run: ./go install --device=cpu
+
+      - name: Run tests  # Slow
+        run: ./go check --test
