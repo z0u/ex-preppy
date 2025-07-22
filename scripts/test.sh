@@ -2,6 +2,6 @@
 
 set -euo pipefail
 
-( set -x; uv run pytest "$@" )
+( set -x; uv run --no-sync pytest "$@" )
 
 echo "✅ Tests passed"

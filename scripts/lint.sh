@@ -2,6 +2,6 @@
 
 set -euo pipefail
 
-( set -x; uv run ruff check "$@" )
+( set -x; uv run --no-sync ruff check "$@" )
 
 echo "✅ Lint check passed"

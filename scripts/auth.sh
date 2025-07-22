@@ -2,6 +2,6 @@
 
 set -euo pipefail
 
-( set -x; uv run modal setup "$@" )
+( set -x; uv run --no-sync modal setup "$@" )
 
 echo "✅ Authenticated"

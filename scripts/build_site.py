@@ -126,7 +126,18 @@ def convert_notebooks(no_code: bool = False, output_format: str = 'html'):
         print('  No notebooks found to convert.')
         return
 
-    cmd = ['uv', 'run', '--', 'jupyter', 'nbconvert', '--config', str(NBCONVERT_CONFIG), '--to', output_format]
+    cmd = [
+        'uv',
+        'run',
+        '--no-sync',
+        '--',
+        'jupyter',
+        'nbconvert',
+        '--config',
+        str(NBCONVERT_CONFIG),
+        '--to',
+        output_format,
+    ]
 
     if no_code:
         print('  Excluding code input cells (--no-input).')

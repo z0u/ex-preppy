@@ -25,4 +25,4 @@ done
 # a little shell magic to restore the positional parameters
 set -- "${processed_args[@]}"
 
-( set -x; uv run modal "$mode" -m track.aim "$@" )
+( set -x; uv run --no-sync modal "$mode" -m track.aim "$@" )

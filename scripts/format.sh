@@ -2,6 +2,6 @@
 
 set -euo pipefail
 
-( set -x; uv run ruff format "$@" )
+( set -x; uv run --no-sync ruff format "$@" )
 
 echo "✅ Formatted"
