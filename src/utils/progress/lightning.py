@@ -8,10 +8,12 @@ from .progress import SyncProgress
 class LightningProgress(ProgressBar):
     """A progress bar that outputs basic text or HTML, with one bar for the whole process."""
 
-    def __init__(self):
+    def __init__(self, interval: float = 0.3):
         super().__init__()
         self._progress: SyncProgress | None = None
         self._enabled = True
+        self.interval = interval
+        """Minimum time between redraws (seconds)"""
 
     @override
     def disable(self) -> None:
@@ -50,7 +52,10 @@ class LightningProgress(ProgressBar):
     def on_fit_start(self, trainer, pl_module):
         super().on_fit_start(trainer, pl_module)
         if self._enabled:
-            self.progress = _new_progress(trainer.estimated_stepping_batches)
+            self.progress = SyncProgress(
+                total=_resolve_total(trainer.estimated_stepping_batches),
+                interval=self.interval,
+            )
 
     @override
     def on_train_epoch_start(self, trainer, pl_module):
@@ -115,7 +120,10 @@ class LightningProgress(ProgressBar):
     def on_test_start(self, trainer, pl_module):
         super().on_test_start(trainer, pl_module)
         if self._enabled:
-            self.progress = _new_progress(sum(trainer.num_test_batches))
+            self.progress = SyncProgress(
+                total=_resolve_total(sum(trainer.num_test_batches)),
+                interval=self.interval,
+            )
 
     @override
     def on_test_epoch_start(self, trainer, pl_module):
@@ -146,7 +154,10 @@ class LightningProgress(ProgressBar):
     def on_predict_start(self, trainer, pl_module):
         super().on_predict_start(trainer, pl_module)
         if self._enabled:
-            self.progress = _new_progress(sum(trainer.num_predict_batches))
+            self.progress = SyncProgress(
+                total=_resolve_total(sum(trainer.num_predict_batches)),
+                interval=self.interval,
+            )
 
     @override
     def on_predict_epoch_start(self, trainer, pl_module):
@@ -166,5 +177,6 @@ class LightningProgress(ProgressBar):
         self.progress = None
 
 
-def _new_progress(total: int | float):
-    return SyncProgress(total=int(total) if total != float('inf') else 0)
+def _resolve_total(total: int | float):
+    """Normalize the total number of steps, because Lightning returns inf in some situations."""
+    return int(total) if total != float('inf') else 0

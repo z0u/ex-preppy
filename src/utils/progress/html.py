@@ -61,14 +61,13 @@ def format_bar(a: Airium, data: BarData):
                 vpos = dict(
                     top='100%',
                     font_size='70%',
-                    padding='3px 1px 0',
+                    padding='3px 2px 0',
                 )
             else:
                 vpos = dict(
                     top='100%',
-                    height='1.5px',
+                    height='3.5px',
                     font_size='0',
-                    padding='1px 1px 0',
                 )
 
             a.div(
@@ -140,7 +139,7 @@ def format_metrics(a: Airium, metrics: Mapping[str, Any]):
             a.div(
                 style=css(
                     font_weight='bold',
-                    border_bottom='1px solid currentColor',
+                    border_bottom='0.5px solid currentColor',
                     padding='2px 10px',
                     text_align='left',
                     overflow='hidden',
@@ -197,16 +196,51 @@ class Tick:
     is_major: bool
 
 
-def prep_markers(markers: Collection[Mark], total: int, major_spacing: float = 0.045):
-    ms: list[Tick] = []
-    last_major = float('-inf')
-    for mark in markers:
-        fraction = mark.count / total if total > 0 else 1
-        if mark.label.strip() and fraction - last_major >= major_spacing:
-            last_major = fraction
-            is_major = True
-        else:
-            is_major = False
-        ms.append(Tick(fraction, mark.label.strip(), is_major))
+def prep_markers(markers: Collection[Mark], total: int, major_spacing: float = 0.095):
+    """
+    Prepare markers for display.
 
-    return ms
+    Marks will be converted to a fractional form. Marks that are sufficiently far
+    apart will be flagged as "major". The last marker that has a label is always
+    major, and any marks within major_spacing of it will not be major.
+
+    Args:
+        markers: The markers to prepare.
+        total: The number of steps in the progress bar if it were at 100%.
+        major_spacing: The minimum fractional space between major marks.
+    """
+    if not markers:
+        return []
+
+    # Convert to fractions first
+    ticks = [
+        Tick(fraction=mark.count / total if total > 0 else 1, label=mark.label.strip(), is_major=False)
+        for mark in markers
+    ]
+
+    # Find the last marker with a label and mark it as major
+    last_major_fraction = float('inf')
+    for i in reversed(range(len(ticks))):
+        if ticks[i].label:
+            ticks[i] = Tick(ticks[i].fraction, ticks[i].label, True)
+            last_major_fraction = ticks[i].fraction
+            break
+
+    # Process remaining markers from left to right
+    prev_major = float('-inf')
+    for i in range(len(ticks)):
+        tick = ticks[i]
+        # Skip if already marked as major (the last labeled one)
+        if tick.is_major:
+            prev_major = tick.fraction
+            continue
+
+        if (
+            tick.label
+            and tick.fraction - prev_major >= major_spacing
+            and last_major_fraction - tick.fraction >= major_spacing
+        ):
+            prev_major = tick.fraction
+            ticks[i] = Tick(tick.fraction, tick.label, True)
+
+    return ticks
