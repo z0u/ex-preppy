@@ -4,34 +4,32 @@ from typing import override
 import torch.nn as nn
 from torch import Tensor
 
-E = 4
-
 log = logging.getLogger(__name__)
 
 
 class ColorMLP(nn.Module):
-    """Pure neural network model for color transformation."""
+    """Simple RGB-to-RGB bottlenecked autoencoder"""
 
-    def __init__(self):
+    def __init__(self, n_bottleneck: int):
         super().__init__()
         # RGB input (3D) → hidden layer → bottleneck → hidden layer → RGB output
         self.encoder = nn.Sequential(
             nn.Linear(3, 16),
             nn.GELU(),
-            nn.Linear(16, E),  # Our critical bottleneck!
+            nn.Linear(16, n_bottleneck),
         )
 
         self.decoder = nn.Sequential(
-            nn.Linear(E, 16),
+            nn.Linear(n_bottleneck, 16),
             nn.GELU(),
             nn.Linear(16, 3),
             nn.Sigmoid(),  # Keep RGB values in [0,1]
         )
 
     @override
-    def forward(self, x: Tensor) -> Tensor:
-        # Get our bottleneck representation
-        latents = self.encoder(x)
+    def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
+        # Get the bottleneck representation (captured by a hook for regularization)
+        bottleneck = self.encoder(x)
 
         # Decode back to RGB
-        return self.decoder(latents)
+        return self.decoder(bottleneck)

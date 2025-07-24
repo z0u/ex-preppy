@@ -119,7 +119,7 @@ def train(
 
     hsv_loader, rgb_tensor = prep_data()
 
-    model = ColorMLP()
+    model = ColorMLP(4)
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     log.debug(f'Model initialized with {total_params:,} trainable parameters.')
 
