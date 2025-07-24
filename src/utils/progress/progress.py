@@ -1,6 +1,6 @@
 import asyncio
 import time
-from typing import Any, AsyncIterable, AsyncIterator, Callable, Generic, Iterable, Iterator, TypeVar, cast, override
+from typing import Any, AsyncIterable, AsyncIterator, Generic, Iterable, Iterator, TypeVar, cast, override
 
 from utils.coro import debounced
 from utils.nb import displayer, is_graphical_notebook
@@ -13,8 +13,6 @@ T = TypeVar('T')
 
 
 class ProgressBase(_Progress, Generic[T]):
-    _show: Callable[[Any], None]
-
     def __init__(
         self,
         total: int,
@@ -25,9 +23,9 @@ class ProgressBase(_Progress, Generic[T]):
             raise ValueError('total must be non-negative')
 
         if is_graphical_notebook():
-            self._show = displayer()
+            self._show = _DisplayInNotebook()
         else:
-            self._show = lambda ob: print(ob, end='')
+            self._show = _DisplayInConsole()
 
         # Setting these usually triggers a draw; see _Progress
         self._draw_on_change = False
@@ -80,7 +78,11 @@ class ProgressBase(_Progress, Generic[T]):
             label: The label for the marker.
             count: The count at which to place the marker. If None, uses the current count.
         """
-        self.markers.append(Mark(count if count is not None else self.count, label))
+        self.markers.append(Mark(count if count is not None else self.count - 1, label))
+
+    def print(self, *args, **kwargs):
+        """Print without damaging the progress bar display."""
+        self._show.print(*args, **kwargs)
 
     @override
     def _on_change(self):
@@ -91,11 +93,11 @@ class ProgressBase(_Progress, Generic[T]):
         raise NotImplementedError
 
     def _draw(self):
-        self._show(self)
+        self._show.show(self)
 
     def __repr__(self) -> str:
         fraction = self.count / self.total if self.total > 0 else 1
-        return f'\r{self.description}: {fraction:.1%} [{self.count:d}/{self.total:d}]'
+        return f'{self.description}: {fraction:.1%} [{self.count:d}/{self.total:d}]'
 
     def _repr_html_(self) -> str:
         """Generate the HTML for the progress bar and metrics grid."""
@@ -247,3 +249,31 @@ class SyncProgress(ProgressBase, Iterable[T]):
 
 async def noop():
     pass
+
+
+class _DisplayInNotebook:
+    def __init__(self):
+        self._show = displayer()
+
+    def show(self, ob):
+        self._show(ob)
+
+    def print(self, *args, **kwargs):
+        print(*args, **kwargs)
+
+
+class _DisplayInConsole:
+    def __init__(self):
+        self._line_length = 0
+
+    def show(self, ob):
+        # \033[K clears the line
+        line = repr(ob)
+        print(f'\r\033[K{line}', end='', flush=True)
+
+    def print(self, *args, **kwargs):
+        # Embed first arg in clear string to avoid unwanted separator at the start
+        start = args[0] if args else ''
+        if 'flush' not in kwargs:
+            kwargs['flush'] = True
+        print(f'\r\033[K{start}', *args[1:], **kwargs)

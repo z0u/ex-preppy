@@ -1,10 +1,11 @@
+from dataclasses import dataclass
 from math import isfinite
-from typing import Any, Mapping
+from typing import Any, Collection, Mapping
 from html import escape
 
 from airium import Airium
 
-from utils.progress.model import BarData
+from utils.progress.model import BarData, Mark
 
 
 def render_progress_bar(data: BarData, metrics: Mapping[str, Any]):
@@ -33,23 +34,51 @@ def format_bar_text_html(data: BarData):
 
 
 def format_bar(a: Airium, data: BarData):
-    with a.div(style=css(position='relative', height='calc(1em * 5/3)', width='100%')):
+    markers = prep_markers(data.markers, max(data.total, data.count))
+
+    with a.div(
+        style=css(
+            position='relative',
+            height='calc(1em * 5/3)',
+            width='100%',
+            margin_bottom='2em' if any(m.is_major for m in markers) else '1em',
+        )
+    ):
         # Markers
-        for mark in data.markers:
-            fraction = mark.count / data.total
-            if fraction < 0.9514:
-                pos = dict(
-                    left=f'calc({fraction * 100:.1f}% - 1px)',
+        for mark in markers:
+            if mark.fraction < 0.9514:
+                hpos = dict(
+                    left=f'{mark.fraction * 100:.1f}%',
                     border_left='0.5px solid currentColor',
-                    padding='1px 1px 0',
                 )
             else:
-                pos = dict(
-                    right=f'{(1 - fraction) * 100:.1f}%',
+                hpos = dict(
+                    right=f'{(1 - mark.fraction) * 100:.1f}%',
                     border_right='0.5px solid currentColor',
+                )
+
+            if mark.is_major:
+                vpos = dict(
+                    top='100%',
+                    font_size='70%',
+                    padding='3px 1px 0',
+                )
+            else:
+                vpos = dict(
+                    top='100%',
+                    height='1.5px',
+                    font_size='0',
                     padding='1px 1px 0',
                 )
-            a.div(_t=esc(mark.label), style=css(position='absolute', top='100%', font_size='70%', **pos))
+
+            a.div(
+                _t=esc(mark.label) if mark.label else '&nbsp;',
+                style=css(
+                    position='absolute',
+                    **hpos,
+                    **vpos,
+                ),
+            )
 
         # Triangle indicator
         with a.div(style=css(position='absolute', bottom='-4px', left=f'calc({data.fraction * 100:.1f}% - 4px)')):
@@ -85,8 +114,8 @@ def format_bar(a: Airium, data: BarData):
                 width='100%',
                 height='100%',
                 text_align='center',
-                line_height='calc(1em * 5/3)',
-                font_size='0.9em',
+                line_height='calc((1em * 5/3) / 0.9)',
+                font_size='90%',
                 white_space='nowrap',
                 overflow='hidden',
                 text_overflow='ellipsis',
@@ -103,7 +132,7 @@ def format_metrics(a: Airium, metrics: Mapping[str, Any]):
             grid_template_columns=f'repeat({len(metrics)}, minmax(80px, 1fr))',
             gap='5px 0px',
             width='100%',
-            margin_top='10px',
+            margin='1em 0',
             font_size='0.85em',
         )
     ):
@@ -159,3 +188,25 @@ def css(**props):
         for k, v in props.items()
         if isinstance(v, str) and v.strip()
     )
+
+
+@dataclass(slots=True)
+class Tick:
+    fraction: float
+    label: str
+    is_major: bool
+
+
+def prep_markers(markers: Collection[Mark], total: int, major_spacing: float = 0.045):
+    ms: list[Tick] = []
+    last_major = float('-inf')
+    for mark in markers:
+        fraction = mark.count / total if total > 0 else 1
+        if mark.label.strip() and fraction - last_major >= major_spacing:
+            last_major = fraction
+            is_major = True
+        else:
+            is_major = False
+        ms.append(Tick(fraction, mark.label.strip(), is_major))
+
+    return ms

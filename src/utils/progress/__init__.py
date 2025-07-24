@@ -1,7 +1,8 @@
 from .iterators import co_op
+from .lightning import LightningProgress
 from .progress import Progress, SyncProgress
 
-__all__ = ['co_op', 'Progress', 'SyncProgress']
+__all__ = ['co_op', 'LightningProgress', 'Progress', 'SyncProgress']
 
 
 # Example Usage (for testing in a notebook cell):
