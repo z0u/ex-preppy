@@ -24,7 +24,7 @@ class MockRegularizer:
 @pytest.fixture
 def sample_model():
     """Create a sample model for testing."""
-    return ColorMLP()
+    return ColorMLP(4)
 
 
 @pytest.fixture
