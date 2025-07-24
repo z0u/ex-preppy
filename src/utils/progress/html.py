@@ -15,7 +15,7 @@ def render_progress_bar(data: BarData, metrics: Mapping[str, Any]):
     return str(a)
 
 
-def format_bar_html(data: BarData):
+def format_bar_text_html(data: BarData):
     items_per_sec = data.count / data.elapsed_time if data.elapsed_time > 0 else 0
     eta_sec = (data.total - data.count) / items_per_sec if items_per_sec > 0 and data.count < data.total else 0
     elapsed_str = format_time(data.elapsed_time)
@@ -34,6 +34,23 @@ def format_bar_html(data: BarData):
 
 def format_bar(a: Airium, data: BarData):
     with a.div(style=css(position='relative', height='calc(1em * 5/3)', width='100%')):
+        # Markers
+        for mark in data.markers:
+            fraction = mark.count / data.total
+            if fraction < 0.9514:
+                pos = dict(
+                    left=f'calc({fraction * 100:.1f}% - 1px)',
+                    border_left='0.5px solid currentColor',
+                    padding='1px 1px 0',
+                )
+            else:
+                pos = dict(
+                    right=f'{(1 - fraction) * 100:.1f}%',
+                    border_right='0.5px solid currentColor',
+                    padding='1px 1px 0',
+                )
+            a.div(_t=esc(mark.label), style=css(position='absolute', top='100%', font_size='70%', **pos))
+
         # Triangle indicator
         with a.div(style=css(position='absolute', bottom='-4px', left=f'calc({data.fraction * 100:.1f}% - 4px)')):
             a.div(
@@ -75,7 +92,7 @@ def format_bar(a: Airium, data: BarData):
                 text_overflow='ellipsis',
                 border_bottom='1px dashed color(from currentColor srgb r g b / 0.5)',
             ),
-            _t=format_bar_html(data),
+            _t=format_bar_text_html(data),
         )
 
 
@@ -137,4 +154,8 @@ def esc(value: Any) -> str:
 
 def css(**props):
     """Convert a mapping of properties into a CSS string"""
-    return '; '.join(f'{k.replace("_", "-")}: {v}' for k, v in props.items())
+    return '; '.join(
+        f'{k.replace("_", "-")}: {v}'  #
+        for k, v in props.items()
+        if isinstance(v, str) and v.strip()
+    )

@@ -1,5 +1,7 @@
 from typing import Any
-from utils.progress.on_change import OnChangeDictProp, OnChangeProp
+
+from utils.progress.model import Mark
+from utils.progress.on_change import OnChangeDictProp, OnChangeListProp, OnChangeProp
 
 
 class _Progress:
@@ -34,6 +36,13 @@ class _Progress:
     metrics: OnChangeDictProp[str, Any] = OnChangeDictProp[str, Any]()
     """
     Metrics to display under the bar.
+
+    Changing this will schedule a redraw.
+    """
+
+    markers: OnChangeListProp[Mark] = OnChangeListProp[Mark]()
+    """
+    Points of interest.
 
     Changing this will schedule a redraw.
     """

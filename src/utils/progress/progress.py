@@ -7,7 +7,7 @@ from utils.nb import displayer, is_graphical_notebook
 from utils.progress._progress import _Progress
 from utils.progress.html import render_progress_bar
 from utils.progress.iterators import async_iterator_wrapper, sync_iterator_wrapper
-from utils.progress.model import BarData
+from utils.progress.model import BarData, Mark
 
 T = TypeVar('T')
 
@@ -34,6 +34,7 @@ class ProgressBase(_Progress, Generic[T]):
         self.total = total
         self.description = description
         self.metrics = initial_metrics or {}
+        self.markers = []
         self.suffix = ''
         self.start_time = time.monotonic()
         self.count = 0
@@ -71,6 +72,16 @@ class ProgressBase(_Progress, Generic[T]):
             self._draw_on_change = draw_was_enabled
         self._on_change()
 
+    def mark(self, label: str, count: int | None = None):
+        """
+        Add a marker.
+
+        Args:
+            label: The label for the marker.
+            count: The count at which to place the marker. If None, uses the current count.
+        """
+        self.markers.append(Mark(count if count is not None else self.count, label))
+
     @override
     def _on_change(self):
         if self._draw_on_change:
@@ -94,6 +105,7 @@ class ProgressBase(_Progress, Generic[T]):
             description=self.description,
             suffix=self.suffix,
             elapsed_time=time.monotonic() - self.start_time,
+            markers=self.markers,
         )
         return render_progress_bar(data, self.metrics)
 
