@@ -99,7 +99,7 @@ class RepoLoc:
 def get_repo_loc():
     aim_service = modal.Cls.from_name(track_app_name, 'AimService')()
     repo_loc = aim_service.get_repo_for_client.remote()
-    assert isinstance(repo_loc, RepoLoc)
+    assert isinstance(repo_loc, RepoLoc), f'Expected {RepoLoc.__name__} but was {type(repo_loc).__name__}'
     return repo_loc
 
 

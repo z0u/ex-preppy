@@ -157,7 +157,7 @@ class Progress(ProgressBase, AsyncIterable[T]):
         self._debouncer = debounced(interval=interval)(lambda: self._draw())
         self._draw_task = asyncio.Task(noop())
 
-        super().__init__(total=total, description=description, initial_metrics=initial_metrics)
+        super().__init__(total=total, description=description, initial_metrics=initial_metrics or {})
 
     def _draw(self):
         self._draw_task.cancel()
@@ -219,7 +219,7 @@ class SyncProgress(ProgressBase, Iterable[T]):
         self._last_draw_time = 0
         self._interval = interval
 
-        super().__init__(total=total, description=description, initial_metrics=initial_metrics)
+        super().__init__(total=total, description=description, initial_metrics=initial_metrics or {})
 
     def _draw(self):
         now = time.monotonic()

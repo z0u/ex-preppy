@@ -1,5 +1,8 @@
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import MagicMock, patch
+
 import pytest
+
+from track.aim import RepoLoc
 
 # Mock the uv_freeze function before importing track.aim since it's called at module level
 with patch('infra.requirements.uv_freeze', return_value=[]):
@@ -47,16 +50,16 @@ async def test_get_repo(mock_repo_class, mock_patch_client, mock_cls):
     """Test get_repo async function."""
     # Mock the Modal service
     mock_service_instance = MagicMock()
-    mock_service_instance.get_repo_for_client.remote.aio = AsyncMock(
-        return_value=('https://example.com', 'api_key_123')
+    mock_service_instance.get_repo_for_client.remote = MagicMock(
+        return_value=RepoLoc(
+            url='https://example.com/server',
+            aim_url='aim://example.com/server',
+            api_key='api_key_123',
+        )
     )
     mock_service = MagicMock()
     mock_service.return_value = mock_service_instance
     mock_cls.from_name.return_value = mock_service
-
-    # Mock Repo creation
-    mock_repo_instance = MagicMock()
-    mock_repo_class.return_value = mock_repo_instance
 
     result = get_repo()
 
@@ -69,7 +72,7 @@ async def test_get_repo(mock_repo_class, mock_patch_client, mock_cls):
     # Verify Repo creation with correct URL
     mock_repo_class.assert_called_once_with('aim://example.com/server')
 
-    assert result == mock_repo_instance
+    assert result is mock_repo_class.return_value
 
 
 def test_get_repo_service_error_handling():

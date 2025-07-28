@@ -5,7 +5,6 @@ from functools import partial
 import lightning as L
 import numpy as np
 import torch
-from lightning.pytorch.callbacks import TQDMProgressBar
 from torch._tensor import Tensor
 from torch.utils.data import DataLoader, TensorDataset, WeightedRandomSampler
 
@@ -13,7 +12,6 @@ from ex_color.data.color_cube import ColorCube
 from ex_color.data.cube_sampler import vibrancy
 from ex_color.data.cyclic import arange_cyclic
 from ex_color.labelling import collate_with_generated_labels
-from ex_color.lightning_callbacks import MetricsCallback, ValidationCallback
 from ex_color.model import ColorMLP
 from ex_color.loss.anchor import Anchor
 from ex_color.loss.planarity import planarity
@@ -24,6 +22,7 @@ from ex_color.seed import set_deterministic_mode
 from ex_color.training import TrainingModule
 from mini.temporal.dopesheet import Dopesheet
 from utils.logging import SimpleLoggingConfig
+from utils.progress.lightning import LightningProgress
 
 log = logging.getLogger(__name__)
 
@@ -125,19 +124,9 @@ def train(
 
     training_module = TrainingModule(model, dopesheet, torch.nn.MSELoss(), regularizers)
 
-    metrics_callback = MetricsCallback()
-    validation_callback = ValidationCallback(rgb_tensor)
-    progress_bar = TQDMProgressBar()
-
-    callbacks = [
-        metrics_callback,
-        validation_callback,
-        progress_bar,
-    ]
-
     trainer = L.Trainer(
         max_steps=len(dopesheet),
-        callbacks=callbacks,
+        callbacks=[LightningProgress()],
         enable_checkpointing=False,
         enable_model_summary=False,
         enable_progress_bar=True,
@@ -146,8 +135,6 @@ def train(
 
     # Train the model
     trainer.fit(training_module, hsv_loader)
-
-    return metrics_callback.history
 
 
 def main():
@@ -159,12 +146,10 @@ def main():
     combinations = all_combinations[-1:]  # For testing, select a subset
     log.info(f'Running {len(combinations):d}/{len(all_combinations):d} combinations of {len(all_regs)} regularizers.')
 
-    runs: dict[str, list] = {}
     for combo in combinations:
         dopesheet = load_dopesheet()
         combo_list = list(combo)
-        combo_name = ' + '.join(r.name for r in combo_list)
-        runs[combo_name] = train(dopesheet, combo_list)
+        train(dopesheet, combo_list)
     # print(runs)
 
 
