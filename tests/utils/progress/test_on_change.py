@@ -3,7 +3,7 @@
 from unittest.mock import Mock
 
 import pytest
-from src.utils.progress.on_change import OnChangeDict, OnChangeList
+from utils.progress.on_change import OnChangeDict, OnChangeList
 
 
 class TestOnChangeDict:
