@@ -58,7 +58,7 @@ async def test_get_repo(mock_repo_class, mock_patch_client, mock_cls):
     mock_repo_instance = MagicMock()
     mock_repo_class.return_value = mock_repo_instance
 
-    result = await get_repo()
+    result = get_repo()
 
     # Verify Modal service lookup
     mock_cls.from_name.assert_called_once_with(track_app_name, 'AimService')
@@ -85,16 +85,3 @@ def test_get_repo_service_error_handling():
     # This tests the expected behavior pattern
     with pytest.raises(RuntimeError, match="Server isn't running"):
         mock_service.get_repo_for_client()
-
-
-def test_url_construction_logic():
-    """Test the URL construction logic without patching imports."""
-    from yarl import URL
-
-    # Test the URL construction logic that would be used in get_repo
-    base_url = 'https://example.com'
-    url = URL(base_url).with_scheme('aim') / 'server'
-
-    # Verify the URL is constructed correctly
-    expected_url = 'aim://example.com/server'
-    assert str(url) == expected_url

@@ -1,4 +1,8 @@
+import logging
+
 from aim.ext.transport.client import Client
+
+log = logging.getLogger(__name__)
 
 # Say we want to provide some headers for Aim to use when it makes its requests to the server.
 #
@@ -31,5 +35,15 @@ def patch_aim_client(bearer_token: str | None):
     """Monkey-patch the Aim client for authentication."""
     import aim.sdk.repo
 
-    AuthorizedClient.BEARER_TOKEN = bearer_token
-    aim.sdk.repo.Client = AuthorizedClient
+    if bearer_token:
+        if aim.sdk.repo.Client != AuthorizedClient:
+            log.info('Patching Aim Client to use Basic auth')
+            aim.sdk.repo.Client = AuthorizedClient
+        if AuthorizedClient.BEARER_TOKEN != bearer_token:
+            log.info('Setting bearer token')
+            AuthorizedClient.BEARER_TOKEN = bearer_token
+    else:
+        if aim.sdk.repo.Client != Client:
+            log.info('Restoring original Aim Client')
+            AuthorizedClient.BEARER_TOKEN = None
+            aim.sdk.repo.Client = Client

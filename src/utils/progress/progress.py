@@ -16,8 +16,8 @@ class ProgressBase(_Progress, Generic[T]):
     def __init__(
         self,
         total: int,
-        description: str = '',
-        initial_metrics: dict[str, Any] | None = None,
+        description: str,
+        initial_metrics: dict[str, Any],
     ):
         if total < 0:
             raise ValueError('total must be non-negative')

@@ -1,76 +1,32 @@
 import logging
-from dataclasses import dataclass
-from typing import Mapping, override
+from typing import override
 
-import torch
-from lightning.pytorch.callbacks import Callback
+from aim.pytorch_lightning import AimLogger
+from aim.sdk.run import Run
+from lightning.fabric.loggers.logger import rank_zero_experiment
+from lightning.fabric.utilities import rank_zero_only
 
-from ex_color.training import TrainingModule
+from track.patches.client import patch_aim_client
 
 log = logging.getLogger(__name__)
 
 
-@dataclass(slots=True)
-class MetricsRecord:
-    """Simple metrics record without backward compatibility."""
+class AuthAimLogger(AimLogger):
+    """[Aim](https://github.com/aimhubio/aim) logger with Basic auth."""
 
-    step: int
-    total_loss: float
-    losses: dict[str, float]
+    def __init__(self, *args, api_key: str, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.api_key = api_key
 
-
-class MetricsCallback(Callback):
-    """Simplified metrics callback using Lightning's built-in systems."""
-
-    def __init__(self):
-        super().__init__()
-        self.history: list[MetricsRecord] = []
-
+    @property
+    @rank_zero_experiment
     @override
-    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
-        """Record metrics after each training step."""
-        del batch_idx
-        # Extract loss information from outputs
-        if isinstance(outputs, Mapping):
-            total_loss = outputs.get('loss', 0.0)
-            losses = outputs.get('losses', {})
-        else:
-            total_loss = outputs if outputs is not None else 0.0
-            losses = {}
+    def experiment(self) -> Run:
+        patch_aim_client(self.api_key)
+        return super().experiment
 
-        if isinstance(total_loss, torch.Tensor):
-            total_loss = total_loss.item()
-
-        record = MetricsRecord(step=trainer.global_step, total_loss=total_loss, losses=losses.copy())
-        self.history.append(record)
-
-
-class ValidationCallback(Callback):
-    """Lightning callback to handle validation at phase ends."""
-
-    def __init__(self, val_data: torch.Tensor):
-        super().__init__()
-        self.val_data = val_data
-
-    @override
-    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
-        """Handle phase end validation."""
-        del batch_idx
-        if not isinstance(pl_module, TrainingModule):
-            raise ValueError(f'{ValidationCallback.__name__} only works with {TrainingModule.__name__}')
-
-        current_state = pl_module.timeline.state
-
-        if current_state.is_phase_end:
-            log.info(f'Ending phase: {current_state.phase}')
-
-            # Run validation
-            pl_module.eval()
-            with torch.no_grad():
-                # Just run inference to trigger any validation effects
-                _ = pl_module(self.val_data.to(pl_module.device))
-
-                # Log validation metrics
-                pl_module.log('val_step', trainer.global_step)
-
-            pl_module.train()
+    @rank_zero_only
+    def finalize(self, status: str = ''):
+        log.info(f'Finalizing logger with status {status}...')
+        super().finalize(status)
+        log.info('Finalized.')

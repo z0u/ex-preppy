@@ -1,13 +1,15 @@
+from __future__ import annotations
+
 import logging
 import os
+from dataclasses import dataclass, field
 from pathlib import PurePosixPath
-from typing import cast
 
 import modal
 from yarl import URL
 
 import infra
-from infra.requirements import uv_freeze, modnames
+from infra.requirements import modnames, uv_freeze
 from track.patches.client import patch_aim_client
 
 AIM_DIR = PurePosixPath('/aim')
@@ -33,7 +35,12 @@ app = modal.App(
 
 @app.cls(
     secrets=[modal.Secret.from_name('google-oauth')],
+    # Limit to one container. In this simple setup, the database is on a Modal Volume,
+    # which only allows IPC via files within the one container. Multiple containers
+    # _could_ write to it, but that would require commit/refresh calls which are slow
+    # and may fail if the same file is written to by multiple workers.
     max_containers=1,
+    scaledown_window=60,
 )
 @modal.concurrent(max_inputs=10)
 class AimService:
@@ -60,12 +67,16 @@ class AimService:
         return app
 
     @modal.method()
-    def get_repo_for_client(self):
+    def get_repo_for_client(self) -> RepoLoc:
         """Get a factory to create Repo objects that connect to this remote service."""
         url = self.web_interface.get_web_url()  # Created by Modal
         if not self.internal_api_key or not url:
             raise RuntimeError("Server isn't running")
-        return url, self.internal_api_key
+        return RepoLoc(
+            url=str(url),
+            aim_url=str(URL(url).with_scheme('aim') / 'server'),
+            api_key=self.internal_api_key,
+        )
 
     def _ensure_repo(self, path: str | PurePosixPath) -> None:
         from aim.sdk.repo import Repo
@@ -78,15 +89,26 @@ class AimService:
             Repo.from_path(str(AIM_DIR))
 
 
-async def get_repo():
+@dataclass
+class RepoLoc:
+    url: str
+    aim_url: str
+    api_key: str = field(repr=False)
+
+
+def get_repo_loc():
+    aim_service = modal.Cls.from_name(track_app_name, 'AimService')()
+    repo_loc = aim_service.get_repo_for_client.remote()
+    assert isinstance(repo_loc, RepoLoc)
+    return repo_loc
+
+
+def get_repo():
     from aim.sdk.repo import Repo
 
-    aim_service = modal.Cls.from_name(track_app_name, 'AimService')()
-    url, internal_api_key = await aim_service.get_repo_for_client.remote.aio()
-    url = cast(str, url)
+    repo_loc = get_repo_loc()
 
     # Patch the Aim Client class to provide the API key.
-    patch_aim_client(internal_api_key)
+    patch_aim_client(repo_loc.api_key)
 
-    aim_url = URL(url).with_scheme('aim') / 'server'
-    return Repo(str(aim_url))
+    return Repo(str(repo_loc.aim_url))
