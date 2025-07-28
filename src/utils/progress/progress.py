@@ -115,6 +115,7 @@ class ProgressBase(_Progress, Generic[T]):
     def close(self) -> None:
         """Ensuring the bar is drawn one last time."""
         self._draw()
+        self._show.finalize()
 
 
 class Progress(ProgressBase, AsyncIterable[T]):
@@ -261,6 +262,9 @@ class _DisplayInNotebook:
     def print(self, *args, **kwargs):
         print(*args, **kwargs)
 
+    def finalize(self):
+        pass
+
 
 class _DisplayInConsole:
     def __init__(self):
@@ -277,3 +281,6 @@ class _DisplayInConsole:
         if 'flush' not in kwargs:
             kwargs['flush'] = True
         print(f'\r\033[K{start}', *args[1:], **kwargs)
+
+    def finalize(self):
+        print('\n', end='', flush=True)
