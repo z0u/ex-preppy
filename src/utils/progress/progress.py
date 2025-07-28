@@ -107,9 +107,8 @@ class ProgressBase(_Progress, Generic[T]):
             description=self.description,
             suffix=self.suffix,
             elapsed_time=time.monotonic() - self.start_time,
-            markers=self.markers,
         )
-        return render_progress_bar(data, self.metrics)
+        return render_progress_bar(data, self.metrics, self.markers)
 
     @override
     def close(self) -> None:

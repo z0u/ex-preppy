@@ -8,10 +8,10 @@ from airium import Airium
 from utils.progress.model import BarData, Mark
 
 
-def render_progress_bar(data: BarData, metrics: Mapping[str, Any]):
+def render_progress_bar(data: BarData, metrics: Mapping[str, Any], markers: Collection[Mark] | None = None):
     a = Airium()
     with a.div(style=css(width='100%', padding='5px 0', font_family='monospace')):
-        format_bar(a, data)
+        format_bar(a, data, markers or [])
         format_metrics(a, metrics)
     return str(a)
 
@@ -33,8 +33,8 @@ def format_bar_text_html(data: BarData):
     return text
 
 
-def format_bar(a: Airium, data: BarData):
-    markers = prep_markers(data.markers, max(data.total, data.count))
+def format_bar(a: Airium, data: BarData, markers: Collection[Mark]):
+    markers = prep_markers(markers, max(data.total, data.count))
 
     with a.div(
         style=css(

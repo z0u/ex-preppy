@@ -1,8 +1,19 @@
 from .iterators import co_op
 from .lightning import LightningProgress
 from .progress import Progress, SyncProgress
+from .distributed import DistributedProgress, DistributedSyncProgress
+from .modal_progress import ModalProgressReader, ModalProgressWriter
 
-__all__ = ['co_op', 'LightningProgress', 'Progress', 'SyncProgress']
+__all__ = [
+    'co_op',
+    'LightningProgress',
+    'Progress',
+    'SyncProgress',
+    'DistributedProgress',
+    'DistributedSyncProgress',
+    'ModalProgressReader',
+    'ModalProgressWriter',
+]
 
 
 # Example Usage (for testing in a notebook cell):

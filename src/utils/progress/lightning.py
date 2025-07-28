@@ -1,18 +1,63 @@
-from typing import override
+from typing import override, TYPE_CHECKING
 
-from lightning.pytorch.callbacks.progress.progress_bar import ProgressBar
+if TYPE_CHECKING:
+    from lightning.pytorch.callbacks.progress.progress_bar import ProgressBar
+    _LIGHTNING_AVAILABLE = True
+else:
+    try:
+        from lightning.pytorch.callbacks.progress.progress_bar import ProgressBar
+        _LIGHTNING_AVAILABLE = True
+    except ImportError:
+        _LIGHTNING_AVAILABLE = False
+        # Create a dummy base class if Lightning isn't available
+        class ProgressBar:
+            def __init__(self):
+                pass
+            def disable(self): pass
+            def enable(self): pass
+            def print(self, *args, **kwargs): pass
+            def on_fit_start(self, trainer, pl_module): pass
+            def on_train_epoch_start(self, trainer, pl_module): pass
+            def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx): pass
+            def on_validation_epoch_start(self, trainer, pl_module): pass
+            def on_validation_epoch_end(self, trainer, pl_module): pass
+            def on_fit_end(self, trainer, pl_module): pass
+            def on_test_start(self, trainer, pl_module): pass
+            def on_test_epoch_start(self, trainer, pl_module): pass
+            def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0): pass
+            def on_test_epoch_end(self, trainer, pl_module): pass
+            def on_test_end(self, trainer, pl_module): pass
+            def on_predict_start(self, trainer, pl_module): pass
+            def on_predict_epoch_start(self, trainer, pl_module): pass
+            def on_predict_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0): pass
+            def on_predict_end(self, trainer, pl_module): pass
+            def get_metrics(self, trainer, pl_module): return {}
+            @property
+            def train_description(self): return "Training"
+            @property
+            def validation_description(self): return "Validation"
+            @property
+            def test_description(self): return "Testing"
+            @property
+            def predict_description(self): return "Prediction"
 
 from .progress import SyncProgress
+from .distributed import DistributedSyncProgress, is_modal_environment
 
 
 class LightningProgress(ProgressBar):
-    """A progress bar that outputs basic text or HTML, with one bar for the whole process."""
+    """
+    A progress bar that outputs basic text or HTML, with one bar for the whole process.
 
-    def __init__(self, interval: float = 0.3):
+    Automatically uses distributed mode when running in Modal environments.
+    """
+
+    def __init__(self, interval: float = 0.3, dict_name: str = 'lightning-progress'):
         super().__init__()
-        self._progress: SyncProgress | None = None
+        self._progress: SyncProgress | DistributedSyncProgress | None = None
         self._enabled = True
         self.interval = interval
+        self.dict_name = dict_name
         """Minimum time between redraws (seconds)"""
 
     @override
@@ -32,7 +77,7 @@ class LightningProgress(ProgressBar):
         return self._progress
 
     @progress.setter
-    def progress(self, value: SyncProgress | None):
+    def progress(self, value: SyncProgress | DistributedSyncProgress | None):
         if self._progress:
             self._progress.close()
         self._progress = value
@@ -52,10 +97,17 @@ class LightningProgress(ProgressBar):
     def on_fit_start(self, trainer, pl_module):
         super().on_fit_start(trainer, pl_module)
         if self._enabled:
-            self.progress = SyncProgress(
-                total=_resolve_total(trainer.estimated_stepping_batches),
-                interval=self.interval,
-            )
+            if is_modal_environment():
+                self.progress = DistributedSyncProgress(
+                    total=_resolve_total(trainer.estimated_stepping_batches),
+                    interval=self.interval,
+                    dict_name=self.dict_name,
+                )
+            else:
+                self.progress = SyncProgress(
+                    total=_resolve_total(trainer.estimated_stepping_batches),
+                    interval=self.interval,
+                )
 
     @override
     def on_train_epoch_start(self, trainer, pl_module):
@@ -120,10 +172,17 @@ class LightningProgress(ProgressBar):
     def on_test_start(self, trainer, pl_module):
         super().on_test_start(trainer, pl_module)
         if self._enabled:
-            self.progress = SyncProgress(
-                total=_resolve_total(sum(trainer.num_test_batches)),
-                interval=self.interval,
-            )
+            if is_modal_environment():
+                self.progress = DistributedSyncProgress(
+                    total=_resolve_total(sum(trainer.num_test_batches)),
+                    interval=self.interval,
+                    dict_name=self.dict_name,
+                )
+            else:
+                self.progress = SyncProgress(
+                    total=_resolve_total(sum(trainer.num_test_batches)),
+                    interval=self.interval,
+                )
 
     @override
     def on_test_epoch_start(self, trainer, pl_module):
@@ -154,10 +213,17 @@ class LightningProgress(ProgressBar):
     def on_predict_start(self, trainer, pl_module):
         super().on_predict_start(trainer, pl_module)
         if self._enabled:
-            self.progress = SyncProgress(
-                total=_resolve_total(sum(trainer.num_predict_batches)),
-                interval=self.interval,
-            )
+            if is_modal_environment():
+                self.progress = DistributedSyncProgress(
+                    total=_resolve_total(sum(trainer.num_predict_batches)),
+                    interval=self.interval,
+                    dict_name=self.dict_name,
+                )
+            else:
+                self.progress = SyncProgress(
+                    total=_resolve_total(sum(trainer.num_predict_batches)),
+                    interval=self.interval,
+                )
 
     @override
     def on_predict_epoch_start(self, trainer, pl_module):
