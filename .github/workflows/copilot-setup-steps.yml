@@ -42,5 +42,6 @@ jobs:
       - name: Install dependencies
         run: ./go install --device=cpu
 
-      - name: Install git hooks
-        run: ./scripts/git-hooks/install.sh
+      # Copilot errors out when git commands unexpectedly fail. https://github.com/orgs/community/discussions/167906
+      # - name: Install git hooks
+      #   run: ./scripts/git-hooks/install.sh

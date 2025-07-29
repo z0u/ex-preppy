@@ -10,9 +10,11 @@ We are writing code to run AI experiments. Most of the code is in Python.
 
 Run `./go -h` to discover other commands.
 
-Git hooks:
-- pre-commit: runs quick checks (lint, format)
-- pre-push: runs slow checks (typecheck, test)
+> [!IMPORTANT]
+> Before committing, you **must** run `./go check --no-unstaged --lint --format`. Spend reasonable effort to fix any errors before committing.
+
+> [!IMPORTANT]
+> Before pushing, you **must** run `./go check --no-unstaged --test --typecheck`. Spend reasonable effort to fix any errors before pushing.
 
 ### Repository structure
 
