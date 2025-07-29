@@ -1,4 +1,3 @@
-import logging
 from typing import override
 
 from lightning.pytorch.callbacks.progress.progress_bar import ProgressBar
@@ -20,7 +19,6 @@ class LightningProgress(ProgressBar):
         self.install_logging_handler = install_logging_handler
         """Whether to install a logging handler that uses the progress bar's print method"""
         self._log_interceptor = LogInterceptor()
-        self._original_console_handlers: list[logging.Handler] = []
 
     @override
     def disable(self) -> None:
