@@ -84,6 +84,13 @@ class ProgressBase(_Progress, Generic[T]):
         """Print without damaging the progress bar display."""
         self._show.print(*args, **kwargs)
 
+    def before_print(self):
+        """Clear the line so other content can be displayed"""
+        self._show.clear_for_print()
+
+    def after_print(self):
+        self._debounced_draw()
+
     @override
     def _on_change(self):
         if self._draw_on_change:
@@ -262,6 +269,9 @@ class _DisplayInNotebook:
     def print(self, *args, **kwargs):
         print(*args, **kwargs)
 
+    def clear_for_print(self):
+        pass
+
     def finalize(self):
         pass
 
@@ -281,6 +291,9 @@ class _DisplayInConsole:
         if 'flush' not in kwargs:
             kwargs['flush'] = True
         print(f'\r\033[K{start}', *args[1:], **kwargs)
+
+    def clear_for_print(self):
+        print('\r\033[K', end='', flush=True)
 
     def finalize(self):
         print('\n', end='', flush=True)

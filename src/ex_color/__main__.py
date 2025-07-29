@@ -126,7 +126,7 @@ def train(
 
     trainer = L.Trainer(
         max_steps=len(dopesheet),
-        callbacks=[LightningProgress()],
+        callbacks=[LightningProgress(install_logging_handler=True)],
         enable_checkpointing=False,
         enable_model_summary=False,
         enable_progress_bar=True,
