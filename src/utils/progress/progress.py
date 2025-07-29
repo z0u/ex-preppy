@@ -125,7 +125,7 @@ class ProgressBase(_Progress, Generic[T]):
         self._show.finalize()
 
 
-class Progress(ProgressBase, AsyncIterable[T]):
+class AsyncProgress(ProgressBase, AsyncIterable[T]):
     """
     A simple, Jupyter-friendly progress bar using HTML and display updates.
 
