@@ -2,18 +2,23 @@ from typing import override
 
 from lightning.pytorch.callbacks.progress.progress_bar import ProgressBar
 
+from utils.progress._log_intercept import LogInterceptor
+
 from .progress import SyncProgress
 
 
 class LightningProgress(ProgressBar):
     """A progress bar that outputs basic text or HTML, with one bar for the whole process."""
 
-    def __init__(self, interval: float = 0.3):
+    def __init__(self, interval: float = 0.3, install_logging_handler: bool = False):
         super().__init__()
         self._progress: SyncProgress | None = None
         self._enabled = True
         self.interval = interval
         """Minimum time between redraws (seconds)"""
+        self.install_logging_handler = install_logging_handler
+        """Whether to install a logging handler that uses the progress bar's print method"""
+        self._log_interceptor = LogInterceptor()
 
     @override
     def disable(self) -> None:
@@ -37,7 +42,6 @@ class LightningProgress(ProgressBar):
             self._progress.close()
         self._progress = value
 
-    @override
     def print(self, *args, **kwargs):
         if self.progress:
             self.progress.print(*args, **kwargs)
@@ -56,6 +60,7 @@ class LightningProgress(ProgressBar):
                 total=_resolve_total(trainer.estimated_stepping_batches),
                 interval=self.interval,
             )
+            self._log_interceptor.start(self.progress)
 
     @override
     def on_train_epoch_start(self, trainer, pl_module):
@@ -110,7 +115,8 @@ class LightningProgress(ProgressBar):
         super().on_fit_end(trainer, pl_module)
         if self.progress:
             self.progress.mark(self.get_prime_metric())
-        self.progress = None
+        self._log_interceptor.stop()
+        self.progress = None  # This closes the progress bar
 
     #
     # Test
@@ -124,6 +130,7 @@ class LightningProgress(ProgressBar):
                 total=_resolve_total(sum(trainer.num_test_batches)),
                 interval=self.interval,
             )
+            self._log_interceptor.start(self.progress)
 
     @override
     def on_test_epoch_start(self, trainer, pl_module):
@@ -146,7 +153,8 @@ class LightningProgress(ProgressBar):
     @override
     def on_test_end(self, trainer, pl_module):
         super().on_test_end(trainer, pl_module)
-        self.progress = None
+        self._log_interceptor.stop()
+        self.progress = None  # This closes the progress bar
 
     # Predict
 
@@ -158,6 +166,7 @@ class LightningProgress(ProgressBar):
                 total=_resolve_total(sum(trainer.num_predict_batches)),
                 interval=self.interval,
             )
+            self._log_interceptor.start(self.progress)
 
     @override
     def on_predict_epoch_start(self, trainer, pl_module):
@@ -174,7 +183,8 @@ class LightningProgress(ProgressBar):
     @override
     def on_predict_end(self, trainer, pl_module):
         super().on_predict_end(trainer, pl_module)
-        self.progress = None
+        self._log_interceptor.stop()
+        self.progress = None  # This closes the progress bar
 
 
 def _resolve_total(total: int | float):

@@ -6,7 +6,7 @@ __all__ = ['co_op', 'LightningProgress', 'Progress', 'SyncProgress']
 
 
 # Example Usage (for testing in a notebook cell):
-# from src.utils.progress import Progress
+# from utils.progress import Progress
 # import time
 #
 # total_items = 150
