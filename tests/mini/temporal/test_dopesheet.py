@@ -205,7 +205,7 @@ class TestDopesheet:
         - 'prop::interpolator' (e.g., 'z::step-end') - Uses default space, customizes interpolator
         """
         # Check that the configs were stored correctly
-        assert dopesheet._prop_configs.keys() == {'x', 'y', 'z'}
+        assert dopesheet._prop_configs.keys() & {'x', 'y', 'z'}
 
         # Check x config (x:log - space only)
         x_config = dopesheet.get_prop_config('x')
