@@ -27,6 +27,6 @@ class AuthAimLogger(AimLogger):
 
     @rank_zero_only
     def finalize(self, status: str = ''):
-        log.info(f'Finalizing logger with status {status}...')
+        log.debug(f'Finalizing logger with status {status}...')
         super().finalize(status)
-        log.info('Finalized.')
+        log.debug('Finalized.')
