@@ -1,7 +1,7 @@
 from dataclasses import dataclass
+from html import escape
 from math import isfinite
 from typing import Any, Collection, Mapping
-from html import escape
 
 from airium import Airium
 
@@ -34,48 +34,69 @@ def format_bar_text_html(data: BarData):
 
 
 def format_bar(a: Airium, data: BarData):
-    markers = prep_markers(data.markers, max(data.total, data.count))
+    total = max(data.total, data.count)
+    ticks = to_ticks(data.markers, total)
+    hist = tick_hist(data.markers, total, bucket_size=50)
 
     with a.div(
         style=css(
             position='relative',
             height='calc(1em * 5/3)',
             width='100%',
-            margin_bottom='2em' if any(m.is_major for m in markers) else '1em',
+            margin_bottom='2em' if any(m.is_major for m in ticks) else '1em',
         )
     ):
+        # Heatmap of marker density
+        if hist:
+            counts = sorted(set(hist))
+            max_val = max(counts) + 1
+            densities = [count / max_val for count in counts]
+            custom_props = {
+                count: (f'--h{i:d}', f'color(from currentColor srgb r g b / {density**2:.2f})')
+                for i, (count, density) in enumerate(zip(counts, densities, strict=True))
+            }
+            stops = []
+
+            for i, count in enumerate(hist):
+                custom_prop, _ = custom_props[count]
+                position = i / (len(hist) - 1) * 100 if len(hist) > 1 else 0
+                stops.append(f'var({custom_prop}) {position:.1f}%')
+
+            css_vars = ';'.join(f'{custom_prop}:{value}' for custom_prop, value in custom_props.values())
+
+            a.div(
+                style=css(
+                    position='absolute',
+                    top='100%',
+                    height='3.5px',
+                    left='0',
+                    width='100%',
+                    background=f'linear-gradient(to right, {", ".join(stops)})',
+                )
+                + f';{css_vars}'
+            )
+
         # Markers
-        for mark in markers:
-            if mark.fraction < 0.9514:
+        for tick in (t for t in ticks if t.is_major):
+            if tick.fraction < 0.9514:
                 hpos = dict(
-                    left=f'{mark.fraction * 100:.1f}%',
+                    left=f'{tick.fraction * 100:.1f}%',
                     border_left='0.5px solid currentColor',
                 )
             else:
                 hpos = dict(
-                    right=f'{(1 - mark.fraction) * 100:.1f}%',
+                    right=f'{(1 - tick.fraction) * 100:.1f}%',
                     border_right='0.5px solid currentColor',
                 )
 
-            if mark.is_major:
-                vpos = dict(
+            a.div(
+                _t=esc(tick.label) if tick.label else '&nbsp;',
+                style=css(
+                    position='absolute',
                     top='100%',
                     font_size='70%',
                     padding='3px 2px 0',
-                )
-            else:
-                vpos = dict(
-                    top='100%',
-                    height='3.5px',
-                    font_size='0',
-                )
-
-            a.div(
-                _t=esc(mark.label) if mark.label else '&nbsp;',
-                style=css(
-                    position='absolute',
                     **hpos,
-                    **vpos,
                 ),
             )
 
@@ -196,7 +217,7 @@ class Tick:
     is_major: bool
 
 
-def prep_markers(markers: Collection[Mark], total: int, major_spacing: float = 0.095):
+def to_ticks(markers: Collection[Mark], total: int, major_spacing: float = 0.095) -> list[Tick]:
     """
     Prepare markers for display.
 
@@ -244,3 +265,19 @@ def prep_markers(markers: Collection[Mark], total: int, major_spacing: float = 0
             ticks[i] = Tick(tick.fraction, tick.label, True)
 
     return ticks
+
+
+def tick_hist(markers: Collection[Mark], total: int, bucket_size: int) -> list[int]:
+    """Create a histogram of markers."""
+    if not markers or total == 0:
+        return []
+
+    hist = [0] * bucket_size
+    for mark in markers:
+        if mark.count > total:
+            continue
+        bucket = int(mark.count / total * bucket_size)
+        if bucket >= bucket_size:
+            bucket = bucket_size - 1
+        hist[bucket] += 1
+    return hist
