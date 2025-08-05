@@ -22,3 +22,7 @@ class Anchor(Regularizer):
         # Calculate squared distances to the anchor
         sq_dists = torch.sum((activations - self.anchor_point) ** 2, dim=-1)  # [B]
         return sq_dists
+
+    def __repr__(self):
+        # for experiment trackers/loggers like wandb
+        return f'{type(self).__name__}({repr(self.anchor_point)})'

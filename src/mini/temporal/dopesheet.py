@@ -3,7 +3,7 @@ import re
 from dataclasses import field
 from io import BytesIO, StringIO
 from pathlib import Path
-from typing import Literal, overload
+from typing import Literal, cast, overload
 
 import numpy as np
 import pandas as pd
@@ -14,8 +14,6 @@ from mini.temporal.model import Keyframe, PropConfig, Frame
 log = logging.getLogger(__name__)
 
 RESERVED_COLS = ('STEP', 'PHASE', 'ACTION')
-DEFAULT_SPACE = 'linear'
-DEFAULT_TF = 'minjerk'
 
 
 class Dopesheet:
@@ -62,33 +60,18 @@ class Dopesheet:
         """Parse property configurations from DataFrame headers."""
         prop_configs = {}
         rename_map = {}
-        pattern = re.compile(r'^(?P<prop>[^:]+)(?::(?P<space>[^:]*))?(?::(?P<interpolator>[^:]*))?$')
 
         for col in df.columns:
             if col in RESERVED_COLS:
-                continue
-
-            match = pattern.match(col)
-            if match:
-                parts = match.groupdict()
-                prop_name = parts['prop']
-                space = parts.get('space') or DEFAULT_SPACE
-                interpolator_name = parts.get('interpolator') or DEFAULT_TF
-                config = PropConfig(prop=prop_name, space=space, timing_fn=interpolator_name)
-                prop_configs[prop_name] = config
-                if col != prop_name:
-                    rename_map[col] = prop_name
+                config = PropConfig(col)
             else:
-                prop_configs[col] = PropConfig(prop=col, space=DEFAULT_SPACE, timing_fn=DEFAULT_TF)
-                log.warning(f"Column '{col}' doesn't match 'prop:space:interpolator' format. Assuming defaults.")
+                config = PropConfig.from_col_name(col)
+            prop_configs[config.prop] = config
+            if config.prop != col:
+                rename_map[col] = config.prop
 
         if rename_map:
             df = df.rename(columns=rename_map)
-
-        final_props = [c for c in df.columns if c not in RESERVED_COLS]
-        for prop in final_props:
-            if prop not in prop_configs:
-                prop_configs[prop] = PropConfig(prop=prop, space=DEFAULT_SPACE, timing_fn=DEFAULT_TF)
 
         return df, prop_configs
 
@@ -176,10 +159,7 @@ class Dopesheet:
 
     def get_prop_config(self, prop_name: str) -> PropConfig:
         """Get the parsed configuration for a specific property."""
-        try:
-            return self._prop_configs[prop_name]
-        except KeyError:
-            return PropConfig(prop=prop_name, space=DEFAULT_SPACE, timing_fn=DEFAULT_TF)
+        return self._prop_configs[prop_name]
 
     @property
     def phases(self) -> set[str]:
@@ -248,6 +228,28 @@ class Dopesheet:
         mdtable = re.sub(r'(\|\s*)nan(\s*\|)', r'\1   \2', mdtable, flags=re.IGNORECASE)
         mdtable = re.sub(r'(\|\s*)nan(\s*\|)', r'\1   \2', mdtable, flags=re.IGNORECASE)
         return mdtable
+
+    def to_dict(self):
+        """
+        Convert the dopesheet to a dictionary.
+
+        Some logger frameworks like WandB will call this when storing model config.
+        """
+        df = self._df.copy()
+        for col in df.columns:
+            if pd.api.types.is_integer_dtype(df[col]):
+                df[col] = df[col].astype(int)
+            elif pd.api.types.is_float_dtype(df[col]):
+                df[col] = df[col].astype(float)
+            else:
+                df[col] = df[col].astype(str).replace({'nan': None, 'NaN': None})
+
+        df = df.set_index('STEP', drop=False)
+        df = df.rename(columns=lambda x: str(self.get_prop_config(cast(str, x))))
+        return {
+            col: series.dropna().to_dict()  #
+            for col, series in df.items()
+        }
 
 
 def style_dopesheet(df: pd.DataFrame) -> Styler:

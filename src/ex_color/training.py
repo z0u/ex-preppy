@@ -43,7 +43,8 @@ class TrainingModule(L.LightningModule):
         if isinstance(objective, nn.Module):
             ignore.append('objective')
             objective = cast(Objective, objective)  # Consider it to be a module that implements the Objective protocol
-        self.save_hyperparameters(ignore=ignore)
+        self.save_hyperparameters({'dopesheet': dopesheet.to_dict()})
+        self.save_hyperparameters(ignore=ignore + ['dopesheet'])
 
         # Store training configuration
         self.objective = objective

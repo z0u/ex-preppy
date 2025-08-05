@@ -35,3 +35,9 @@ class Separate(Regularizer):
 
         # Sum over all other points
         return torch.sum(cos_sim**self.power, dim=-1)  # [B]
+
+    def __repr__(self):
+        # for experiment trackers/loggers like wandb
+        return (
+            f'{type(self).__name__}(channels={repr(self.channels)}, power={repr(self.power)}, shift={repr(self.shift)})'
+        )

@@ -1,4 +1,11 @@
+import logging
+import re
 from dataclasses import dataclass
+
+log = logging.getLogger(__name__)
+
+DEFAULT_SPACE = 'linear'
+DEFAULT_TF = 'minjerk'
 
 
 @dataclass(slots=True)
@@ -7,10 +14,35 @@ class PropConfig:
 
     prop: str
     """Name of the property, e.g., 'x'"""
-    space: str
+    space: str = DEFAULT_SPACE
     """Space type, e.g., 'log' or 'linear'."""
-    timing_fn: str
+    timing_fn: str = DEFAULT_TF
     """Timing function to use for this property, e.g., 'linear', 'minjerk', etc."""
+
+    @staticmethod
+    def from_col_name(col: str):
+        match = PROP_PATTERN.match(col)
+        if match:
+            parts = match.groupdict()
+            prop_name = parts['prop']
+            space = parts.get('space') or DEFAULT_SPACE
+            interpolator_name = parts.get('interpolator') or DEFAULT_TF
+            return PropConfig(prop=prop_name, space=space, timing_fn=interpolator_name)
+        else:
+            log.warning(f"Column '{col}' doesn't match 'prop:space:interpolator' format. Assuming defaults.")
+            return PropConfig(prop=col)
+
+    def __str__(self):
+        timing_fn = self.timing_fn if self.timing_fn != DEFAULT_TF else ''
+        space = self.space if self.space != DEFAULT_SPACE else ''
+        if timing_fn:
+            return f'{self.prop}:{space}:{timing_fn}'
+        elif space:
+            return f'{self.prop}:{space}'
+        return f'{self.prop}'
+
+
+PROP_PATTERN = re.compile(r'^(?P<prop>[^:]+)(?::(?P<space>[^:]*))?(?::(?P<interpolator>[^:]*))?$')
 
 
 @dataclass(slots=True)
