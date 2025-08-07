@@ -55,7 +55,9 @@ Use `T | None` instead of `Optional[T]`.
 + foo: int | None = None
 ```
 
-### Modal
+### Libraries and frameworks
+
+Use PyTorch, PyTorch Lightning, numpy.
 
 Use Modal-compatible patterns for distributed processing.
 Returning a model from a remote training function may be infeasible if the model is large.
