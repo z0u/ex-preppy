@@ -13,11 +13,6 @@ case "${1:-all}" in
         shift
         "$SCRIPT_DIR/auth.sh" "$@"
         ;;
-    track)
-        shift
-        [ ! -e ~/.modal.toml ] && echo "W: Modal token missing; you may need to run $0 auth" >&2
-        "$SCRIPT_DIR/track.sh" "$@"
-        ;;
     format|formatting)
         shift
         "$SCRIPT_DIR/format.sh" "$@"
@@ -62,7 +57,6 @@ case "${1:-all}" in
 			  tests  [...args]:  run tests (pytest)
 			  dead   [...args]:  look for dead code (vulture)
 			  check  [...args]:  run checks (default: all checks)
-			  track  [...args]:  start experiment tracker app (modal deploy)
 			  build  [...args]:  build static site
 			EOF
         exit 1

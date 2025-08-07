@@ -2,6 +2,8 @@
 
 This is a series of experiments in which we attempt to impose structure on (latent) embeddings. Ultimately, the goal is to develop a capability to structure the latent spaces in complex models like LLMs.
 
+<br>
+
 ## Background
 
 Recent experiments have provided some evidence that "bad" behaviors in LLMS cluster together (such as _writing malicious code_ and _being racist_). Although surprising, it makes some intuitive sense: perhaps such behaviors cluster together because it's just the most efficient way to compress knowledge. However, _intervening_ on model behavior remains a tremendous challenge — partly because we don't know which directions in latent space correspond to undesirable traits, and we don't know how tangled up they might be with benign concepts. Indeed, attempts to align models to display "good" behavior often comes at the cost of reduced performance overall.
@@ -10,6 +12,8 @@ We hope that this research will reveal more precise and robust ways to constrain
 
 1. The relevant directions would be known _even before training_, so you don't need to look for them. This could improve the prospect of both measuring model alignment throughout training, and intervening on misaligned behavior after training.
 2. Directions of interest should act as attractors for similar concepts, reducing the chance that unrelated (benign) concepts become entangled with them.
+
+<br>
 
 ## M1. Preliminary experiments with color
 
@@ -26,6 +30,8 @@ We begin with some experiments with color, because color spaces are well defined
 7. [Sparse labels for regularization](docs/m1-color-mlp/ex-1.7-sparse-labels.ipynb): We do away with the data phases, training on the full dataset from the start but with targeted (but noisy) regularization. We achieve similar results to the earlier experiments, but with a more realistic training dataset: previously, the curriculum phases were "clean" in a way that is probably hard to replicate in LLM corpora.
 8. [Regularizer combinations](docs/m1-color-mlp/ex-1.8-regularizer-combinations.ipynb): Systematic study to see the effects of each regularizer by itself, and all combinations of the regularizers. In each run, the regularizer weight schedules are kept the same, but select regularizers are not applied at all. We observe that they are all needed to produce a latent space with the desired characteristics.
 
+<br>
+
 MLP experiment summary:
 
 | Ex  | Phases                   | Embeddings | Regularization terms                | Hyperparameters  |
@@ -37,9 +43,19 @@ MLP experiment summary:
 | 1.7 | 1: All colors            | 4D         | Unit, planar, repulsion (cosine)    | Smooth           |
 | 1.8 | 1: All colors            | 4D         | All combinations                    | Smooth           |
 
-Publications:
+<br>
 
-- [Selective regularization for alignment-focused representation engineering - LessWrong](https://www.lesswrong.com/posts/HFcriD29cw3E5QLCR/selective-regularization-for-alignment-focused)
+Publications relating to this milestone:
+
+> ### [Selective regularization for alignment-focused representation engineering - LessWrong](https://www.lesswrong.com/posts/HFcriD29cw3E5QLCR/selective-regularization-for-alignment-focused)
+>
+> We study how selective regularization during training can guide neural networks to develop predictable, interpretable latent spaces with alignment applications in mind. Using color as a test domain, we observe that anchoring even a single concept (red) influences the organization of other concepts, with related concepts clustering nearby — even with weak supervision. We then propose that concept-anchored representation engineering might enable more precise intervention in complex models without requiring extensive post-hoc interpretability work.
+
+> ### [Side quests in curriculum learning and regularization - LessWrong](https://www.lesswrong.com/posts/TFedsvt6P68XcLK7h/side-quests-in-curriculum-learning-and-regularization)
+>
+> In Selective regularization for alignment-focused representation engineering, we presented a successful approach for structuring the latent space of a simple MLP. Here we document our side quests: experiments that didn't go as expected, but in which we gained experience in regularization design and training dynamics.
+
+<br>
 
 ## M2. Practical control and intervention (TO DO)
 
@@ -48,12 +64,16 @@ Publications:
 1. Selective concept suppression (temporary, inference-time). Demonstrate intervention at inference time, showing that some colors can be reliably muted without affecting those that are not "close". For example, cause the network to fail to reconstruct _red_ and colors close to red, but allow _orange_.
 2. Permanent concept deletion (weight ablation). Demonstrate that the latent space can be further manipulated to completely remove a representation. For example, pressure the network to reconfigure the space so that _only_ red colors are on one particular embedding dimension, and then _delete_ that dimension from the network. Hopefully, this would make it difficult to fine-tune the model later to restore the deleted capability.
 
+<br>
+
 ## M3. Structured color transformer (TO DO)
 
 Proof-of-concept transformer network with similar latent space structure. It could be a very small transfomer that can perform simple color operations, such as mixing colors.
 
 1. Simple transformer doing color operations (mixing, complementary colors, etc.)
 2. Successful transfer of anchoring techniques to the residual stream or QK space (attention mechanism), with validation that structure persists through transformer training dynamics
+
+<br>
 
 ## M4. Language model application (TO DO)
 
@@ -62,6 +82,8 @@ Impose structure on the latent representations of a transformer language model.
 1. Weak labeling pipeline for internet text (identifying "harmful," "deceptive," etc.)
 2. Application to actual language model training
 3. Evaluation of structured representations in the residual stream or QK space
+
+<br>
 
 ---
 

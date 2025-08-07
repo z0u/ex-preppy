@@ -51,15 +51,6 @@ local = [
 pages = [
     "nbconvert",
 ]
-track = [
-    "modal>=0.73.67",
-    "aim>=3.0.0,<3.28.0", # https://github.com/aimhubio/aim/issues/3351
-    "authlib>=1.6.0",
-    "httpx>=0.28.1",
-    "starlette>=0.46.2",
-    "itsdangerous>=2.2.0",
-    "yarl>=1.20.0",
-]
 
 [tool.uv]
 conflicts = [
@@ -89,7 +80,6 @@ packages = [
     "src/ex_color",
     "src/infra",
     "src/mini",
-    "src/track",
     "src/utils",
 ]
 
@@ -140,9 +130,6 @@ include = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
-filterwarnings = [
-    'ignore::sqlalchemy.exc.MovedIn20Warning',  # Aim dependency, needs upgrade
-]
 
 [tool.vulture]
 exclude = [
