@@ -3,7 +3,7 @@ name = "ex-color-transformer"
 version = "0.1.0"
 description = "AI experiments"
 readme = "README.md"
-requires-python = "~=3.12.0"
+requires-python = "~=3.13.0"
 dependencies = [
     "airium>=0.2.7",
     "ftfy>=6.3.1",

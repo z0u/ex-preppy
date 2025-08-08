@@ -1,0 +1,19 @@
+{
+  "servers": {
+    "Context7": {
+      "command": "podman",
+      "args": [
+        "run",
+        "--name=context7-mcp",
+        "-i",
+        "--rm",
+        "--volume=npx-cache-20:/root/.npm",
+        "--volume=node-modules-cache-20:/root/.cache",
+        "node:20-alpine",
+        "npx",
+        "-y",
+        "@upstash/context7-mcp"]
+    }
+  },
+  "inputs": []
+}

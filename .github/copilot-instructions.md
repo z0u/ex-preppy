@@ -59,6 +59,14 @@ Use `T | None` instead of `Optional[T]`.
 
 Use PyTorch, PyTorch Lightning, numpy.
 
+Use Context7 to look up library docs. Here are some relevant Context7-compatible library IDs:
+
+- `/numpy/numpy`
+- `/pytorch/pytorch`
+- `/lightning-ai/pytorch-lightning`
+- `/modal-labs/modal-client`
+- `/modal-labs/modal-examples`
+
 Use Modal-compatible patterns for distributed processing.
 Returning a model from a remote training function may be infeasible if the model is large.
 Most objects including custom functions and classes can be pickled and executed remotely.
@@ -96,6 +104,8 @@ Use sentence case for headings and descriptive lists.
 **Methodical documentation:** Be comprehensive yet concise, capturing both facts and context efficiently.
 
 **Sentence structure:** Use varied sentence lengths: longer explanatory sentences broken up by shorter, punchy statements.
+
+**Punctuation:** Prefer basic ASCII characters like `'` and `"` over fancy punctuation.
 
 ### Tools
 
