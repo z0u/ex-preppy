@@ -13,7 +13,9 @@
     "source=${localWorkspaceFolderBasename}-venv,target=${containerWorkspaceFolder}/.venv,type=volume"
   ],
   // Privileged mode to allow running Podman and Docker containers
-  "runArgs": ["--privileged"],
+  "runArgs": [
+    "--privileged"
+  ],
   "containerEnv": {
     "UV_CACHE_DIR": "/home/vscode/.cache/uv",
     // Copy instead of hardlinking due to separate volumes
