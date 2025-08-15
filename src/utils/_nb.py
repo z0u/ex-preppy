@@ -1,5 +1,6 @@
 import html
 import secrets
+import time
 import urllib.parse
 from base64 import b64decode
 from pathlib import Path
@@ -27,6 +28,10 @@ class Displayer:
         """Display or update the given object in the notebook."""
         if not self.handle:
             self.handle = display(ob, display_id=True, **display_kwargs)
+            # Sleeping here seems to resolve some weird race condition :shrug:
+            # Without this, a single call followed immediately by a context
+            # manager exit results in nothing being displayed.
+            time.sleep(0.5)
         else:
             self.handle.update(ob, **display_kwargs)
 

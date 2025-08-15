@@ -1,4 +1,4 @@
-STEP,PHASE,ACTION,lr,reg-separate,reg-planar,reg-norm,reg-norm-v,reg-polar
+STEP,PHASE,ACTION,lr,reg-separate,reg-anchor,reg-unit,reg-unit-v,reg-polar
 0,Train,,1e-8,0.001,0.02,0.01,0.02,
 +10,,,0.01,,,,,
 +0.1,,,,0.02,,,,

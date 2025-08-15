@@ -1,19 +1,26 @@
+from matplotlib.projections import PolarAxes
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 
 
-def hide_decorations(ax: Axes, background: bool = True, ticks: bool = True, border: bool = True) -> None:
+def hide_decorations(ax: Axes | PolarAxes, background: bool = True, ticks: bool = True, border: bool = True) -> None:
     """Remove all decorations from the axes."""
     if background:
         ax.patch.set_alpha(0)
-    if ticks:
-        ax.set_xticks([])
-        ax.set_yticks([])
-    if border:
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-        ax.spines['bottom'].set_visible(False)
-        ax.spines['left'].set_visible(False)
+    if isinstance(ax, PolarAxes):
+        if ticks:
+            ax.set_rticks([])
+        if border:
+            ax.spines['polar'].set_visible(False)
+    else:
+        if ticks:
+            ax.set_xticks([])
+            ax.set_yticks([])
+        if border:
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            ax.spines['bottom'].set_visible(False)
+            ax.spines['left'].set_visible(False)
 
 
 def configure_matplotlib():

@@ -17,7 +17,12 @@ log = logging.getLogger(__name__)
 
 
 class ActivationCaptureHook:
-    """Captures latent representations, i.e. layer activations."""
+    """
+    Captures latent representations, i.e. layer activations.
+
+    See:
+    - `ActivationModifyHook`
+    """
 
     def __init__(self):
         self.activations: Tensor | None = None
@@ -56,7 +61,7 @@ class TrainingModule(L.LightningModule):
 
         # Set up latent capture hooks for all unique layer names
         self.latent_hooks: dict[str, ActivationCaptureHook] = {}
-        self.hook_handles: dict[str, RemovableHandle] = {}
+        self.hook_handles: list[RemovableHandle] = []
 
     def _setup_latent_hooks(self):
         """Set up hooks for all unique layers specified in regularizer layer_affinities."""
@@ -79,7 +84,7 @@ class TrainingModule(L.LightningModule):
             hook = ActivationCaptureHook()
             handle = layer_module.register_forward_hook(hook)
             self.latent_hooks[layer_name] = hook
-            self.hook_handles[layer_name] = handle
+            self.hook_handles.append(handle)
             log.debug(f'Registered hook for layer: {layer_name}')
 
     @override
@@ -92,7 +97,7 @@ class TrainingModule(L.LightningModule):
     def on_fit_end(self):
         """Called at the very end of fit. Clean up hooks."""
         super().on_fit_end()
-        for handle in self.hook_handles.values():
+        for handle in self.hook_handles:
             handle.remove()
         self.latent_hooks.clear()
         self.hook_handles.clear()
