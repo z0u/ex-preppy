@@ -30,7 +30,7 @@ def displayer():
 def displayer_img(
     filepath: str | Path,
     alt_text: str | None = None,
-    max_width: str | None = '70rem',
+    max_width: str | None = '100%',
 ):
     """
     Context manager to display an image in a Jupyter notebook.
