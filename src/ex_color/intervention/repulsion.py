@@ -32,7 +32,7 @@ class Repulsion(Intervention):
         dots = torch.sum(activations * self.subject[None, :], dim=1)  # [B]
 
         # Scale dot products with falloff function
-        target_dots = dots - self.falloff(dots)  # [B]
+        target_dots = self.falloff(dots)  # [B]
 
         # Decompose into parallel and perpendicular components
         v_parallel = dots[:, None] * self.subject[None, :]  # [B, E]
