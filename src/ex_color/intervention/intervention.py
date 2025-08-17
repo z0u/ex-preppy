@@ -1,5 +1,6 @@
 """Interventions modify activations at inference time to control model behavior."""
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 from torch import Tensor
@@ -7,15 +8,17 @@ from torch import Tensor
 from ex_color.intervention.falloff import Falloff
 
 
-class Intervention:
+class Intervention(ABC):
     """Modify activations to suppress or amplify concepts."""
 
     def __init__(self, subject: Tensor, falloff: Falloff):
         self.subject = subject
         self.falloff = falloff
 
+    @abstractmethod
     def dist(self, activations: Tensor) -> Tensor: ...
 
+    @abstractmethod
     def __call__(self, activations: Tensor, /) -> Tensor:
         """
         Modify activations to suppress or amplify concepts.
