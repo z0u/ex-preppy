@@ -7,6 +7,8 @@ from ex_color.intervention.intervention import Falloff, Intervention
 
 
 class Suppression(Intervention):
+    type = 'linear'
+
     def __init__(
         self,
         subject: Tensor,  # Embedding to steer away from [E] (unit norm)
@@ -27,6 +29,7 @@ class Suppression(Intervention):
         self.renormalize = renormalize
         self.bidirectional = bidirectional
 
+    @override
     def dist(self, activations: Tensor) -> Tensor:
         dots = torch.sum(activations * self.subject[None, :], dim=1)  # [B]
         if self.bidirectional:

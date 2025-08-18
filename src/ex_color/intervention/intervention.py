@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import Literal
 
 from torch import Tensor
 
@@ -10,6 +11,8 @@ from ex_color.intervention.falloff import Falloff
 
 class Intervention(ABC):
     """Modify activations to suppress or amplify concepts."""
+
+    type: Literal['linear', 'rotational', 'other']
 
     def __init__(self, subject: Tensor, falloff: Falloff):
         self.subject = subject

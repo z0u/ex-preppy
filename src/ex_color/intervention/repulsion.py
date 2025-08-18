@@ -7,6 +7,8 @@ from ex_color.intervention.intervention import Falloff, Intervention
 
 
 class Repulsion(Intervention):
+    type = 'rotational'
+
     def __init__(
         self,
         subject: Tensor,  # Embedding to steer away from [E] (unit norm)
@@ -22,6 +24,7 @@ class Repulsion(Intervention):
         super().__init__(subject, falloff)
         self.eps = eps
 
+    @override
     def dist(self, activations: Tensor) -> Tensor:
         dots = torch.sum(activations * self.subject[None, :], dim=1)  # [B]
         return torch.clamp(dots, 0, 1)
