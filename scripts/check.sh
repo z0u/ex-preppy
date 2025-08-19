@@ -21,6 +21,7 @@ show_usage() {
   # Important: here-doc indented with tab characters.
   cat <<-EOF 1>&2
 	Usage: $0 [opts]
+	  --fix:             attempt to fix linting and formatting errors
 	  --lint:            run linters
 	  --format:          run formatters
 	  --typecheck:       run type checkers
@@ -31,6 +32,14 @@ show_usage() {
 
 	Only checks are run (doesn't change files).
 	EOF
+}
+
+run_fix() {
+  (
+    set -x
+    uv run --no-sync ruff check --fix
+    uv run --no-sync ruff format
+  )
 }
 
 run_lint() {
@@ -55,6 +64,7 @@ o_lint=false
 o_format=false
 o_typecheck=false
 o_test=false
+o_fix=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -72,6 +82,9 @@ while [[ $# -gt 0 ]]; do
       ;;
     --test)
       o_test=true
+      ;;
+    --fix)
+      o_fix=true
       ;;
     --help|-h)
       show_usage
@@ -95,10 +108,15 @@ declare -A pids
 declare -A results
 declare -A hints
 
-hints[lint]="Try ./go lint --fix"
-hints[format]="Try ./go format"
+hints[fix]="Fix remaining linting errors manually"
+hints[lint]="Try './go lint --fix' or './go check --fix'"
+hints[format]="Try './go format' or './go check --fix'"
 hints[typecheck]="Fix type errors manually"
 hints[test]="Fix test failures manually"
+
+if [ "$o_fix" = "true" ]; then
+  run_fix & pids[fix]=$!
+fi
 
 if [ "$o_lint" = "true" ]; then
   run_lint & pids[lint]=$!
