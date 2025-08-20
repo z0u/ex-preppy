@@ -2,11 +2,23 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, Sequence
 
 from torch import Tensor
 
-from ex_color.intervention.falloff import Falloff
+
+@dataclass
+class ConstAnnotation:
+    direction: Literal['input', 'output']
+    type: Literal['linear', 'angular']
+    name: str
+    value: float
+
+
+@dataclass
+class VarAnnotation:
+    name: str
+    values: Tensor
 
 
 class Intervention(ABC):
@@ -14,9 +26,8 @@ class Intervention(ABC):
 
     type: Literal['linear', 'rotational', 'other']
 
-    def __init__(self, subject: Tensor, falloff: Falloff):
-        self.subject = subject
-        self.falloff = falloff
+    def __init__(self, concept_vector: Tensor):
+        self.concept_vector = concept_vector
 
     @abstractmethod
     def dist(self, activations: Tensor) -> Tensor: ...
@@ -33,6 +44,13 @@ class Intervention(ABC):
             Tensor: The modified activations, with the same shape as the input.
         """
         ...
+
+    @property
+    @abstractmethod
+    def annotations(self) -> Sequence[ConstAnnotation]: ...
+
+    @abstractmethod
+    def annotate_activations(self, activations: Tensor) -> VarAnnotation: ...
 
 
 @dataclass
