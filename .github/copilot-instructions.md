@@ -11,10 +11,10 @@ We are writing code to run AI experiments. Most of the code is in Python.
 Run `./go -h` to discover other commands.
 
 > [!IMPORTANT]
-> Before committing, you **must** run `./go check --no-unstaged --lint --format`. Spend reasonable effort to fix any errors before committing.
+> Before committing, you **must** run `./go check --lint --format`. Spend reasonable effort to fix any errors before committing.
 
 > [!IMPORTANT]
-> Before pushing, you **must** run `./go check --no-unstaged --test --typecheck`. Spend reasonable effort to fix any errors before pushing.
+> Before pushing, you **must** run `./go check --test --typecheck`. Spend reasonable effort to fix any errors before pushing.
 
 ### Repository structure
 
@@ -35,6 +35,10 @@ Use JavaScript-style method chaining (newline before the dot, use outer parenthe
 Use cutting-edge syntax.
 Prefer brevity.
 Use single quotes for strings, except for multiline strings.
+
+### Common gotchas
+
+When editing a Python file, take care to keep the indentation consistent. Sometimes your edits reduce the indentation, which results in errors that you then need to spend extra time fixing.
 
 ### Docstrings
 
@@ -77,6 +81,10 @@ Closures work even for remote functions, but don't _assume_ global scope.
 When working on a notebook, iterate on both the code (Python) and the prose (Markdown). Aim for a literate programming style in which we tell stories about our experiments. We don't just document the code; the notebook as a whole should display a strong narrative.
 
 Put imports in the cell they're used in — or even in the function, if the module isn't used in the function's API. It makes re-running cells easier during development.
+
+### Regular Python modules
+
+_Unlike_ notebooks, Python modules should usually follow standard patterns, such as placing imports at the top of the file.
 
 ### Markdown and prose
 

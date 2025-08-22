@@ -1,16 +1,27 @@
-"""Interventions modify activations at inference time to control model behavior."""
+"""
+Modify activations at inference time to control model behavior.
+
+Design notes:
+
+- Interventions are nn.Module so they can be moved across devices with .to() and
+    participate in state_dict()/pickling. Any Tensor state should be registered
+    as buffers so it's saved and moved but not trained.
+- Mappers are also nn.Module subclasses for consistent device handling and
+  serialization.
+"""
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Literal, Sequence
+from typing import Literal, Sequence, override
 
+import torch.nn as nn
 from torch import Tensor
 
 
 @dataclass
 class ConstAnnotation:
     direction: Literal['input', 'output']
-    type: Literal['linear', 'angular']
+    kind: Literal['linear', 'angular']
     name: str
     value: float
 
@@ -21,19 +32,46 @@ class VarAnnotation:
     values: Tensor
 
 
-class Intervention(ABC):
+class Mapper(nn.Module, ABC):
+    """Protocol for mapper functions that modify alignment values."""
+
+    @override  # Overridden to narrow types
+    def __call__(self, alignment: Tensor) -> Tensor:
+        return super().__call__(alignment)
+
+    @override
+    @abstractmethod
+    def forward(self, alignment: Tensor) -> Tensor: ...
+
+    @property
+    def annotations(self) -> Sequence[ConstAnnotation]:
+        """Annotations for visualization of hyperparameters"""
+        ...
+
+
+class Intervention(nn.Module, ABC):
     """Modify activations to suppress or amplify concepts."""
 
-    type: Literal['linear', 'rotational', 'other']
+    kind: Literal['linear', 'rotational']
+    concept_vector: Tensor
 
     def __init__(self, concept_vector: Tensor):
-        self.concept_vector = concept_vector
+        super().__init__()
+        # Register as buffer so it's saved/moved with the module but not trained
+        self.register_buffer('concept_vector', concept_vector)
 
     @abstractmethod
-    def dist(self, activations: Tensor) -> Tensor: ...
+    def dist(self, activations: Tensor) -> Tensor:
+        """Calculate the distance between the activations and the intervention region"""
+        ...
 
+    @override  # Overridden to narrow types
+    def __call__(self, alignment: Tensor) -> Tensor:
+        return super().__call__(alignment)
+
+    @override
     @abstractmethod
-    def __call__(self, activations: Tensor, /) -> Tensor:
+    def forward(self, activations: Tensor, /) -> Tensor:
         """
         Modify activations to suppress or amplify concepts.
 
@@ -47,10 +85,14 @@ class Intervention(ABC):
 
     @property
     @abstractmethod
-    def annotations(self) -> Sequence[ConstAnnotation]: ...
+    def annotations(self) -> Sequence[ConstAnnotation]:
+        """Annotations for visualization of hyperparameters"""
+        ...
 
     @abstractmethod
-    def annotate_activations(self, activations: Tensor) -> VarAnnotation: ...
+    def annotate_activations(self, activations: Tensor) -> VarAnnotation:
+        """Annotations for visualization of intervention effect"""
+        ...
 
 
 @dataclass
