@@ -50,7 +50,7 @@ case "${1:-all}" in
         cat <<-EOF 1>&2
 			Usage: $0 {check|lint|format|types|tests|dead|build}
 			  install:           install dependencies (uv sync)
-			  auth   [...args]:  authenticate with Modal (modal setup)
+			  auth:              authenticate with Modal and WandB
 			  format [...args]:  format code (ruff format)
 			  lint   [...args]:  run linters (ruff check)
 			  types  [...args]:  check types (basedpyright)
