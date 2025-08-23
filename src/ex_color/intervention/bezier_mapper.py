@@ -20,6 +20,7 @@ class BezierMapper(Mapper):
         self,
         a: Annotated[float, [Ge(0), Lt(1)]],
         b: Annotated[float, [Gt(0), Le(1)]],
+        *,
         start_slope: float = 1.0,  # Aligned with unmapped leadup
         end_slope: float = 0.0,  # Flat
         control_distance: float = 1 / sqrt(2),  # Relative to intersection point
@@ -157,8 +158,23 @@ class FastBezierMapper(BezierMapper):
     x_lookup: Tensor
     y_lookup: Tensor
 
-    def __init__(self, *args, lookup_resolution: int = 1000, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(
+        self,
+        a: Annotated[float, [Ge(0), Lt(1)]],
+        b: Annotated[float, [Gt(0), Le(1)]],
+        *,
+        start_slope: float = 1.0,  # Aligned with unmapped leadup
+        end_slope: float = 0.0,  # Flat
+        control_distance: float = 1 / sqrt(2),  # Relative to intersection point
+        lookup_resolution: int = 1000,
+    ):
+        super().__init__(
+            a,
+            b,
+            start_slope=start_slope,
+            end_slope=end_slope,
+            control_distance=control_distance,
+        )
 
         # Precompute lookup table
         t_vals = torch.linspace(0, 1, lookup_resolution, dtype=torch.float32)

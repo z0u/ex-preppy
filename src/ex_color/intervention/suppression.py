@@ -39,3 +39,9 @@ class Suppression(Intervention):
     @override
     def annotate_activations(self, activations: Tensor):
         return VarAnnotation('strength', self.gate(activations))
+
+    def __repr__(self):
+        return f'{type(self).__name__}({self.concept_vector:r}, {self.falloff:r})'
+
+    def __str__(self):
+        return f'suppress {self.concept_vector.tolist()} as {self.falloff}'

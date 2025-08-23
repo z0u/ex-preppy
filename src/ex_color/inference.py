@@ -2,7 +2,6 @@ import logging
 from typing import override
 
 import lightning as L
-import torch
 import torch.nn as nn
 from torch import Tensor
 from torch.utils.hooks import RemovableHandle
@@ -24,15 +23,7 @@ class ActivationModifyHook:
         self.intervention = intervention
 
     def __call__(self, module, _input, output):
-        if self.intervention.strength == 0:
-            return output
-
-        modified_output = self.intervention.apply(output)
-
-        if self.intervention.strength == 1:
-            return modified_output
-
-        return torch.lerp(output, modified_output, self.intervention.strength)
+        return self.intervention.apply(output)
 
 
 class InferenceModule(L.LightningModule):
@@ -57,14 +48,12 @@ class InferenceModule(L.LightningModule):
                 try:
                     layer_module = self.model.get_submodule(layer_name)
                 except AttributeError as e:
-                    raise AttributeError(f'Layer {layer_name} (needed by {intervention.name})') from e
+                    raise AttributeError(f'Layer {layer_name} (needed by {intervention.apply})') from e
 
                 hook = ActivationModifyHook(intervention)
                 handle = layer_module.register_forward_hook(hook)
                 self.hook_handles.append(handle)
-                log.debug(
-                    f'Registered intervention hook for layer: {layer_name} ("{intervention.name}" {repr(intervention.apply)})'
-                )
+                log.debug(f'Registered intervention hook for layer: {layer_name} ({intervention.apply})')
 
     @override
     def on_predict_start(self):

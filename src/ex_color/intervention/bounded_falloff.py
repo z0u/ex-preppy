@@ -18,7 +18,6 @@ class BoundedFalloff(Mapper):
         eps=1e-8,
     ):
         super().__init__()
-        assert a < b, 'a must be less than b for Bounded falloff'
         self.a = a
         self.b = b
         self.power = power

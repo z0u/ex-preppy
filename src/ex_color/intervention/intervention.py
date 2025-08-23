@@ -99,11 +99,7 @@ class Intervention(nn.Module, ABC):
 class InterventionConfig:
     """Configuration for an intervention."""
 
-    name: str
-    """Name for this intervention, for reference."""
     apply: Intervention
     """Function to apply to the activations."""
     layer_affinities: list[str]
     """List of layer names to apply this intervention to."""
-    strength: float = 1.0
-    """Strength of the intervention, from 0.0 (no effect) to 1.0 (full effect)."""

@@ -83,3 +83,9 @@ class Repulsion(Intervention):
         dots = self.dist(activations)  # [B]
         target_dots = self.mapper(dots)  # [B]
         return VarAnnotation('offset', (dots - target_dots).abs())
+
+    def __repr__(self):
+        return f'{type(self).__name__}({self.concept_vector:r}, {self.falloff:r})'
+
+    def __str__(self):
+        return f'repel from {self.concept_vector.tolist()} as {self.mapper}'
