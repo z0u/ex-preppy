@@ -1,26 +1,43 @@
-from matplotlib.projections import PolarAxes
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
+from matplotlib.projections import PolarAxes
+from mpl_toolkits.mplot3d import Axes3D
 
 
-def hide_decorations(ax: Axes | PolarAxes, background: bool = True, ticks: bool = True, border: bool = True) -> None:
+def hide_decorations(
+    ax: Axes | PolarAxes | Axes3D, background: bool = True, ticks: bool = True, border: bool = True, grid: bool = True
+) -> None:
     """Remove all decorations from the axes."""
     if background:
         ax.patch.set_alpha(0)
-    if isinstance(ax, PolarAxes):
-        if ticks:
+        if isinstance(ax, Axes3D):
+            ax.xaxis.set_pane_color('none')
+            ax.yaxis.set_pane_color('none')
+            ax.zaxis.set_pane_color('none')
+
+    if ticks:
+        if isinstance(ax, PolarAxes):
             ax.set_rticks([])
-        if border:
-            ax.spines['polar'].set_visible(False)
-    else:
-        if ticks:
+        else:
             ax.set_xticks([])
             ax.set_yticks([])
-        if border:
+            ax.set_zticks([])
+
+    if border:
+        if isinstance(ax, PolarAxes):
+            ax.spines['polar'].set_visible(False)
+        elif isinstance(ax, Axes3D):
+            ax.xaxis.line.set_color('none')
+            ax.yaxis.line.set_color('none')
+            ax.zaxis.line.set_color('none')
+        else:
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
             ax.spines['bottom'].set_visible(False)
             ax.spines['left'].set_visible(False)
+
+    if grid:
+        ax.grid(False)
 
 
 def configure_matplotlib():
