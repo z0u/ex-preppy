@@ -53,12 +53,9 @@ class Intervention(nn.Module, ABC):
     """Modify activations to suppress or amplify concepts."""
 
     kind: Literal['linear', 'rotational']
-    concept_vector: Tensor
 
-    def __init__(self, concept_vector: Tensor):
+    def __init__(self):
         super().__init__()
-        # Register as buffer so it's saved/moved with the module but not trained
-        self.register_buffer('concept_vector', concept_vector)
 
     @abstractmethod
     def dist(self, activations: Tensor) -> Tensor:

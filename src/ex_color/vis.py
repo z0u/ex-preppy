@@ -1,4 +1,8 @@
+from typing import Sequence
+
 import numpy as np
+from matplotlib.axes import Axes
+from numpy.typing import NDArray
 
 from ex_color.data.color_cube import ColorCube
 
@@ -8,13 +12,15 @@ def plot_colors(  # noqa: C901
     pretty: bool | str = True,
     patch_size: float = 0.25,
     title: str = '',
-    data: np.ndarray | None = None,
+    colors: np.ndarray | None = None,
+    colors_compare: np.ndarray | None = None,
 ):
     """Plot a ColorCube in 2D slices."""
     from itertools import chain
     from math import ceil
 
     import matplotlib.pyplot as plt
+    from matplotlib.patches import Rectangle
 
     if pretty is True:
         pretty = cube.space
@@ -46,6 +52,7 @@ def plot_colors(  # noqa: C901
     # Calculate total figure size with some margins between plots
     figsize = (n_cols * subplot_width, n_rows * subplot_height)
 
+    axes: Sequence[Axes] | NDArray
     fig, axes = plt.subplots(
         n_rows,
         n_cols,
@@ -56,8 +63,30 @@ def plot_colors(  # noqa: C901
     )
     axes = list(chain(*axes))  # Flatten the axes array
 
-    if data is None:
-        data = cube.rgb_grid
+    if colors is None:
+        colors = cube.rgb_grid
+
+    def annotate_cells(ax: Axes, b: np.ndarray):
+        """
+        Draw a colored outline rectangle per cell using colors_compare.
+
+        edge_colors shape: (H, W, 3) in [0, 1].
+        """
+        H, W = b.shape[:2]
+        # Ensure axis limits correspond to the pixel grid
+        ax.set_xlim(-0.5, W - 0.5)
+        ax.set_ylim(H - 0.5, -0.5)
+        width = 0.3
+        half_width = width / 2
+        for r in range(H):
+            for c in range(W):
+                rect = Rectangle(
+                    (c - half_width, r - half_width),
+                    width,
+                    width,
+                    facecolor=b[r, c],
+                )
+                ax.add_patch(rect)
 
     # Plot each slice of the cube (one for each value)
     for i, ax in enumerate(axes):
@@ -67,8 +96,11 @@ def plot_colors(  # noqa: C901
         row = i // n_cols
         col = i % n_cols
 
-        ax.imshow(data[i], vmin=0, vmax=1)
+        ax.imshow(colors[i], vmin=0, vmax=1)
+        if colors_compare is not None:
+            annotate_cells(ax, colors_compare[i])
 
+        ax.set_aspect('equal')
         ax.set_title(f'{main_axis} = {fmt(main_axis, main_coords[i])}', fontsize=8)
 
         # Add axes labels without cluttering the display

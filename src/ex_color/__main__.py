@@ -13,11 +13,7 @@ from ex_color.data.cube_sampler import vibrancy
 from ex_color.data.cyclic import arange_cyclic
 from ex_color.labelling import collate_with_generated_labels
 from ex_color.model import ColorMLP
-from ex_color.loss.anchor import Anchor
-from ex_color.loss.planarity import planarity
-from ex_color.loss.regularizer import RegularizerConfig
-from ex_color.loss.separate import Separate
-from ex_color.loss.unitarity import unitarity
+from ex_color.loss import Anchor, Planarity, RegularizerConfig, Separate, Unitarity
 from ex_color.seed import set_deterministic_mode
 from ex_color.training import TrainingModule
 from mini.temporal.dopesheet import Dopesheet
@@ -87,19 +83,19 @@ ALL_REGULARIZERS = [
     ),
     RegularizerConfig(
         name='reg-planar',
-        compute_loss_term=planarity,
+        compute_loss_term=Planarity(),
         label_affinities={'vibrant': 1.0},
         layer_affinities=['encoder'],  # Apply to encoder layer
     ),
     RegularizerConfig(
         name='reg-norm-v',
-        compute_loss_term=unitarity,
+        compute_loss_term=Unitarity(),
         label_affinities={'vibrant': 1.0},
         layer_affinities=['encoder'],  # Apply to encoder layer
     ),
     RegularizerConfig(
         name='reg-norm',
-        compute_loss_term=unitarity,
+        compute_loss_term=Unitarity(),
         label_affinities=None,
         layer_affinities=['encoder'],  # Explicit layer specification
     ),

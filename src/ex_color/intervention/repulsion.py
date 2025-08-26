@@ -8,6 +8,7 @@ from ex_color.intervention.intervention import Intervention, Mapper, VarAnnotati
 
 class Repulsion(Intervention):
     kind = 'rotational'
+    concept_vector: Tensor
 
     def __init__(
         self,
@@ -21,13 +22,17 @@ class Repulsion(Intervention):
         Returns:
             Rotated activations with unit norm, shape [B, E].
         """
-        super().__init__(concept_vector)
+        super().__init__()
         self.mapper = mapper
         self.eps = eps
+        # Register as buffer so it's saved/moved with the module but not trained
+        self.register_buffer('concept_vector', concept_vector)
+        self.register_buffer('_concept_vector', concept_vector)
 
     @override
     def dist(self, activations: Tensor) -> Tensor:
-        dots = torch.sum(activations * self.concept_vector[None, :], dim=1)  # [B]
+        self._concept_vector = self._concept_vector.to(activations)
+        dots = torch.sum(activations * self._concept_vector[None, :], dim=1)  # [B]
         return torch.clamp(dots, 0, 1)
 
     @override
@@ -39,7 +44,8 @@ class Repulsion(Intervention):
         target_dots = self.mapper(dots)  # [B]
 
         # Decompose into parallel and perpendicular components
-        v_parallel = dots[:, None] * self.concept_vector[None, :]  # [B, E]
+        self._concept_vector = self._concept_vector.to(activations)
+        v_parallel = dots[:, None] * self._concept_vector[None, :]  # [B, E]
         v_perp = activations - v_parallel  # [B, E]
 
         # Get perpendicular unit vectors (handle near-parallel case)
@@ -52,8 +58,8 @@ class Repulsion(Intervention):
             # Generate random orthogonal vectors
             random_vecs = torch.randn_like(v_perp[nearly_parallel])
             # Make orthogonal to subject using Gram-Schmidt
-            proj = torch.sum(random_vecs * self.concept_vector[None, :], dim=1, keepdim=True)
-            random_vecs = random_vecs - proj * self.concept_vector[None, :]
+            proj = torch.sum(random_vecs * self._concept_vector[None, :], dim=1, keepdim=True)
+            random_vecs = random_vecs - proj * self._concept_vector[None, :]
             random_vecs = random_vecs / torch.norm(random_vecs, dim=1, keepdim=True)
 
             v_perp[nearly_parallel] = random_vecs

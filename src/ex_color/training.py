@@ -8,27 +8,13 @@ import torch.optim as optim
 from torch import Tensor
 from torch.utils.hooks import RemovableHandle
 
+from ex_color.hooks import ActivationCaptureHook
 from ex_color.loss.objective import Objective
 from ex_color.loss.regularizer import RegularizerConfig
 from mini.temporal.dopesheet import Dopesheet
 from mini.temporal.timeline import Timeline
 
 log = logging.getLogger(__name__)
-
-
-class ActivationCaptureHook:
-    """
-    Captures latent representations, i.e. layer activations.
-
-    See:
-    - `ActivationModifyHook`
-    """
-
-    def __init__(self):
-        self.activations: Tensor | None = None
-
-    def __call__(self, _module, _input, output):
-        self.activations = output
 
 
 class TrainingModule(L.LightningModule):
@@ -54,6 +40,12 @@ class TrainingModule(L.LightningModule):
         # Store training configuration
         self.objective = objective
         self.regularizers = regularizers
+
+        # Register regularizers' compute modules as submodules so device placement works
+        # TODO: Convert RegularizerConfig to nn.Module? Doing so might allow better compilation
+        for idx, reg in enumerate(self.regularizers):
+            # Name is stable and readable in checkpoints
+            self.add_module(f'reg_{reg.name}_{idx}', reg.compute_loss_term)
         self.timeline = Timeline(dopesheet)
 
         # Store the pure neural network model (passed as parameter)
@@ -213,6 +205,9 @@ def compute_loss_term(regularizer: RegularizerConfig, batch_labels, latents: Ten
         per_sample_loss = per_sample_loss.expand(sample_affinities.shape[0])
     elif per_sample_loss.shape[0] != sample_affinities.shape[0]:
         raise RuntimeError(f'Loss should be per-sample OR scalar: {regularizer.name}')
+    # Align devices to avoid device-mixing errors
+    if sample_affinities.device != per_sample_loss.device:
+        sample_affinities = sample_affinities.to(per_sample_loss.device)
     weighted_loss = per_sample_loss * sample_affinities
     return weighted_loss.sum() / (sample_affinities.sum() + 1e-8)
 

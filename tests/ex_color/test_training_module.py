@@ -9,11 +9,11 @@ from torch import Tensor
 
 from ex_color.model import ColorMLP
 from ex_color.training import TrainingModule
-from ex_color.loss.regularizer import RegularizerConfig
+from ex_color.loss.regularizer import Regularizer, RegularizerConfig
 from mini.temporal.dopesheet import Dopesheet
 
 
-class MockRegularizer:
+class MockRegularizer(Regularizer):
     """Mock regularizer for testing."""
 
     def __call__(self, activations: Tensor) -> Tensor:

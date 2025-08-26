@@ -9,8 +9,12 @@ log = logging.getLogger(__name__)
 
 
 class Anchor(Regularizer):
+    anchor_point: Tensor
+
     def __init__(self, anchor_point: Tensor):
-        self.anchor_point = anchor_point
+        super().__init__()
+        # Register as a buffer so it follows .to(device)/.cuda() with the module
+        self.register_buffer('anchor_point', anchor_point)
 
     def __call__(self, activations: Tensor) -> Tensor:
         """

@@ -13,6 +13,7 @@ class Separate(Regularizer):
     """Regularize latents to be rotationally separated from each other."""
 
     def __init__(self, channels: tuple[int, ...] | EllipsisType = ..., power: float = 1.0, shift: bool = True):
+        super().__init__()
         self.channels = channels
         self.power = power
         self.shift = shift

@@ -1,15 +1,14 @@
 import logging
 from dataclasses import dataclass
-from typing import Protocol, runtime_checkable
 
 from torch import Tensor
+import torch.nn as nn
 
 
 log = logging.getLogger(__name__)
 
 
-@runtime_checkable
-class Regularizer(Protocol):
+class Regularizer(nn.Module):
     """
     Compute a loss term based on hidden layer activations.
 

@@ -6,3 +6,4 @@ __pycache__
 .install.sh.rc
 _site/
 lightning_logs/
+wandb/
