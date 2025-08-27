@@ -56,7 +56,7 @@ class ImageDisplayer:
         filepath: str | Path,
         *,
         alt_text: str | None = None,
-        max_width: str | None = '70rem',
+        max_width: str | None = None,
     ):
         self.filepath = Path(filepath)
         self.alt_text = alt_text

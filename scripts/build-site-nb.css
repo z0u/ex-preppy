@@ -9,15 +9,25 @@
   }
 
   img, video {
-    max-width: 100%;
+    /* Center images, and allow them to overflow to some extent. */
     height: auto;
+    max-width: calc(min(150%, 100vw - 28px * 2));
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
   }
+}
+
+.jp-InputArea, .jp-OutputArea, .jp-OutputArea-child, .jp-OutputArea-output {
+  overflow: unset;
 }
 
 .jp-RenderedHTMLCommon table {
   margin-left: 0px;
 }
-
+.jp-MarkdownOutput.jp-RenderedHTMLCommon {
+  overflow: unset;
+}
 .jp-RenderedMarkdown.jp-MarkdownOutput > table .mjx-full-width {
   /* MathJax makes table cells too wide by default. */
   width: auto;

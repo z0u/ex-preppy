@@ -30,7 +30,7 @@ def displayer():
 def displayer_img(
     filepath: str | Path,
     alt_text: str | None = None,
-    max_width: str | None = '100%',
+    max_width: str | None = None,
 ):
     """
     Context manager to display an image in a Jupyter notebook.
@@ -54,7 +54,7 @@ def save_fig(
     filepath: str | Path,
     close_fig: bool = True,
     alt_text: str | None = None,
-    max_width: str | None = '70rem',
+    max_width: str | None = None,
     **savefig_kwargs,
 ) -> str:
     """
