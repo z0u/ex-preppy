@@ -2,5 +2,5 @@
 
 set -euo pipefail
 
-# Just run the fast checks
-./scripts/check.sh --no-unstaged --lint --format
+# Just run the fast checks against staged + clean index
+./scripts/check.sh --index --lint --format

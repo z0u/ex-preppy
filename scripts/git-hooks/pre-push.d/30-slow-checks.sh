@@ -2,5 +2,5 @@
 
 set -euo pipefail
 
-# Run slow checks
-./scripts/check.sh --no-unstaged --typecheck --test
+# Run slow checks on a snapshot of HEAD only
+./scripts/check.sh --head --typecheck --test

@@ -2,6 +2,9 @@
 
 set -euo pipefail
 
+# Absolute path to repo root (used to anchor tool configs)
+REPO_ROOT=$(git rev-parse --show-toplevel)
+
 has_unstaged_changes() {
   # Check for unstaged changes to tracked files
   ! git diff --quiet ||
@@ -9,12 +12,25 @@ has_unstaged_changes() {
   [ -n "$(git ls-files --others --exclude-standard)" ]
 }
 
-stash_unstaged() {
-  git stash push --keep-index --include-untracked -m "pre-commit-temp" --quiet
-}
-
-stash_pop() {
-  git stash pop --quiet
+# Create a temporary snapshot directory and populate it per mode.
+# Modes:
+#   index -> current index (includes staged changes)
+#   head  -> current HEAD commit (ignores staged/unstaged)
+create_snapshot() {
+  local mode=${1:-index}
+  SNAPSHOT_DIR=$(mktemp -d -t repo-snapshot-XXXXXX)
+  trap 'rm -rf "$SNAPSHOT_DIR"' EXIT
+  if [[ "$mode" == "index" ]]; then
+    git checkout-index --all --prefix="$SNAPSHOT_DIR/"
+    echo "Working on project snapshot from index in $SNAPSHOT_DIR" >&2
+  elif [[ "$mode" == "head" ]]; then
+    git -c core.worktree="$REPO_ROOT" archive --format=tar HEAD \
+      | tar -x -C "$SNAPSHOT_DIR"
+    echo "Working on project snapshot from HEAD in $SNAPSHOT_DIR" >&2
+  else
+    echo "Unknown snapshot mode: $mode" >&2
+    exit 2
+  fi
 }
 
 show_usage() {
@@ -27,7 +43,8 @@ show_usage() {
 	  --typecheck:       run type checkers
 	  --test:            run tests
 
-	  --no-unstaged:     stash unstaged changes before checks, and pop after
+	  --index:           run selected checks against current index (includes staged)
+	  --head:            run selected checks against HEAD only (ignores staged)
 	  -h --help:         show help and exit
 
 	Only checks are run (doesn't change files).
@@ -43,23 +60,78 @@ run_fix() {
 }
 
 run_lint() {
-  ( set -x; uv run --no-sync ruff check --quiet --no-fix )
+  # Accept optional path targets
+  if [[ -n "${SNAPSHOT_DIR:-}" ]]; then
+  # Run from repo root so uv uses the project env; scan the snapshot path
+    (
+      set -x
+      uv run --no-sync ruff check --quiet --no-fix \
+        --cache-dir="$REPO_ROOT/.ruff_cache" \
+        --config "$SNAPSHOT_DIR/pyproject.toml" \
+        "$SNAPSHOT_DIR"
+    )
+  else
+    ( set -x; uv run --no-sync ruff check --quiet --no-fix "$@" )
+  fi
 }
 
 run_format() {
-  ( set -x; uv run --no-sync ruff format --quiet --check )
+  # Accept optional path targets
+  if [[ -n "${SNAPSHOT_DIR:-}" ]]; then
+    # Run from repo root so uv uses the project env; scan the snapshot path
+    (
+      set -x
+      uv run --no-sync ruff format \
+        --quiet --check \
+        --cache-dir="$REPO_ROOT/.ruff_cache" \
+        --config "$SNAPSHOT_DIR/pyproject.toml" \
+        "$SNAPSHOT_DIR"
+    )
+  else
+    ( set -x; uv run --no-sync ruff format --quiet --check "$@" )
+  fi
 }
 
 run_typecheck() {
-  ( set -x; uv run --no-sync basedpyright )
+  if [[ -n "${SNAPSHOT_DIR:-}" ]]; then
+    # Analyze the snapshot as the project to reflect what will be pushed
+    (
+      set -x
+      # Use the main venv directory to avoid reinstalling packages
+      uv run --project "$REPO_ROOT" --no-sync basedpyright \
+        --project "$SNAPSHOT_DIR" \
+        --venvpath "$REPO_ROOT"
+    )
+  else
+    ( set -x; cd "$REPO_ROOT"; uv run --no-sync basedpyright )
+  fi
 }
 
 run_tests() {
-  ( set -x; uv run --no-sync pytest --quiet )
+  if [[ -n "${SNAPSHOT_DIR:-}" ]]; then
+    # Run tests collected from the snapshot, importing code from the snapshot
+    (
+      set -x
+      # Add snapshot's src directory to Python path so imports work
+      PYTHONPATH="$SNAPSHOT_DIR/src${PYTHONPATH:+:$PYTHONPATH}" \
+        uv run --no-sync pytest --quiet \
+        --rootdir="$SNAPSHOT_DIR" \
+        --config-file "$SNAPSHOT_DIR/pyproject.toml" \
+        "$SNAPSHOT_DIR/tests"
+    )
+  else
+    (
+      set -x
+      cd "$REPO_ROOT"
+      PYTHONPATH="$REPO_ROOT/src${PYTHONPATH:+:$PYTHONPATH}" \
+        uv run --no-sync pytest --quiet
+    )
+  fi
 }
 
 
 o_no_unstaged=false
+o_snapshot_mode=""
 o_lint=false
 o_format=false
 o_typecheck=false
@@ -70,6 +142,12 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --no-unstaged)
       o_no_unstaged=true
+      ;;
+    --index)
+      o_snapshot_mode="index"
+      ;;
+    --head)
+      o_snapshot_mode="head"
       ;;
     --lint)
       o_lint=true
@@ -99,9 +177,16 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
-if [ "$o_no_unstaged" = "true" ] && has_unstaged_changes; then
-  stash_unstaged
-  trap stash_pop EXIT
+# If requested, run all checks against a clean snapshot of the index.
+if [ "$o_no_unstaged" = "true" ] && [ -z "$o_snapshot_mode" ]; then
+  o_snapshot_mode="index"
+fi
+
+# If a snapshot mode is chosen, all selected checks will operate on that snapshot.
+if [ -n "$o_snapshot_mode" ]; then
+  create_snapshot "$o_snapshot_mode"
+  # Stay in repo root for venv and uv context. Commands will have to change the environment themselves.
+  cd "$REPO_ROOT"
 fi
 
 declare -A pids
