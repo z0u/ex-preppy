@@ -17,7 +17,7 @@ We hope that this research will reveal more precise and robust ways to constrain
 
 ## M1. Preliminary experiments with color
 
-We begin with some experiments with color, because color spaces are well defined and highly intuitive for visualization.
+We begin with some experiments with color, because color spaces are well defined and highly intuitive for visualization. Our goal is to demonstrate that it's possible to impose interpretable structure on latent space in a toy model.
 
 ![Visualization of colorful latent embeddings in experiment 1.7, showing three large scatter plots from the end of training, and ten small thumbnails from earlier training steps. The thumbnails show how latent space evolves from a small cluster of dots, to a color cube, though various contortions, until finally it forms a smooth, regular sphere.](docs/m1-color-mlp/large-assets/ex-1.7-color-phase-history.png)
 
@@ -57,12 +57,18 @@ Publications relating to this milestone:
 
 <br>
 
-## M2. Practical control and intervention (TO DO)
+## M2. Practical control and intervention (IN PROGRESS)
 
 > Okay, you can structure latent spaces... but can you actually use that structure?
 
-1. Selective concept suppression (temporary, inference-time). Demonstrate intervention at inference time, showing that some colors can be reliably muted without affecting those that are not "close". For example, cause the network to fail to reconstruct _red_ and colors close to red, but allow _orange_.
-2. Permanent concept deletion (weight ablation). Demonstrate that the latent space can be further manipulated to completely remove a representation. For example, pressure the network to reconfigure the space so that _only_ red colors are on one particular embedding dimension, and then _delete_ that dimension from the network. Hopefully, this would make it difficult to fine-tune the model later to restore the deleted capability.
+In this milestone, we develop intervention functions and apply them to the structured color model from M1.
+
+![Plots of interventions. Top row: semicircular polar plots showing the effects of suppression on activations. Each plot shows two lobes: an orange one indicating the magnitude of the intervention, and a blue one showing the transformed activation space. The direction being intervened on (the 'subject') is always 'up', so the orange 'magnitude' lobes are also oriented upwards. The blue 'transformed' lobes are more circular but have a depression in the top, showing that the directions more aligned with the subject are squashed/attenuated by the intervention. Bottom row: line charts showing intervention strength as a function of alignment.](docs/m2-control/large-assets/ex-2.1-suppression.png)
+
+1. [Intervention lobes](docs/m2-control/ex-2.1-intervention-lobe.ipynb): Exploration of intervention function shape. Taking inspiration from computer graphics shader literature, we visualize intervention functions and their falloffs as polar plots. We implement two functions: suppression (which subtracts the concept vector) and repulsion (which steers activations away from the concept vector).
+2. [Specific concept intervention](docs/m2-control/ex-2.2-inhibit-red.ipynb): Application of interventions to the color autoencoder. We train a bottleneck autoencoder, predict where one key concept will be located, and then intervene on its activations.
+3. TO DO: Improved specific concept intervention: iterate on the interplay between regularizers and interventions to make it more predictable.
+4. TO DO: Permanent concept deletion (weight ablation). Demonstrate that the latent space can be further manipulated to completely remove a representation. For example, pressure the network to reconfigure the space so that _only_ red colors are on one particular embedding dimension, and then _delete_ that dimension from the network. Hopefully, this would make it difficult to fine-tune the model later to restore the deleted capability.
 
 <br>
 
