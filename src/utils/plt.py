@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.projections import PolarAxes
 from mpl_toolkits.mplot3d import Axes3D
+import mpl_toolkits.mplot3d.axis3d as axis3d
 
 
 def hide_decorations(
@@ -11,6 +12,9 @@ def hide_decorations(
     if background:
         ax.patch.set_alpha(0)
         if isinstance(ax, Axes3D):
+            assert isinstance(ax.xaxis, axis3d.Axis)
+            assert isinstance(ax.yaxis, axis3d.Axis)
+            assert isinstance(ax.zaxis, axis3d.Axis)
             ax.xaxis.set_pane_color('none')
             ax.yaxis.set_pane_color('none')
             ax.zaxis.set_pane_color('none')
@@ -21,12 +25,15 @@ def hide_decorations(
         else:
             ax.set_xticks([])
             ax.set_yticks([])
-            ax.set_zticks([])
+            ax.set_zticks([])  # type:ignore
 
     if border:
         if isinstance(ax, PolarAxes):
             ax.spines['polar'].set_visible(False)
         elif isinstance(ax, Axes3D):
+            assert isinstance(ax.xaxis, axis3d.Axis)
+            assert isinstance(ax.yaxis, axis3d.Axis)
+            assert isinstance(ax.zaxis, axis3d.Axis)
             ax.xaxis.line.set_color('none')
             ax.yaxis.line.set_color('none')
             ax.zaxis.line.set_color('none')
