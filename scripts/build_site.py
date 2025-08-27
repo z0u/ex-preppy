@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import argparse
 import json
 import os
 import re
@@ -6,7 +7,6 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-import argparse
 
 # --- Configuration ---
 # Use pathlib for robust path handling
@@ -15,6 +15,7 @@ WORKSPACE_ROOT = SCRIPT_DIR.parent
 SITE_DIR = WORKSPACE_ROOT / '_site'
 DOCS_DIR = WORKSPACE_ROOT / 'docs'
 CSS_FILE = SCRIPT_DIR / 'build-site-nb.css'
+JS_COLLAPSE_FILE = SCRIPT_DIR / 'build-site-collapse.js'
 NBCONVERT_CONFIG = SCRIPT_DIR / 'build-site-config.py'
 README_FILE = WORKSPACE_ROOT / 'README.md'
 CSS_MARKER = '/* Custom styles for prose width */'  # Used to check if CSS is already injected
@@ -273,6 +274,59 @@ def inject_css(output_format: str = 'html'):
     print('CSS injection complete.')
 
 
+def inject_collapse_js(output_format: str = 'html'):
+    """Inject JS that collapses code input areas into <details> blocks with a summary."""
+    if output_format != 'html':
+        print(f'Skipping code collapse injection for {output_format.upper()} format.')
+        return
+
+    print('Injecting code-collapse script into HTML files...')
+
+    js_marker = '<!-- ex-collapse-code injected -->'
+
+    try:
+        script_content = JS_COLLAPSE_FILE.read_text(encoding='utf-8')
+        script_block = f'<script>\n{script_content}\n</script>'
+    except Exception as e:
+        print(f'Error reading CSS file {JS_COLLAPSE_FILE}: {e}', file=sys.stderr)
+        sys.exit(1)
+
+    js_code = js_marker + script_block
+
+    html_files = list(SITE_DIR.rglob('*.html'))
+    if not html_files:
+        print('  No HTML files found to inject code-collapse script into.')
+        return
+
+    head_end_pattern = re.compile(r'</head>', re.IGNORECASE)
+
+    for html_file in html_files:
+        print(f'  Processing code-collapse for {html_file.relative_to(WORKSPACE_ROOT)}...')
+        try:
+            content = html_file.read_text(encoding='utf-8')
+
+            if js_marker in content:
+                print(f'    Skipping {html_file.relative_to(WORKSPACE_ROOT)}, code-collapse script already present.')
+                continue
+
+            match = head_end_pattern.search(content)
+            if match:
+                insert_pos = match.start()
+                new_content = content[:insert_pos] + '\n' + js_code + '\n' + content[insert_pos:]
+                print(f'    Injecting code-collapse script into {html_file.relative_to(WORKSPACE_ROOT)}')
+                html_file.write_text(new_content, encoding='utf-8')
+            else:
+                print(
+                    f'    Warning: Could not find </head> tag in {html_file.relative_to(WORKSPACE_ROOT)}. Script not injected.',
+                    file=sys.stderr,
+                )
+
+        except Exception as e:
+            print(f'Error injecting code-collapse into {html_file}: {e}', file=sys.stderr)
+
+    print('Code-collapse injection complete.')
+
+
 # --- Main Execution ---
 
 
@@ -298,6 +352,7 @@ def main():
     fix_links(output_format=args.format)
     add_nojekyll()
     inject_css(output_format=args.format)
+    inject_collapse_js(output_format=args.format)
     print(f'\nSite build complete ({args.format.upper()} format). Wrote to {SITE_DIR.relative_to(os.getcwd())}/')
 
 

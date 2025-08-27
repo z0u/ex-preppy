@@ -38,6 +38,24 @@
   margin-top: 20px;
 }
 
+.jp-CodeCell details,
+.jp-CodeCell summary {
+  color: var(--jp-content-font-color1);
+  font-family: var(--jp-content-font-family);
+  font-size: var(--jp-content-font-size1);
+  line-height: var(--jp-content-line-height);
+  cursor: default;
+  user-select: none;
+}
+.jp-CodeCell summary .ex-collapse-label {
+  line-height: var(--jp-code-line-height);
+  font-family: var(--jp-code-font-family);
+}
+.jp-CodeCell summary::after {
+  content: '…';
+  opacity: 70%;
+}
+
 /* Show deep links */
 a.anchor-link {
   opacity: 0;
