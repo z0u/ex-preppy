@@ -57,17 +57,15 @@ requires = ["uv_build>=0.8.13,<0.9.0"]
 build-backend = "uv_build"
 
 [tool.uv]
-# By not treating the project as a package, the contents of src/ are available
-# for importing but are not linked to the virtual environment. This makes it
-# possible to run pre-commit and pre-push hooks in a snapshot of the git index
-# without having to reinstall all the dependencies.
-package = false
 conflicts = [
   [
     { extra = "torch-cpu" },
     { extra = "torch" },
   ],
 ]
+
+[tool.uv.build-backend]
+namespace = true  # Auto-discover contents of src/
 
 [tool.uv.sources]
 torch = [

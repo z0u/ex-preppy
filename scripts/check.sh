@@ -103,7 +103,7 @@ run_typecheck() {
         --venvpath "$REPO_ROOT"
     )
   else
-    ( set -x; cd "$REPO_ROOT"; uv run --no-sync basedpyright )
+    ( set -x; uv run --no-sync basedpyright )
   fi
 }
 
@@ -122,7 +122,6 @@ run_tests() {
   else
     (
       set -x
-      cd "$REPO_ROOT"
       PYTHONPATH="$REPO_ROOT/src${PYTHONPATH:+:$PYTHONPATH}" \
         uv run --no-sync pytest --quiet
     )

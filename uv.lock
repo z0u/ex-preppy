@@ -330,7 +330,7 @@ wheels = [
 [[package]]
 name = "ex-color-transformer"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "airium" },
     { name = "ftfy" },
