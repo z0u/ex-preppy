@@ -1,6 +1,7 @@
 import asyncio
 import inspect
 import logging
+import os
 from contextlib import asynccontextmanager
 from functools import wraps
 from pathlib import PurePosixPath
@@ -50,18 +51,16 @@ class Experiment:
     # But GuardContextFn can also be used to create a guard for a specific function.
     guards: list[GuardContext | GuardContextFn[...]]
 
-    def __init__(self, name: str):
-        self.app = modal.App(name)
+    def __init__(self, name: str, project: str = ''):
+        self.name = name
+        self.project = project
+        self.app = modal.App(f'{name} - {project}' if project else name)
         self.output_handler = lambda s: print(s, end='')
         self.volumes = {}
         self.image = None
         self.guards = []
         self.hither = run_hither
         self._run_id: str | None = None
-
-    @property
-    def name(self):
-        return self.app.name
 
     @asynccontextmanager
     async def __call__(self, shutdown_timeout: float = 10):  # noqa: C901
@@ -221,6 +220,7 @@ class Experiment:
         self,
         *,
         guards: list[GuardContext | GuardContextFn[P]] | None = None,
+        env: dict[str, str | None] | None = None,
         **kwargs,
     ) -> Callable[[AsyncCallable[P, R]], AsyncCallable[P, R]]: ...
 
@@ -229,6 +229,7 @@ class Experiment:
         func: AsyncCallable[P, R] | None = None,
         *,
         guards: list[GuardContext | GuardContextFn[P]] | None = None,
+        env: dict[str, str | None] | None = None,
         **kwargs,
     ) -> AsyncCallable[P, R] | Callable[[AsyncCallable[P, R]], AsyncCallable[P, R]]:
         """
@@ -239,6 +240,7 @@ class Experiment:
             guards: Guards to run around the function. These are context managers that
                 will be entered before the function is called and exited after it returns.
                 They can be used to set up and tear down resources.
+            env: Environment variables to set in the remote container.
             **kwargs: Arguments to pass to `modal.App.function`.
 
         Returns:
@@ -265,6 +267,9 @@ class Experiment:
             @wraps(fn)
             async def modal_function(run_id, call_id, *_args, **_kwargs):
                 # This is called in the remote container
+
+                if env:
+                    os.environ.update({k: v for k, v in env.items() if v is not None})
 
                 # These state messages are an integral part of the output streaming
                 state = CallState(run_id=run_id, fn_name=fn.__name__, fn_id=fn_id, call_id=call_id, state='guard')

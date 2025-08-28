@@ -26,10 +26,14 @@ class ColorMLP(nn.Module):
             nn.Sigmoid(),  # Keep RGB values in [0,1]
         )
 
+    @override  # Overridden to narrow types
+    def __call__(self, x: Tensor) -> Tensor:
+        return super().__call__(x)
+
     @override
-    def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
+    def forward(self, x: Tensor) -> Tensor:
         # Get the bottleneck representation (captured by a hook for regularization)
-        bottleneck = self.encoder(x)
+        x = self.encoder(x)
 
         # Decode back to RGB
-        return self.decoder(bottleneck)
+        return self.decoder(x)
