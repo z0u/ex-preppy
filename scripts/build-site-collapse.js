@@ -2,21 +2,23 @@
   if (window.__exCollapseCodeInitialized) return;
   window.__exCollapseCodeInitialized = true;
 
+  /**
+   * @param {Element} area
+   */
   function firstLineFrom(area) {
     try {
-      var codeEl = area.querySelector(
+      const codeEl = area.querySelector(
         "pre, code, .cm-content, .CodeMirror, .highlight"
       );
-      var raw = codeEl ? codeEl.textContent || "" : area.textContent || "";
-      var line = raw
+      const raw = codeEl ? codeEl.textContent || "" : area.textContent || "";
+      const line = raw
         .replace(/\r/g, "")
         .split("\n")
-        .map(function (s) {
-          return s.trim();
-        })
-        .find(function (s) {
-          return s.length > 0;
-        });
+        .map((s) => s.trim())
+        .find(
+          // Skip imports and blank lines
+          (s) => s.length > 0 && (!/\bimport\b/.exec(s) || s.startsWith("#"))
+        );
       if (!line) return "Show code";
       if (line.length > 120) line = line.slice(0, 117) + "...";
       return line;
@@ -25,7 +27,10 @@
     }
   }
 
-  /** Wrap code areas in details elements for collapsing */
+  /**
+   * Wrap code areas in details elements for collapsing.
+   * @param {Element} area
+   */
   function wrap(area) {
     if (area.closest("details")) return;
     var details = document.createElement("details");
