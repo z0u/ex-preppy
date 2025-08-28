@@ -3,7 +3,7 @@ import re
 import subprocess
 import tomllib
 from pathlib import Path
-from typing import Literal, overload
+from typing import Literal, overload, Callable
 from types import ModuleType
 
 import modal
@@ -182,12 +182,86 @@ def parse_uv_tree_output(output: str, ignore_first: bool) -> list[str]:
     return sorted(requirements)
 
 
+def _dir_contains_python(path: Path) -> bool:
+    """Return True if directory looks like a Python package (has __init__.py or any .py)."""
+    if (path / '__init__.py').exists():
+        return True
+    return any(path.rglob('*.py'))
+
+
+def _scan_src_packages(root_dir: Path) -> list[str]:
+    """Discover top-level packages and modules under src/ (UV namespace discovery)."""
+    src_dir = root_dir / 'src'
+    if not src_dir.is_dir():
+        return []
+    names: set[str] = set()
+    for child in src_dir.iterdir():
+        n = child.name
+        if n.startswith('.') or n.startswith('_'):
+            continue
+        if child.is_dir() and _dir_contains_python(child):
+            names.add(n)
+        elif child.is_file() and child.suffix == '.py' and child.stem != '__init__':
+            names.add(child.stem)
+    return sorted(names)
+
+
+def _packages_from_uv_config(pyproject: dict, root_dir: Path) -> list[str]:
+    """Load explicit packages from tool.uv.build-backend.packages if provided."""
+    backend = pyproject.get('tool', {}).get('uv', {}).get('build-backend', {})
+    pkgs = backend.get('packages') if isinstance(backend, dict) else None
+    if not isinstance(pkgs, list):
+        return []
+    names: set[str] = set()
+    for entry in pkgs:
+        if not isinstance(entry, str):
+            continue
+        # try as relative to project root
+        path = root_dir / entry
+        if path.is_dir():
+            names.add(path.name)
+            continue
+        if path.is_file() and path.suffix == '.py' and path.stem != '__init__':
+            names.add(path.stem)
+            continue
+        # try relative to src/
+        src_path = root_dir / 'src' / entry
+        if src_path.is_dir():
+            names.add(src_path.name)
+        elif src_path.is_file() and src_path.suffix == '.py' and src_path.stem != '__init__':
+            names.add(src_path.stem)
+    return sorted(names)
+
+
+def _packages_from_hatch(pyproject: dict, root_dir: Path) -> list[str]:
+    """Load packages from Hatch config if present (legacy fallback)."""
+    hatch_packages = (
+        pyproject.get('tool', {})
+        .get('hatch', {})
+        .get('build', {})
+        .get('targets', {})
+        .get('wheel', {})
+        .get('packages', [])
+    )
+    if not isinstance(hatch_packages, list):
+        return []
+    paths = [root_dir / d for d in hatch_packages if isinstance(d, str)]
+    directories = [path for path in paths if path.is_dir()]
+    return sorted(path.name for path in directories)
+
+
 def project_packages() -> list[str]:
     """
-    Find and return local packages defined in pyproject.toml.
+    Determine first-party package/module names for this repo.
+
+    Strategy (in order):
+    - If using UV build backend with `namespace = true`, scan `src/` for top-level
+      Python packages (directories) and modules (single .py files). This mirrors UV's
+      auto-discovery behavior and avoids coupling to a specific backend.
+    - Else, fall back to Hatch's `tool.hatch.build.targets.wheel.packages` if present.
 
     Returns:
-        List of local packages as defined in tool.hatch.build.targets.wheel.packages.
+        Sorted list of top-level import names (e.g., ['ex_color', 'infra']).
     """
     root_dir = find_project_root()
 
@@ -196,22 +270,27 @@ def project_packages() -> list[str]:
     with open(pyproject_path, 'rb') as f:
         pyproject = tomllib.load(f)
 
-    log.debug('Using tool.hatch.build.targets.wheel.packages')
-    paths = [
-        root_dir / d
-        for d in pyproject.get('tool', {})
-        .get('hatch', {})
-        .get('build', {})
-        .get('targets', {})
-        .get('wheel', {})
-        .get('packages', [])
-    ]
-    directories = [path for path in paths if path.is_dir()]
-    packages = [path.name for path in directories]
+    # 1) Prefer UV build-backend with namespace discovery: scan src/
+    uv_backend = pyproject.get('tool', {}).get('uv', {}).get('build-backend', {})
+    namespace_enabled = bool(uv_backend.get('namespace', False)) if isinstance(uv_backend, dict) else False
 
-    log.info(f'Found {len(packages)} local packages: {", ".join(packages)}')
-    log.debug('Packages: %s', packages)
-    return packages
+    strategies: list[tuple[str, Callable[[], list[str]]]] = []
+    if namespace_enabled:
+        strategies.append(('src scan', lambda: _scan_src_packages(root_dir)))
+    # Try explicit UV packages if provided
+    strategies.append(('uv config', lambda: _packages_from_uv_config(pyproject, root_dir)))
+    # Fallback to Hatch config
+    strategies.append(('hatch config', lambda: _packages_from_hatch(pyproject, root_dir)))
+
+    for label, fn in strategies:
+        packages = fn()
+        if packages:
+            log.info(f'Found {len(packages)} local packages via {label}: {", ".join(packages)}')
+            log.debug('Packages: %s', packages)
+            return packages
+
+    log.info('No recognizable package configuration; returning empty list')
+    return []
 
 
 def find_project_root() -> Path:
