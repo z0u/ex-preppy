@@ -67,7 +67,7 @@ In this milestone, we develop intervention functions and apply them to the struc
 
 1. [Intervention lobes](docs/m2-control/ex-2.1-intervention-lobe.ipynb): Exploration of intervention function shape. Taking inspiration from computer graphics shader literature, we visualize intervention functions and their falloffs as polar plots. We implement two functions: suppression (which subtracts the concept vector) and repulsion (which steers activations away from the concept vector).
 2. [Specific concept intervention](docs/m2-control/ex-2.2-inhibit-red.ipynb): Application of interventions to the color autoencoder. We train a bottleneck autoencoder, predict where one key concept will be located, and then intervene on its activations.
-3. TO DO: Improved specific concept intervention: iterate on the interplay between regularizers and interventions to make it more predictable.
+3. [Explicit normalization](docs/m2-control/ex-2.3-explicit-norm.ipynb): Improved the autoencoder model by explicitly normalizing the bottleneck activations (in addition to regularizing them to have unit norm), and by removing the sigmoid layer from the decoder. This gives a much more regular latent structure, improves reconstruction loss, and improves intervention effectiveness.
 4. TO DO: Permanent concept deletion (weight ablation). Demonstrate that the latent space can be further manipulated to completely remove a representation. For example, pressure the network to reconfigure the space so that _only_ red colors are on one particular embedding dimension, and then _delete_ that dimension from the network. Hopefully, this would make it difficult to fine-tune the model later to restore the deleted capability.
 
 <br>
