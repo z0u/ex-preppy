@@ -1,14 +1,27 @@
+/* Enable OS color scheme detection */
+:root {
+  color-scheme: light dark;
+
+  --jp-rendermime-error-background: var(--md-grey-100);
+}
+
 /* All notebook cells */
 .jp-Notebook .jp-Cell {
   /* Center the content */
   max-width: 50rem;
   margin-inline: auto;
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     margin-top: 1em;
   }
 
-  img, video {
+  img,
+  video {
     /* Center images, and allow them to overflow to some extent. */
     height: auto;
     max-width: calc(min(150%, 100vw - 28px * 2));
@@ -18,7 +31,10 @@
   }
 }
 
-.jp-InputArea, .jp-OutputArea, .jp-OutputArea-child, .jp-OutputArea-output {
+.jp-InputArea,
+.jp-OutputArea,
+.jp-OutputArea-child,
+.jp-OutputArea-output {
   overflow: unset;
 }
 
@@ -62,7 +78,7 @@
   font-family: var(--jp-code-font-family);
 }
 .jp-CodeCell summary::after {
-  content: '…';
+  content: "…";
   opacity: 70%;
 }
 
@@ -71,7 +87,6 @@ a.anchor-link {
   opacity: 0;
   display: inline;
   transition: opacity 0.2s ease;
-
 }
 a.anchor-link::after {
   content: "#";
@@ -80,4 +95,108 @@ a.anchor-link::after {
 }
 :hover > a.anchor-link {
   opacity: 1;
+}
+
+/* Dark mode adaptations */
+@media (prefers-color-scheme: dark) {
+  /* Override JupyterLab variables for dark mode */
+  :root {
+    --jp-layout-color0: #1e1e1e;
+    --jp-layout-color1: #1e1e1e;
+    --jp-layout-color2: #2d2d2d;
+    --jp-layout-color3: #3e3e3e;
+    --jp-border-color0: #5a5a5a;
+    --jp-border-color1: #5a5a5a;
+    --jp-border-color2: #3e3e3e;
+    --jp-content-font-color0: #ffffff;
+    --jp-content-font-color1: #ffffff;
+    --jp-content-font-color2: #cccccc;
+    --jp-content-font-color3: #aaaaaa;
+    --jp-ui-font-color0: #ffffff;
+    --jp-ui-font-color1: #ffffff;
+    --jp-ui-font-color2: #cccccc;
+
+    --jp-cell-editor-background: var(--md-grey-900);
+    --jp-cell-editor-border-color: var(--md-grey-700);
+    --jp-cell-editor-box-shadow: inset 0 0 2px var(--md-blue-300);
+    --jp-mirror-editor-keyword-color: #66d9aa;
+    --jp-mirror-editor-atom-color: #a8ccff;
+    --jp-mirror-editor-number-color: #7ad87a;
+    --jp-mirror-editor-def-color: #6cb6ff;
+    --jp-mirror-editor-variable-color: #e8e8e8;
+    --jp-mirror-editor-variable-2-color: #7db3e8;
+    --jp-mirror-editor-variable-3-color: #66d9cc;
+    --jp-mirror-editor-punctuation-color: #7db3e8;
+    --jp-mirror-editor-property-color: #7db3e8;
+    --jp-mirror-editor-operator-color: #c68fff;
+    --jp-mirror-editor-comment-color: #75a3a3;
+    --jp-mirror-editor-string-color: #ff9f7a;
+    --jp-mirror-editor-string-2-color: #d4a5d4;
+    --jp-mirror-editor-meta-color: #c68fff;
+    --jp-mirror-editor-qualifier-color: #b3b3b3;
+    --jp-mirror-editor-builtin-color: #66d9aa;
+    --jp-mirror-editor-bracket-color: #d4c4a8;
+    --jp-mirror-editor-tag-color: #7ad87a;
+    --jp-mirror-editor-attribute-color: #6cb6ff;
+    --jp-mirror-editor-header-color: #6cb6ff;
+    --jp-mirror-editor-quote-color: #7ad87a;
+    --jp-mirror-editor-link-color: #6cb6ff;
+    --jp-mirror-editor-error-color: #ff6b6b;
+    --jp-mirror-editor-hr-color: #b3b3b3;
+    --jp-rendermime-error-background: var(--md-grey-900);
+    --jp-rendermime-table-row-background: var(--md-grey-900);
+    --jp-rendermime-table-row-hover-background: var(--md-light-blue-900);
+  }
+
+  /* Ensure body and main containers use dark colors */
+  body {
+    background-color: var(--jp-layout-color0);
+    color: var(--jp-content-font-color1);
+  }
+
+  .jp-Notebook {
+    background-color: var(--jp-layout-color0);
+  }
+
+  /* Code cells dark mode */
+  .jp-InputArea-editor,
+  .jp-CodeMirrorEditor,
+  .jp-CodeMirrorEditor .CodeMirror,
+  .jp-CodeMirrorEditor .cm-editor {
+    background-color: #2d2d2d !important;
+    color: #ffffff !important;
+  }
+
+  /* Output areas */
+  .jp-OutputArea-output {
+    background-color: var(--jp-layout-color1);
+  }
+
+  /* Markdown content */
+  .jp-RenderedMarkdown {
+    color: var(--jp-content-font-color1);
+  }
+
+  /* Tables in dark mode */
+  .jp-RenderedHTMLCommon table {
+    border-color: var(--jp-border-color1);
+  }
+
+  .jp-RenderedHTMLCommon th,
+  .jp-RenderedHTMLCommon td {
+    border-color: var(--jp-border-color1);
+  }
+
+  /* Code collapse elements */
+  .jp-CodeCell details,
+  .jp-CodeCell summary {
+    color: var(--jp-content-font-color1);
+  }
+
+  /* Smooth transitions when switching themes */
+  body,
+  .jp-Notebook,
+  .jp-Cell {
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
 }

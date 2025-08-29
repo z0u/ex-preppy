@@ -235,7 +235,9 @@ def inject_css(output_format: str = 'html'):
 
     try:
         css_rules = CSS_FILE.read_text(encoding='utf-8')
+        meta_tag = '<meta name="color-scheme" content="light dark">'
         style_block = f'<style>\n{css_rules}\n</style>'
+        injection_content = f'{meta_tag}\n{style_block}'
     except Exception as e:
         print(f'Error reading CSS file {CSS_FILE}: {e}', file=sys.stderr)
         sys.exit(1)
@@ -259,7 +261,7 @@ def inject_css(output_format: str = 'html'):
             match = head_end_pattern.search(content)
             if match:
                 insert_pos = match.start()
-                new_content = content[:insert_pos] + '\n' + style_block + '\n' + content[insert_pos:]
+                new_content = content[:insert_pos] + '\n' + injection_content + '\n' + content[insert_pos:]
                 print(f'    Injecting CSS into {html_file.relative_to(WORKSPACE_ROOT)}')
                 html_file.write_text(new_content, encoding='utf-8')
             else:
