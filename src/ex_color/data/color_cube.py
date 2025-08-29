@@ -4,6 +4,16 @@ import numpy as np
 from ex_color.data.grid import coordinate_grid
 
 
+color_axes = {
+    'r': 'red',
+    'g': 'green',
+    'b': 'blue',
+    'h': 'hue',
+    's': 'saturation',
+    'v': 'value',
+}
+
+
 class ColorCube:
     """A tensor of RGB values with coordinates in various color spaces (e.g. HSV)."""
 

@@ -1,6 +1,6 @@
 # ex-color: dark style
-axes.facecolor: "#222"
-figure.facecolor: "#333"
+axes.facecolor: "#1118"
+figure.facecolor: "#1f1f1fe6"  # = 333 on a white background
 savefig.facecolor: "#333"
 savefig.edgecolor: "#333"
 

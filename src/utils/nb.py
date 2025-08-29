@@ -34,7 +34,8 @@ def displayer_mpl(
     filepath: str | Path,
     alt_text: str | None = None,
     *,
-    live: bool,
+    live: bool = False,
+    autoclose: bool = True,
     live_theme: typing.Sequence[Theme] = ('base', 'transparent', MappingProxyType({'figure.dpi': '90'})),
     light_theme: typing.Sequence[Theme] = ('base', 'light', MappingProxyType({'figure.dpi': '150'})),
     dark_theme: typing.Sequence[Theme] = ('base', 'dark', MappingProxyType({'figure.dpi': '150'})),
@@ -55,6 +56,7 @@ def displayer_mpl(
         live_theme=live_theme if live else None,
         light_theme=light_theme,
         dark_theme=dark_theme,
+        autoclose=autoclose,
     )
 
     try:

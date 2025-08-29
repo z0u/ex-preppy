@@ -5,7 +5,7 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from numpy.typing import NDArray
 
-from ex_color.data.color_cube import ColorCube
+from ex_color.data.color_cube import ColorCube, color_axes
 
 
 def plot_colors(  # noqa: C901
@@ -102,7 +102,7 @@ def plot_colors(  # noqa: C901
             annotate_cells(ax, colors_compare[i])
 
         ax.set_aspect('equal')
-        ax.set_title(f'{main_axis} = {fmt(main_axis, main_coords[i])}', fontsize=8)
+        ax.set_title(f'{_axname(main_axis).capitalize()} = {fmt(main_axis, main_coords[i])}', fontsize=8)
 
         # Add axes labels without cluttering the display
         if row == n_rows - 1:
@@ -111,7 +111,7 @@ def plot_colors(  # noqa: C901
             coord2 = fmt(x_axis, x_coords[-1])
             ax.xaxis.set_ticklabels([coord1, coord2])
             ax.xaxis.set_tick_params(labelsize=8)
-            ax.set_xlabel(x_axis.upper(), fontsize=8)
+            ax.set_xlabel(_axname(x_axis).capitalize(), fontsize=8)
         else:
             ax.xaxis.set_visible(False)
 
@@ -121,12 +121,14 @@ def plot_colors(  # noqa: C901
             coord2 = fmt(y_axis, y_coords[-1])
             ax.yaxis.set_ticklabels([coord1, coord2])
             ax.yaxis.set_tick_params(labelsize=8)
-            ax.set_ylabel(y_axis.upper(), fontsize=8)
+            ax.set_ylabel(_axname(y_axis).capitalize(), fontsize=8)
         else:
             ax.yaxis.set_visible(False)
 
     _title = f'{title} - ' if title else ''
-    plt.suptitle(f'{_title}{cube.canonical_space.upper()} as {x_axis.upper()},{y_axis.upper()} per {main_axis.upper()}')
+    plt.suptitle(
+        f'{_title}{cube.canonical_space.upper()} as {y_axis.upper()} vs {x_axis.upper()} by {main_axis.upper()}'
+    )
 
     plt.close()
     return fig
@@ -152,7 +154,7 @@ def plot_loss_lines(  # noqa: C901
     colors: np.ndarray | None = None,
     pretty: bool | str = True,
     linewidth: float = 1.4,
-    figsize: tuple[int, int] | None = (9, 4),
+    figsize: tuple[int, int] | None = (12, 3),
 ) -> Figure:
     """
     Plot reconstruction loss per color as colored line segments.
@@ -269,7 +271,8 @@ def plot_loss_lines(  # noqa: C901
     # Axes formatting
     # X: show min/max (and maybe middle) to avoid clutter
     ax.set_xlim(float(x_coords[0]), float(x_coords[-1]))
-    ax.set_xlabel(canon[0].upper())
+    x_label = _axname(canon[0])
+    ax.set_xlabel(x_label.capitalize())
 
     # Choose sparse ticks: first, middle, last
     if n_x >= 3:
@@ -287,15 +290,20 @@ def plot_loss_lines(  # noqa: C901
 
     # Y limits with small margin
     margin = 0.05 * (y_max - y_min if y_max > y_min else 1.0)
-    ax.set_ylim(y_min - margin, y_max + margin)
+    ax.set_ylim(y_min, y_max + margin)
     ax.set_ylabel('Loss')
 
     # Title
     _title = f'{title} - ' if title else ''
     ax.set_title(
-        f'{_title}{cube.canonical_space.upper()} loss vs {canon[0].upper()}',
+        f'{_title}{cube.canonical_space.upper()} loss vs {x_label}',
         fontsize=10,
     )
 
     plt.close()
     return fig
+
+
+def _axname(axis_char: str) -> str:
+    name = color_axes.get(axis_char.lower(), axis_char)
+    return name

@@ -4,15 +4,18 @@ from base64 import b64decode
 from html import escape
 from inspect import signature
 from pathlib import Path
-from typing import Any, Protocol, Sequence, cast, override
+from typing import Generic, Protocol, Sequence, TypeVar, cast, override
 from urllib.parse import quote
 
 from airium import Airium
 from IPython.core.formatters import DisplayFormatter
 from IPython.core.interactiveshell import InteractiveShell
 from IPython.display import HTML, DisplayHandle, display
+from matplotlib.figure import Figure
 
-from utils.plt import Theme, ThemeType, use_theme
+from utils.plt import Theme, ThemeType, autoclose, use_theme
+
+R = TypeVar('R', covariant=True)
 
 
 class Displayer:
@@ -44,15 +47,15 @@ class Displayer:
         return (self.__class__, ())
 
 
-class ImageFactory(Protocol):
-    def __call__(self) -> Any: ...
+class ImageFactory(Protocol, Generic[R]):
+    def __call__(self) -> R: ...
 
 
-class ThemeAwareImageFactory(Protocol):
-    def __call__(self, /, theme: ThemeType) -> Any: ...
+class ThemeAwareImageFactory(Protocol, Generic[R]):
+    def __call__(self, /, theme: ThemeType) -> R: ...
 
 
-class ImageFactoryDisplayer:
+class ImageFactoryDisplayer[R]:
     """Displays images in Jupyter notebooks and saves them to a file."""
 
     path: Path
@@ -60,7 +63,7 @@ class ImageFactoryDisplayer:
 
     _show: Displayer
     _last_data: str | None = None
-    _factory: ImageFactory | ThemeAwareImageFactory | None
+    _factory: ImageFactory[R] | ThemeAwareImageFactory[R] | None
 
     def __init__(
         self,
@@ -94,7 +97,7 @@ class ImageFactoryDisplayer:
         self._show = displayer
         self._factory = None
 
-    def __call__(self, factory: ImageFactory | ThemeAwareImageFactory):
+    def __call__(self, factory: ImageFactory[R] | ThemeAwareImageFactory[R]):
         self._factory = factory
         if 'live' in self.variants:
             data, metadata = self.render(self.variants['live'][1])
@@ -107,9 +110,9 @@ class ImageFactoryDisplayer:
             sig = signature(self._factory)
             if 'theme' in sig.parameters:
                 theme_type = 'light' if 'light' in themes else 'dark' if 'dark' in themes else 'indeterminate'
-                ob = cast(ThemeAwareImageFactory, self._factory)(theme=theme_type)
+                ob = cast(ThemeAwareImageFactory[R], self._factory)(theme=theme_type)
             else:
-                ob = cast(ImageFactory, self._factory)()
+                ob = cast(ImageFactory[R], self._factory)()
         data, metadata = formatter.format(ob, include=('image/png',))
         data['text/plain'] = f'{self.alt_text or "Image"}'
         return data, metadata
@@ -153,7 +156,34 @@ class ImageFactoryDisplayer:
         self._show(data, metadata=metadata, raw=True)
 
 
-class MplFactoryDisplayer(ImageFactoryDisplayer):
+class MplFactoryDisplayer(ImageFactoryDisplayer[Figure]):
+    def __init__(
+        self,
+        displayer: Displayer,
+        path: str | Path,
+        *,
+        alt_text: str | None = None,
+        live_theme: Sequence[Theme] | None = None,
+        light_theme: Sequence[Theme] | None = None,
+        dark_theme: Sequence[Theme] | None = None,
+        autoclose: bool = True,
+    ):
+        super().__init__(
+            displayer,
+            path,
+            alt_text=alt_text,
+            live_theme=live_theme,
+            light_theme=light_theme,
+            dark_theme=dark_theme,
+        )
+        self.autoclose = autoclose
+
+    @override
+    def __call__(self, factory: ImageFactory[Figure] | ThemeAwareImageFactory[Figure]):
+        if self.autoclose:
+            factory = autoclose(factory)
+        super().__call__(factory)
+
     @override
     def render(self, themes: Sequence[Theme]):
         with use_theme(*themes):
