@@ -1,14 +1,18 @@
-import html
 import secrets
 import time
-import urllib.parse
 from base64 import b64decode
+from html import escape
+from inspect import signature
 from pathlib import Path
-from typing import cast
+from typing import Any, Protocol, Sequence, cast, override
+from urllib.parse import quote
 
+from airium import Airium
 from IPython.core.formatters import DisplayFormatter
 from IPython.core.interactiveshell import InteractiveShell
 from IPython.display import HTML, DisplayHandle, display
+
+from utils.plt import Theme, ThemeType, use_theme
 
 
 class Displayer:
@@ -40,35 +44,75 @@ class Displayer:
         return (self.__class__, ())
 
 
-class ImageDisplayer:
+class ImageFactory(Protocol):
+    def __call__(self) -> Any: ...
+
+
+class ThemeAwareImageFactory(Protocol):
+    def __call__(self, /, theme: ThemeType) -> Any: ...
+
+
+class ImageFactoryDisplayer:
     """Displays images in Jupyter notebooks and saves them to a file."""
 
-    filepath: Path
+    path: Path
     alt_text: str | None
-    max_width: str | None
 
     _show: Displayer
     _last_data: str | None = None
+    _factory: ImageFactory | ThemeAwareImageFactory | None
 
     def __init__(
         self,
         displayer: Displayer,
-        filepath: str | Path,
+        path: str | Path,
         *,
         alt_text: str | None = None,
-        max_width: str | None = None,
+        live_theme: Sequence[Theme] | None = None,
+        light_theme: Sequence[Theme] | None = None,
+        dark_theme: Sequence[Theme] | None = None,
     ):
-        self.filepath = Path(filepath)
+        self.path = Path(path)
+        if not self.path.suffix == '.png':
+            raise NotImplementedError('Only png is supported.')
         self.alt_text = alt_text
-        self.max_width = max_width
-        self._show = displayer
 
-    def __call__(self, ob):
+        # Ordering here is important: the first one will be the default.
+        variants: dict[str, tuple[str, Sequence[Theme]]] = {}
+        if light_theme:
+            variants['light'] = ('(prefers-color-scheme: light)', light_theme)
+        if dark_theme:
+            variants['dark'] = ('(prefers-color-scheme: dark)', dark_theme)
+        if live_theme:
+            variants['live'] = ('', live_theme)
+
+        if not variants:
+            raise ValueError('No theme provided')
+
+        self.variants = variants
+
+        self._show = displayer
+        self._factory = None
+
+    def __call__(self, factory: ImageFactory | ThemeAwareImageFactory):
+        self._factory = factory
+        if 'live' in self.variants:
+            data, metadata = self.render(self.variants['live'][1])
+            self._show(data, metadata=metadata, raw=True)
+
+    def render(self, themes: Sequence[Theme]):
         formatter = cast(DisplayFormatter, InteractiveShell.instance().display_formatter)
+        ob = None
+        if self._factory is not None:
+            sig = signature(self._factory)
+            if 'theme' in sig.parameters:
+                theme_type = 'light' if 'light' in themes else 'dark' if 'dark' in themes else 'indeterminate'
+                ob = cast(ThemeAwareImageFactory, self._factory)(theme=theme_type)
+            else:
+                ob = cast(ImageFactory, self._factory)()
         data, metadata = formatter.format(ob, include=('image/png',))
         data['text/plain'] = f'{self.alt_text or "Image"}'
-        self._show(data, metadata=metadata, raw=True)
-        self._last_data = cast(str, data.get('image/png'))
+        return data, metadata
 
     def externalize(self):
         """
@@ -76,24 +120,41 @@ class ImageDisplayer:
 
         Reduces the size of notebooks.
         """
-        if not self._last_data:
+        if not self._factory:
             return
 
-        self.filepath.parent.mkdir(parents=True, exist_ok=True)
-        with open(self.filepath, 'wb') as f:
-            f.write(b64decode(self._last_data))
+        variants = dict(self.variants)
+        if 'live' in variants and len(variants) > 1:
+            del variants['live']
 
-        alt_text = self.alt_text or ''
-
-        style = f'max-width: {self.max_width};' if self.max_width is not None else ''
-
-        escaped_alt = html.escape(alt_text)
         cache_buster = secrets.token_urlsafe()
-        safe_src = urllib.parse.quote(self.filepath.as_posix())
-        escaped_style = html.escape(style)
-        tag = f'<img src="{safe_src}?v={cache_buster}" alt="{escaped_alt}" style="{escaped_style}" />'
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+
+        a = Airium()  # HTML builder
+        with a.picture():
+            for i, (name, (media, themes)) in reversed(list(enumerate(variants.items()))):
+                data, _ = self.render(themes)
+                if i > 0:
+                    path = self.path.with_stem(f'{self.path.stem}.{name}')
+                else:
+                    path = self.path
+
+                with open(path, 'wb') as f:
+                    f.write(b64decode(data['image/png']))
+
+                safe_src = f'{quote(path.as_posix())}?v={cache_buster}'
+                a.source(srcset=safe_src, media=escape(media))
+                if i == 0:
+                    a.img(src=safe_src, alt=escape(data['text/plain']))
 
         formatter = cast(DisplayFormatter, InteractiveShell.instance().display_formatter)
-        data, metadata = formatter.format(HTML(tag), include=('text/html'))
+        data, metadata = formatter.format(HTML(str(a)), include=('text/html'))
         data['text/plain'] = self.alt_text or 'Image'
         self._show(data, metadata=metadata, raw=True)
+
+
+class MplFactoryDisplayer(ImageFactoryDisplayer):
+    @override
+    def render(self, themes: Sequence[Theme]):
+        with use_theme(*themes):
+            return super().render(themes)

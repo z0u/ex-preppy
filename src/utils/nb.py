@@ -1,10 +1,13 @@
 import html
 import logging
 import secrets
+from types import MappingProxyType
 import typing
 import urllib.parse
 from contextlib import contextmanager
 from pathlib import Path
+
+from utils.plt import Theme
 
 if typing.TYPE_CHECKING:
     # This import is only needed for type hinting
@@ -27,10 +30,14 @@ def displayer():
 
 
 @contextmanager
-def displayer_img(
+def displayer_mpl(
     filepath: str | Path,
     alt_text: str | None = None,
-    max_width: str | None = None,
+    *,
+    live: bool,
+    live_theme: typing.Sequence[Theme] = ('base', 'transparent', MappingProxyType({'figure.dpi': '90'})),
+    light_theme: typing.Sequence[Theme] = ('base', 'light', MappingProxyType({'figure.dpi': '150'})),
+    dark_theme: typing.Sequence[Theme] = ('base', 'dark', MappingProxyType({'figure.dpi': '150'})),
 ):
     """
     Context manager to display an image in a Jupyter notebook.
@@ -39,9 +46,16 @@ def displayer_img(
 
     When exited, the last image will be saved to the specified file path and used instead of the in-memory image. The image will be displayed as an HTML img tag with the specified alt text and max width.
     """
-    from utils._nb import Displayer, ImageDisplayer
+    from utils._nb import Displayer, MplFactoryDisplayer
 
-    show = ImageDisplayer(Displayer(), filepath, alt_text=alt_text, max_width=max_width)
+    show = MplFactoryDisplayer(
+        Displayer(),
+        filepath,
+        alt_text=alt_text,
+        live_theme=live_theme if live else None,
+        light_theme=light_theme,
+        dark_theme=dark_theme,
+    )
 
     try:
         yield show

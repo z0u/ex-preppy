@@ -1,8 +1,15 @@
+from contextlib import contextmanager
+from functools import wraps
+from pathlib import Path
+from typing import Callable, Literal, Mapping
+
+import matplotlib as mpl
 import matplotlib.pyplot as plt
+import mpl_toolkits.mplot3d.axis3d as axis3d
 from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from matplotlib.projections import PolarAxes
 from mpl_toolkits.mplot3d import Axes3D
-import mpl_toolkits.mplot3d.axis3d as axis3d
 
 
 def hide_decorations(
@@ -47,22 +54,27 @@ def hide_decorations(
         ax.grid(False)
 
 
-def configure_matplotlib():
-    plt.style.use('dark_background')
-    plt.rcParams['axes.facecolor'] = '#222'
-    plt.rcParams['figure.facecolor'] = '#333'
-    plt.rcParams['figure.dpi'] = 150
+Theme = Literal['base', 'light', 'dark', 'transparent'] | Mapping[str, str]
+ThemeType = Literal['light', 'dark', 'indeterminate']
 
-    # Hide spines (borders)
-    plt.rcParams['axes.spines.top'] = False
-    plt.rcParams['axes.spines.right'] = False
-    plt.rcParams['axes.spines.bottom'] = False
-    plt.rcParams['axes.spines.left'] = False
-    # Make axis tick font smaller
-    plt.rcParams['xtick.labelsize'] = 'small'
-    plt.rcParams['ytick.labelsize'] = 'small'
-    # Make ticks semi-opaque
-    plt.rcParams['xtick.color'] = '#fff8'
-    plt.rcParams['xtick.labelcolor'] = '#fff'
-    plt.rcParams['ytick.color'] = '#fff8'
-    plt.rcParams['ytick.labelcolor'] = '#fff'
+
+@contextmanager
+def use_theme(*themes: Theme):
+    with mpl.rc_context():
+        stylesheet_dir = Path(__file__).parent / 'mplstyles'
+        for theme in themes:
+            if isinstance(theme, Mapping):
+                plt.style.use(dict(theme))
+            else:
+                plt.style.use(stylesheet_dir / f'{theme}.mplstyle')
+        yield
+
+
+def autoclose(factory: Callable[..., Figure]) -> Callable[..., Figure]:
+    @wraps(factory)
+    def _autoclose(*args, **kwargs) -> Figure:
+        fig = factory(*args, **kwargs)
+        plt.close(fig)
+        return fig
+
+    return _autoclose

@@ -1,0 +1,11 @@
+xtick.labelsize: small
+ytick.labelsize: small
+
+axes.grid: False
+axes3d.grid: False
+
+legend.frameon: False
+legend.fontsize: small
+
+figure.frameon: False
+figure.constrained_layout.use: True

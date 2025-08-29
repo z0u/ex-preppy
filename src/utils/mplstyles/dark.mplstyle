@@ -1,0 +1,22 @@
+# ex-color: dark style
+axes.facecolor: "#222"
+figure.facecolor: "#333"
+savefig.facecolor: "#333"
+savefig.edgecolor: "#333"
+
+# Rely on axes.facecolor to show extents rather than using borders
+axes.spines.top: False
+axes.spines.right: False
+axes.spines.bottom: False
+axes.spines.left: False
+
+# Ticks and labels
+xtick.color: "#fff8"
+xtick.labelcolor: "#fff"
+ytick.color: "#fff8"
+ytick.labelcolor: "#fff"
+
+# Text and axes labels
+text.color: "#fff"
+axes.labelcolor: "#fff"
+axes.edgecolor: "#fff5"
