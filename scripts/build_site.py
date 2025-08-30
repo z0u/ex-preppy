@@ -64,6 +64,61 @@ def run_command(cmd_list, check=True, cwd=None, capture_output=False):
 # --- Build Steps ---
 
 
+# Shared link-rewrite regex patterns (compiled once)
+DOCS_PREFIX_PATTERN = re.compile(r'(href|src|srcset)="docs/([^"]*)"')
+MD_LINK_PREFIX_PATTERN = re.compile(r'\]\(docs/([^)]*)\)')
+
+# .ipynb -> {ext}
+IPYNB_EXT_PATTERN_HTML = re.compile(r'(href|src|srcset)="([^"#?]+)\.ipynb(#|\?|")')
+IPYNB_EXT_PATTERN_MD = re.compile(r'\]\(([^)#?]+)\.ipynb(#|\?|\))')
+
+# README(.md|.html|.ipynb)? -> index.{ext} (avoid absolute http/https links)
+# Preserve original quote style in HTML by capturing it and using a backreference.
+README_LINK_PATTERN_HTML = re.compile(
+    r"""(href|src|srcset)=(['\"])((?!https?://)[^"']*?)../README(?:\.(?:md|html|ipynb))?((?:[#?][^"']*)?)\2"""
+)
+README_LINK_PATTERN_MD = re.compile(r'\]\(((?!https?://)[^)]*?)../README(?:\.(?:md|html|ipynb))?((?:[#?][^)]*)?)\)')
+
+
+def rewrite_html_links(text: str, target_ext: str) -> str:
+    text = DOCS_PREFIX_PATTERN.sub(r'\1="\2"', text)
+
+    def replace_ipynb_html(match):
+        attr_type = match.group(1)
+        base_link = match.group(2)
+        trailing_char = match.group(3)
+        return f'{attr_type}="{base_link}{target_ext}{trailing_char}'
+
+    text = IPYNB_EXT_PATTERN_HTML.sub(replace_ipynb_html, text)
+
+    def replace_readme_html(match):
+        attr_type = match.group(1)
+        quote = match.group(2)
+        prefix_path = match.group(3)
+        tail = match.group(4)
+        return f'{attr_type}={quote}{prefix_path}index{target_ext}{tail}{quote}'
+
+    return README_LINK_PATTERN_HTML.sub(replace_readme_html, text)
+
+
+def rewrite_md_links(text: str, target_ext: str) -> str:
+    text = MD_LINK_PREFIX_PATTERN.sub(r'](\1)', text)
+
+    def replace_ipynb_md(match):
+        base_link = match.group(1)
+        trailing_char = match.group(2)
+        return f']({base_link}{target_ext}{trailing_char}'
+
+    text = IPYNB_EXT_PATTERN_MD.sub(replace_ipynb_md, text)
+
+    def replace_readme_md(match):
+        prefix_path = match.group(1)
+        tail = match.group(2)
+        return f']({prefix_path}index{target_ext}{tail})'
+
+    return README_LINK_PATTERN_MD.sub(replace_readme_md, text)
+
+
 def prepare_dirs():
     """Remove the existing site directory and creates a new empty one."""
     print('Preparing directories...')
@@ -208,36 +263,14 @@ def fix_links(output_format: str = 'html'):
         print(f'  No {target_ext} files found to fix links in.')
         return
 
-    docs_prefix_pattern = re.compile(r'(href|src)="docs/([^"]*)"')
-    md_link_prefix_pattern = re.compile(r'\]\(docs/([^)]*)\)')
-    ipynb_ext_pattern_html = re.compile(r'(href|src)="([^"#?]+)\.ipynb(#|\?|")')
-    ipynb_ext_pattern_md = re.compile(r'\]\(([^)#?]+)\.ipynb(#|\?|\))')
-
     for file_path in output_files:
         print(f'  Processing links in {file_path.relative_to(WORKSPACE_ROOT)}...')
         try:
             content = file_path.read_text(encoding='utf-8')
             original_content = content
 
-            if output_format == 'html':
-                content = docs_prefix_pattern.sub(r'\1="\2"', content)
-
-                def replace_ipynb_html(match):
-                    attr_type = match.group(1)
-                    base_link = match.group(2)
-                    trailing_char = match.group(3)
-                    return f'{attr_type}="{base_link}{target_ext}{trailing_char}'
-
-                content = ipynb_ext_pattern_html.sub(replace_ipynb_html, content)
-            elif output_format == 'markdown':
-                content = md_link_prefix_pattern.sub(r'](\1)', content)
-
-                def replace_ipynb_md(match):
-                    base_link = match.group(1)
-                    trailing_char = match.group(2)
-                    return f']({base_link}{target_ext}{trailing_char}'
-
-                content = ipynb_ext_pattern_md.sub(replace_ipynb_md, content)
+            rewriter = rewrite_html_links if output_format == 'html' else rewrite_md_links
+            content = rewriter(content, target_ext)
 
             if content != original_content:
                 print(f'    Links updated in {file_path.relative_to(WORKSPACE_ROOT)}')
