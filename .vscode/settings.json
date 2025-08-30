@@ -4,7 +4,8 @@
         ".venv": true,
         ".vulture-cache": true,
         ".pytest_cache": true,
-        ".ruff_cache": true
+        ".ruff_cache": true,
+        "_site/": true,
     },
     "python.defaultInterpreterPath": "./.venv/bin/python",
     "jupyter.kernels.excludePythonEnvironments": [

@@ -20,6 +20,19 @@ NBCONVERT_CONFIG = SCRIPT_DIR / 'build-site-config.py'
 README_FILE = WORKSPACE_ROOT / 'README.md'
 CSS_MARKER = '/* Custom styles for prose width */'  # Used to check if CSS is already injected
 
+# Exclusions to keep the site small and avoid FD exhaustion when copying/scanning
+EXCLUDE_DIRS = {
+    '.git',
+    '.ipynb_checkpoints',
+    '__pycache__',
+    'lightning_logs',
+    'wandb',
+}
+EXCLUDE_FILES = {
+    '.DS_Store',
+    'Thumbs.db',
+}
+
 # --- Helper Functions ---
 
 
@@ -70,11 +83,29 @@ def copy_content():
 
     print(f'  Copying contents of {DOCS_DIR} to {SITE_DIR}')
     if DOCS_DIR.is_dir():
+        # Ignore function for copytree: skip heavy or irrelevant directories everywhere in the tree
+        def ignore_func(_dir: str, names: list[str]):
+            # Ignore heavy directories and junk files
+            return {n for n in names if n in EXCLUDE_DIRS or n in EXCLUDE_FILES}
+
         for item in DOCS_DIR.iterdir():
             target_item = SITE_DIR / item.name
+            # Skip excluded directories at the root level as well
+            if item.name in EXCLUDE_DIRS:
+                print(f'  Skipping excluded directory: {item.relative_to(WORKSPACE_ROOT)}')
+                continue
+
             if item.is_dir():
-                shutil.copytree(item, target_item, dirs_exist_ok=True)
+                shutil.copytree(
+                    item,
+                    target_item,
+                    dirs_exist_ok=True,
+                    ignore=ignore_func,
+                )
             else:
+                if item.name in EXCLUDE_FILES:
+                    print(f'  Skipping excluded file: {item.relative_to(WORKSPACE_ROOT)}')
+                    continue
                 shutil.copy2(item, target_item)
     else:
         print(f'Warning: Docs directory {DOCS_DIR} not found.', file=sys.stderr)
@@ -84,6 +115,8 @@ def convert_markdown_to_ipynb():
     """Find Markdown files in _site, converts them to Jupyter notebooks."""
     print('Converting Markdown files to temporary Notebooks...')
     md_files = list(SITE_DIR.rglob('*.md'))
+    # Filter out any markdown paths under excluded directories (defense in depth)
+    md_files = [p for p in md_files if not any(part in EXCLUDE_DIRS for part in p.parts)]
     if not md_files:
         print('  No markdown files found to convert.')
         return
@@ -119,7 +152,7 @@ def convert_markdown_to_ipynb():
             sys.exit(1)
 
 
-def convert_notebooks(no_code: bool = False, output_format: str = 'html'):
+def convert_notebooks(no_code: bool = False, output_format: str = 'html', batch_size: int = 4):
     """Convert all .ipynb files in _site using nbconvert."""
     print(f'Converting all Notebooks to {output_format.upper()}...')
     notebook_files = list(SITE_DIR.rglob('*.ipynb'))
@@ -127,7 +160,7 @@ def convert_notebooks(no_code: bool = False, output_format: str = 'html'):
         print('  No notebooks found to convert.')
         return
 
-    cmd = [
+    base_cmd = [
         'uv',
         'run',
         '--no-sync',
@@ -141,11 +174,17 @@ def convert_notebooks(no_code: bool = False, output_format: str = 'html'):
 
     if no_code:
         print('  Excluding code input cells (--no-input).')
-        cmd.append('--no-input')
+        base_cmd.append('--no-input')
 
-    cmd.extend(map(str, notebook_files))
+    # Process files in batches to avoid "too many open files" error
+    for i in range(0, len(notebook_files), batch_size):
+        batch = notebook_files[i : i + batch_size]
+        print(
+            f'  Processing batch {i // batch_size + 1}/{(len(notebook_files) + batch_size - 1) // batch_size} ({len(batch)} files)...'
+        )
 
-    run_command(cmd, cwd=WORKSPACE_ROOT)
+        cmd = base_cmd + list(map(str, batch))
+        run_command(cmd, cwd=WORKSPACE_ROOT)
 
     print('  Deleting intermediate notebook files...')
     for ipynb_file in notebook_files:
