@@ -19,7 +19,11 @@ We hope that this research will reveal more precise and robust ways to constrain
 
 We begin with some experiments with color, because color spaces are well defined and highly intuitive for visualization. Our goal is to demonstrate that it's possible to impose interpretable structure on latent space in a toy model.
 
-![Visualization of colorful latent embeddings in experiment 1.7, showing three large scatter plots from the end of training, and ten small thumbnails from earlier training steps. The thumbnails show how latent space evolves from a small cluster of dots, to a color cube, though various contortions, until finally it forms a smooth, regular sphere.](docs/m1-color-mlp/large-assets/ex-1.7-color-phase-history.png)
+<picture>
+    <source srcset="docs/m1-color-mlp/large-assets/ex-1.7-color-phase-history.dark.png" media="(prefers-color-scheme: dark)" />
+    <source srcset="docs/m1-color-mlp/large-assets/ex-1.7-color-phase-history.png" media="(prefers-color-scheme: light)" />
+    <img src="docs/m1-color-mlp/large-assets/ex-1.7-color-phase-history.png" alt="Visualization of colorful latent embeddings in experiment 1.7, showing three large scatter plots from the end of training, and ten small thumbnails from earlier training steps. The thumbnails show how latent space evolves from a small cluster of dots, to a color cube, though various contortions, until finally it forms a smooth, regular sphere." />
+</picture>
 
 1. [Color data](docs/m1-color-mlp/ex-1.1-color-data.ipynb): Exploration of ways to construct and visualize color spaces such as RGB and HSV.
 2. [MLP bottleneck](docs/m1-color-mlp/ex-1.2-color-mlp-bottleneck.ipynb): A 2-layer MLP autoencoder (extremely simple network) that squeezes bright, saturated RGB data through a 2D embedding layer. The network successfully discovers the color wheel — although it needs some help, in the form of explicit normalization.
@@ -63,7 +67,11 @@ Publications relating to this milestone:
 
 In this milestone, we develop intervention functions and apply them to the structured color model from M1.
 
-![Plots of interventions. Top row: semicircular polar plots showing the effects of suppression on activations. Each plot shows two lobes: an orange one indicating the magnitude of the intervention, and a blue one showing the transformed activation space. The direction being intervened on (the 'subject') is always 'up', so the orange 'magnitude' lobes are also oriented upwards. The blue 'transformed' lobes are more circular but have a depression in the top, showing that the directions more aligned with the subject are squashed/attenuated by the intervention. Bottom row: line charts showing intervention strength as a function of alignment.](docs/m2-control/large-assets/ex-2.1-suppression.png)
+<picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/m2-control/large-assets/ex-2.1-suppression.dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="docs/m2-control/large-assets/ex-2.1-suppression.png">
+    <img alt="Plots of interventions. Top row: semicircular polar plots showing the effects of suppression on activations. Each plot shows two lobes: an orange one indicating the magnitude of the intervention, and a blue one showing the transformed activation space. The direction being intervened on (the 'subject') is always 'up', so the orange 'magnitude' lobes are also oriented upwards. The blue 'transformed' lobes are more circular but have a depression in the top, showing that the directions more aligned with the subject are squashed/attenuated by the intervention. Bottom row: line charts showing intervention strength as a function of alignment." src="docs/m2-control/large-assets/ex-2.1-suppression.png">
+</picture>
 
 1. [Intervention lobes](docs/m2-control/ex-2.1-intervention-lobe.ipynb): Exploration of intervention function shape. Taking inspiration from computer graphics shader literature, we visualize intervention functions and their falloffs as polar plots. We implement two functions: suppression (which subtracts the concept vector) and repulsion (which steers activations away from the concept vector).
 2. [Specific concept intervention](docs/m2-control/ex-2.2-inhibit-red.ipynb): Application of interventions to the color autoencoder. We train a bottleneck autoencoder, predict where one key concept will be located, and then intervene on its activations.

@@ -70,9 +70,9 @@ def use_theme(*themes: Theme):
         yield
 
 
-def autoclose(factory: Callable[..., Figure]) -> Callable[..., Figure]:
+def autoclose(factory: Callable[..., Figure | None]) -> Callable[..., Figure | None]:
     @wraps(factory)
-    def _autoclose(*args, **kwargs) -> Figure:
+    def _autoclose(*args, **kwargs) -> Figure | None:
         fig = factory(*args, **kwargs)
         plt.close(fig)
         return fig

@@ -156,7 +156,7 @@ class ImageFactoryDisplayer[R]:
         self._show(data, metadata=metadata, raw=True)
 
 
-class MplFactoryDisplayer(ImageFactoryDisplayer[Figure]):
+class MplFactoryDisplayer(ImageFactoryDisplayer[Figure | None]):
     def __init__(
         self,
         displayer: Displayer,
@@ -179,7 +179,7 @@ class MplFactoryDisplayer(ImageFactoryDisplayer[Figure]):
         self.autoclose = autoclose
 
     @override
-    def __call__(self, factory: ImageFactory[Figure] | ThemeAwareImageFactory[Figure]):
+    def __call__(self, factory: ImageFactory[Figure | None] | ThemeAwareImageFactory[Figure | None]):
         if self.autoclose:
             factory = autoclose(factory)
         super().__call__(factory)

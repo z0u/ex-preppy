@@ -5,6 +5,10 @@
   --jp-rendermime-error-background: var(--md-grey-100);
 }
 
+body {
+  overflow-x: hidden;
+}
+
 /* All notebook cells */
 .jp-Notebook .jp-Cell {
   /* Center the content */
@@ -36,6 +40,12 @@
 .jp-OutputArea-child,
 .jp-OutputArea-output {
   overflow: unset;
+}
+
+.jp-OutputArea picture,
+.jp-RenderedMarkdown p>picture {
+  margin-top: 2em;
+  margin-bottom: 1em;
 }
 
 .jp-RenderedHTMLCommon table {
@@ -115,6 +125,7 @@ a.anchor-link::after {
     --jp-ui-font-color0: #ffffff;
     --jp-ui-font-color1: #ffffff;
     --jp-ui-font-color2: #cccccc;
+    --jp-content-link-color: var(--md-blue-500);
 
     --jp-cell-editor-background: var(--md-grey-900);
     --jp-cell-editor-border-color: var(--md-grey-700);
