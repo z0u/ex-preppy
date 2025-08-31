@@ -151,6 +151,8 @@ def plot_loss_lines(  # noqa: C901
     cube: ColorCube,
     title: str,
     loss: np.ndarray,
+    *,
+    ylabel: str = 'Loss',
     colors: np.ndarray | None = None,
     pretty: bool | str = True,
     linewidth: float = 1.4,
@@ -172,6 +174,8 @@ def plot_loss_lines(  # noqa: C901
         Color cube whose coordinates define axes and ordering.
     title : str, default ''
         Optional chart title prefix.
+    ylabel : str
+        Y-axis label.
     colors : np.ndarray | None, default None
         True colors as RGB floats in [0, 1], shaped like the cube's grid with a
         trailing channel, i.e., (..., 3). Defaults to ``cube.rgb_grid``.
@@ -291,7 +295,7 @@ def plot_loss_lines(  # noqa: C901
     # Y limits with small margin
     margin = 0.05 * (y_max - y_min if y_max > y_min else 1.0)
     ax.set_ylim(y_min, y_max + margin)
-    ax.set_ylabel('Loss')
+    ax.set_ylabel(ylabel)
 
     # Title
     _title = f'{title} - ' if title else ''
