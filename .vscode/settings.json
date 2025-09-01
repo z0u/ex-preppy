@@ -28,4 +28,7 @@
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
+    "ruff.interpreter": [
+        "${workspaceFolder}/.venv/bin/python", // https://github.com/astral-sh/ruff-vscode/issues/653#issuecomment-2684697931
+    ],
 }
