@@ -1,11 +1,18 @@
-from typing import Sequence
+from typing import Sequence, cast
 
+import matplotlib.pyplot as plt
 import numpy as np
+import torch
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
+from matplotlib.patheffects import Stroke
+from matplotlib.typing import ColorType
+from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from numpy.typing import NDArray
 
 from ex_color.data.color_cube import ColorCube, color_axes
+from utils.plt import ThemeType
 
 
 def plot_colors(  # noqa: C901
@@ -269,6 +276,7 @@ def plot_loss_lines(  # noqa: C901
             colors=seg_colors,
             linewidths=linewidth,
             alpha=1.0,
+            path_effects=[Stroke(capstyle='round')],  # Round caps prevent gaps between segments
         )
         ax.add_collection(lc)
 
@@ -311,3 +319,127 @@ def plot_loss_lines(  # noqa: C901
 def _axname(axis_char: str) -> str:
     name = color_axes.get(axis_char.lower(), axis_char)
     return name
+
+
+# Plotting utilities for latent slices
+
+
+def draw_latent_3d(
+    ax: Axes3D,
+    latents_3d: np.ndarray,
+    *,
+    facecolors: np.ndarray,
+    edgecolors: np.ndarray | None = None,
+    dot_radius: float | np.ndarray = 5.0,
+    linewidth_fraction: float = 0.4,
+    alpha: float = 1.0,
+):
+    """
+    Draw 3D scatter of latent points.
+
+    Args:
+        ax: Axes3D to draw on
+        latents_3d: (N, 3)
+        facecolors: (N, 3/4)
+        edgecolors: optional (N, 3/4) for edge colors
+        dot_radius: scalar or array of size (N,) to allow per-point sizing
+        linewidth_fraction: fraction of dot_radius to use as linewidth
+        alpha: overall alpha transparency for the points
+    """
+    if edgecolors is None:
+        edgecolors = facecolors
+
+    # Calculate linewidth as a fraction of the radius
+    linewidths = linewidth_fraction * np.array(dot_radius)
+    # The marker area (s) is in points^2, so reduce radius to keep stroke inside
+    fill_radius = np.array(dot_radius) - linewidths
+    fill_radius = np.clip(fill_radius, 0, None)
+    s = np.pi * fill_radius**2
+
+    scatter = ax.scatter(
+        latents_3d[:, 0],
+        latents_3d[:, 1],
+        latents_3d[:, 2],  # type: ignore
+        c=facecolors,
+        edgecolors=cast(Sequence[ColorType], edgecolors),
+        linewidths=linewidths,
+        s=s,  # type: ignore
+        alpha=alpha,
+    )
+
+    return {'scatter': scatter}
+
+
+def draw_circle_3d(
+    ax: Axes3D,
+    r=1,
+    *,
+    verts=100,
+    facecolor: ColorType | None = 'none',
+    edgecolor: ColorType | None = 'none',
+    linewidth: float | None = 1.0,
+    zorder: float | None = None,
+):
+    theta = np.linspace(0, 2 * np.pi, verts)
+    x = r * np.cos(theta)
+    y = r * np.sin(theta)
+    z = np.full_like(x, zorder or 0.0)
+
+    # Create vertices for the filled circle
+    circle_verts = [list(zip(x, y, z, strict=True))]
+    facecolors = [facecolor] * len(circle_verts)
+    edgecolors = [edgecolor] * len(circle_verts)
+    poly = Poly3DCollection(circle_verts, facecolors=facecolors, edgecolors=edgecolors, linewidth=linewidth)
+    ax.add_collection3d(poly)
+    return poly
+
+
+def plot_latent_grid_3d(
+    latents: torch.Tensor,
+    colors: torch.Tensor,
+    colors_compare: torch.Tensor | None = None,
+    *,
+    dims: list[tuple[int, int, int]],
+    title: str | None = None,
+    figsize_per_plot: tuple[float, float] = (6, 6),
+    dot_radius: float = 10.0,
+    theme: ThemeType,
+):
+    """Plot 4D+ latent data as 3D visualizations."""
+    lat_np = latents.detach().cpu().numpy()
+    col_np = colors.detach().cpu().reshape(-1, colors.shape[-1]).numpy()
+    col_compare_np = (
+        colors_compare.detach().cpu().reshape(-1, colors.shape[-1]).numpy() if colors_compare is not None else col_np
+    )
+
+    n = len(dims)
+    cols = min(3, n)  # Max 3 columns
+    rows = int(np.ceil(n / cols))
+
+    fig = plt.figure(figsize=(figsize_per_plot[0] * cols, figsize_per_plot[1] * rows), constrained_layout=True)
+
+    for idx, (i, j, k) in enumerate(dims):
+        # Create 3D subplot
+        ax = cast(Axes3D, fig.add_subplot(rows, cols, idx + 1, axes_class=Axes3D))
+
+        # Extract 3D coordinates
+        lat_3d = lat_np[:, [i, j, k]]
+
+        draw_circle_3d(ax, facecolor='#111' if theme == 'dark' else '#eee' if theme == 'light' else '#8888', zorder=-10)
+        draw_latent_3d(ax, lat_3d, edgecolors=col_np, facecolors=col_compare_np, alpha=1.0, dot_radius=dot_radius)
+        draw_circle_3d(ax, edgecolor='#0005', linewidth=1, zorder=10)
+
+        # Clean up the 3D axes
+        ax.set_axis_off()
+        ax.patch.set_alpha(0)
+        ax.set_title(f'({i},{j},{k})')
+        # Always look downwards from the "top": the axis ordering (i,j,k) determines the view
+        ax.view_init(elev=90, azim=-90)
+        ax.set_proj_type('ortho')
+        ax.set_xlim(-1.0, 1.0)
+        ax.set_ylim(-1.0, 1.0)
+
+    if title:
+        fig.suptitle(title)
+
+    return fig

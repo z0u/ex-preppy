@@ -13,4 +13,5 @@ ytick.labelcolor: "#000"
 # Text and axes labels
 text.color: "#000"
 axes.labelcolor: "#000"
-axes.edgecolor: "#0008"
+axes.edgecolor: "#ccc"
+axes.linewidth: 0.4
