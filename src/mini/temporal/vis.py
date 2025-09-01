@@ -12,7 +12,7 @@ from pandas.api.types import is_numeric_dtype
 
 from mini.temporal.dopesheet import RESERVED_COLS
 from mini.temporal.timeline import Timeline
-from utils.plt import ThemeType
+from utils.plt import Theme
 
 
 def realize_timeline(timeline: Timeline) -> pd.DataFrame:
@@ -96,7 +96,7 @@ def plot_timeline(  # noqa: C901
     title: str = 'Timeline property evolution',
     show_phase_labels: bool = True,
     line_styles: Sequence[tuple[str | re.Pattern, dict[str, Any]]] | None = None,
-    theme: ThemeType | None = None,
+    theme: Theme | None = None,
 ):
     if groups is None:
         cols = [col for col in history_df.columns if col not in RESERVED_COLS]
@@ -138,7 +138,8 @@ def plot_timeline(  # noqa: C901
         axes_to_plot_on = [ax]  # Plot only on the provided axes
         groups = [groups[0]]  # Use only the first group
 
-    marker_color = '#444' if theme == 'light' else '#aaa'
+    is_light_theme = theme is not None and theme.name == 'light'
+    marker_color = '#444' if is_light_theme else '#aaa'
 
     # --- Plotting Data ---
     # Plot each group on its corresponding axes (or the single provided axes)
@@ -168,7 +169,7 @@ def plot_timeline(  # noqa: C901
                             prop_keyframes['STEP'],
                             prop_keyframes[prop],
                             marker='o',
-                            facecolor='white' if theme == 'light' else 'black',
+                            facecolor='white' if is_light_theme else 'black',
                             s=25,
                             zorder=5,
                             color=line.get_color(),

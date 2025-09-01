@@ -7,7 +7,7 @@ import urllib.parse
 from contextlib import contextmanager
 from pathlib import Path
 
-from utils.plt import Theme
+from utils.plt import Stylesheet
 
 if typing.TYPE_CHECKING:
     # This import is only needed for type hinting
@@ -36,9 +36,9 @@ def displayer_mpl(
     *,
     live: bool = False,
     autoclose: bool = True,
-    live_theme: typing.Sequence[Theme] = ('base', 'transparent', MappingProxyType({'figure.dpi': '90'})),
-    light_theme: typing.Sequence[Theme] = ('base', 'light', MappingProxyType({'figure.dpi': '150'})),
-    dark_theme: typing.Sequence[Theme] = ('base', 'dark', MappingProxyType({'figure.dpi': '150'})),
+    live_theme: typing.Sequence[Stylesheet] = ('base', 'transparent', MappingProxyType({'figure.dpi': '90'})),
+    light_theme: typing.Sequence[Stylesheet] = ('base', 'light', MappingProxyType({'figure.dpi': '150'})),
+    dark_theme: typing.Sequence[Stylesheet] = ('base', 'dark', MappingProxyType({'figure.dpi': '150'})),
 ):
     """
     Context manager to display an image in a Jupyter notebook.

@@ -12,7 +12,7 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from numpy.typing import NDArray
 
 from ex_color.data.color_cube import ColorCube, color_axes
-from utils.plt import ThemeType
+from utils.plt import Theme
 
 
 def plot_colors(  # noqa: C901
@@ -403,7 +403,7 @@ def plot_latent_grid_3d(
     title: str | None = None,
     figsize_per_plot: tuple[float, float] = (6, 6),
     dot_radius: float = 10.0,
-    theme: ThemeType,
+    theme: Theme,
 ):
     """Plot 4D+ latent data as 3D visualizations."""
     lat_np = latents.detach().cpu().numpy()
@@ -425,7 +425,7 @@ def plot_latent_grid_3d(
         # Extract 3D coordinates
         lat_3d = lat_np[:, [i, j, k]]
 
-        draw_circle_3d(ax, facecolor='#111' if theme == 'dark' else '#eee' if theme == 'light' else '#8888', zorder=-10)
+        draw_circle_3d(ax, facecolor=theme.val('#8888', dark='#111', light='#eee'), zorder=-10)
         draw_latent_3d(ax, lat_3d, edgecolors=col_np, facecolors=col_compare_np, alpha=1.0, dot_radius=dot_radius)
         draw_circle_3d(ax, edgecolor='#0005', linewidth=1, zorder=10)
 

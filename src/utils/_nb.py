@@ -13,7 +13,7 @@ from IPython.core.interactiveshell import InteractiveShell
 from IPython.display import HTML, DisplayHandle, display
 from matplotlib.figure import Figure
 
-from utils.plt import Theme, ThemeType, autoclose, use_theme
+from utils.plt import Stylesheet, Theme, autoclose, use_theme
 
 R = TypeVar('R', covariant=True)
 
@@ -52,7 +52,7 @@ class ImageFactory(Protocol, Generic[R]):
 
 
 class ThemeAwareImageFactory(Protocol, Generic[R]):
-    def __call__(self, /, theme: ThemeType) -> R: ...
+    def __call__(self, /, theme: Theme) -> R: ...
 
 
 class ImageFactoryDisplayer[R]:
@@ -71,9 +71,9 @@ class ImageFactoryDisplayer[R]:
         path: str | Path,
         *,
         alt_text: str | None = None,
-        live_theme: Sequence[Theme] | None = None,
-        light_theme: Sequence[Theme] | None = None,
-        dark_theme: Sequence[Theme] | None = None,
+        live_theme: Sequence[Stylesheet] | None = None,
+        light_theme: Sequence[Stylesheet] | None = None,
+        dark_theme: Sequence[Stylesheet] | None = None,
     ):
         self.path = Path(path)
         if not self.path.suffix == '.png':
@@ -81,7 +81,7 @@ class ImageFactoryDisplayer[R]:
         self.alt_text = alt_text
 
         # Ordering here is important: the first one will be the default.
-        variants: dict[str, tuple[str, Sequence[Theme]]] = {}
+        variants: dict[str, tuple[str, Sequence[Stylesheet]]] = {}
         if light_theme:
             variants['light'] = ('(prefers-color-scheme: light)', light_theme)
         if dark_theme:
@@ -103,14 +103,14 @@ class ImageFactoryDisplayer[R]:
             data, metadata = self.render(self.variants['live'][1])
             self._show(data, metadata=metadata, raw=True)
 
-    def render(self, themes: Sequence[Theme]):
+    def render(self, themes: Sequence[Stylesheet]):
         formatter = cast(DisplayFormatter, InteractiveShell.instance().display_formatter)
         ob = None
         if self._factory is not None:
             sig = signature(self._factory)
             if 'theme' in sig.parameters:
-                theme_type = 'light' if 'light' in themes else 'dark' if 'dark' in themes else 'indeterminate'
-                ob = cast(ThemeAwareImageFactory[R], self._factory)(theme=theme_type)
+                theme = Theme('light' if 'light' in themes else 'dark' if 'dark' in themes else 'indeterminate')
+                ob = cast(ThemeAwareImageFactory[R], self._factory)(theme=theme)
             else:
                 ob = cast(ImageFactory[R], self._factory)()
         data, metadata = formatter.format(ob, include=('image/png',))
@@ -163,9 +163,9 @@ class MplFactoryDisplayer(ImageFactoryDisplayer[Figure | None]):
         path: str | Path,
         *,
         alt_text: str | None = None,
-        live_theme: Sequence[Theme] | None = None,
-        light_theme: Sequence[Theme] | None = None,
-        dark_theme: Sequence[Theme] | None = None,
+        live_theme: Sequence[Stylesheet] | None = None,
+        light_theme: Sequence[Stylesheet] | None = None,
+        dark_theme: Sequence[Stylesheet] | None = None,
         autoclose: bool = True,
     ):
         super().__init__(
@@ -185,6 +185,6 @@ class MplFactoryDisplayer(ImageFactoryDisplayer[Figure | None]):
         super().__call__(factory)
 
     @override
-    def render(self, themes: Sequence[Theme]):
+    def render(self, themes: Sequence[Stylesheet]):
         with use_theme(*themes):
             return super().render(themes)
