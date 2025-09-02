@@ -122,8 +122,8 @@ a.anchor-link::after {
 @media (prefers-color-scheme: dark) {
   /* Override JupyterLab variables for dark mode */
   :root {
-    --jp-layout-color0: #1e1e1e;
-    --jp-layout-color1: #1e1e1e;
+    --jp-layout-color0: #1f1f1f;
+    --jp-layout-color1: #1f1f1f;
     --jp-layout-color2: #2d2d2d;
     --jp-layout-color3: #3e3e3e;
     --jp-border-color0: #5a5a5a;
