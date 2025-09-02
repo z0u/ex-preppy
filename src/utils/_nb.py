@@ -1,6 +1,7 @@
 import secrets
 import time
 from base64 import b64decode
+from functools import wraps
 from html import escape
 from inspect import signature
 from pathlib import Path
@@ -59,7 +60,7 @@ class ImageFactoryDisplayer[R]:
     """Displays images in Jupyter notebooks and saves them to a file."""
 
     path: Path
-    alt_text: str | None
+    _alt_text: str | None
 
     _show: Displayer
     _last_data: str | None = None
@@ -78,7 +79,7 @@ class ImageFactoryDisplayer[R]:
         self.path = Path(path)
         if not self.path.suffix == '.png':
             raise NotImplementedError('Only png is supported.')
-        self.alt_text = alt_text
+        self._alt_text = alt_text
 
         # Ordering here is important: the first one will be the default.
         variants: dict[str, tuple[str, Sequence[Stylesheet]]] = {}
@@ -102,6 +103,12 @@ class ImageFactoryDisplayer[R]:
         if 'live' in self.variants:
             data, metadata = self.render(self.variants['live'][1])
             self._show(data, metadata=metadata, raw=True)
+
+    @property
+    def alt_text(self) -> str:
+        if self._alt_text is None:
+            return 'Image'
+        return self._alt_text
 
     def render(self, themes: Sequence[Stylesheet]):
         formatter = cast(DisplayFormatter, InteractiveShell.instance().display_formatter)
@@ -157,6 +164,8 @@ class ImageFactoryDisplayer[R]:
 
 
 class MplFactoryDisplayer(ImageFactoryDisplayer[Figure | None]):
+    _title: str | None
+
     def __init__(
         self,
         displayer: Displayer,
@@ -177,12 +186,27 @@ class MplFactoryDisplayer(ImageFactoryDisplayer[Figure | None]):
             dark_theme=dark_theme,
         )
         self.autoclose = autoclose
+        self._title = None
 
     @override
     def __call__(self, factory: ImageFactory[Figure | None] | ThemeAwareImageFactory[Figure | None]):
-        if self.autoclose:
-            factory = autoclose(factory)
-        super().__call__(factory)
+        @wraps(factory)  # type: ignore
+        def _factory(*args, **kwargs):
+            fig = factory(*args, **kwargs)
+            if fig:
+                self._title = fig.get_suptitle()
+            return fig
+
+        super().__call__(autoclose(_factory) if self.autoclose else _factory)
+
+    @property
+    def alt_text(self) -> str:
+        if self._title is not None:
+            template = self._alt_text if self._alt_text is not None else 'Figure titled {title}'
+            return template.replace('{title}', self._title)
+        if self._alt_text is None:
+            return 'Figure'
+        return self._alt_text
 
     @override
     def render(self, themes: Sequence[Stylesheet]):

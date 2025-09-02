@@ -132,10 +132,8 @@ def plot_colors(  # noqa: C901
         else:
             ax.yaxis.set_visible(False)
 
-    _title = f'{title} - ' if title else ''
-    plt.suptitle(
-        f'{_title}{cube.canonical_space.upper()} as {y_axis.upper()} vs {x_axis.upper()} by {main_axis.upper()}'
-    )
+    _title = f'{title} · ' if title else ''
+    fig.suptitle(f'{_title}{y_axis.upper()} vs {x_axis.upper()} by {main_axis.upper()}')
 
     plt.close()
     return fig
@@ -306,7 +304,7 @@ def plot_loss_lines(  # noqa: C901
     ax.set_ylabel(ylabel)
 
     # Title
-    _title = f'{title} - ' if title else ''
+    _title = f'{title} · ' if title else ''
     ax.set_title(
         f'{_title}{cube.canonical_space.upper()} loss vs {x_label}',
         fontsize=10,
