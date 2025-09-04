@@ -1,0 +1,132 @@
+from typing import Sequence
+
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.axes import Axes
+from numpy.typing import NDArray
+
+from ex_color.data.color_cube import ColorCube
+from ex_color.vis.prettify import axname, prettify
+
+
+def plot_colors(  # noqa: C901
+    cube: ColorCube,
+    pretty: bool | str = True,
+    patch_size: float = 0.25,
+    title: str = '',
+    colors: np.ndarray | None = None,
+    colors_compare: np.ndarray | None = None,
+):
+    """Plot a ColorCube in 2D slices."""
+    from itertools import chain
+    from math import ceil
+
+    from matplotlib.patches import Rectangle
+
+    if pretty is True:
+        pretty = cube.space
+    elif pretty is False:
+        pretty = ''
+
+    def fmt(axis: str, v: float | int) -> str:
+        if axis in pretty:
+            return prettify(float(v))
+        else:
+            return f'{v:.2g}'
+
+    # Create a figure with subplots
+
+    main_axis, y_axis, x_axis = cube.space
+    main_coords, y_coords, x_coords = cube.coordinates
+
+    n_plots = len(main_coords)
+    nominal_width = 70
+    full_width = len(x_coords) * n_plots + (n_plots - 1)
+    n_rows = ceil(full_width / nominal_width)
+    n_cols = ceil(n_plots / n_rows)
+
+    # Calculate appropriate figure size based on data dimensions
+    # Base size per subplot, adjusted by the data dimensions
+    subplot_width = patch_size * len(x_coords)
+    subplot_height = patch_size * len(y_coords) + 0.5
+
+    # Calculate total figure size with some margins between plots
+    figsize = (n_cols * subplot_width, n_rows * subplot_height)
+
+    axes: Sequence[Axes] | NDArray
+    fig, axes = plt.subplots(
+        n_rows,
+        n_cols,
+        figsize=figsize,
+        sharex=True,
+        sharey=True,
+        squeeze=False,
+    )
+    axes = list(chain(*axes))  # Flatten the axes array
+
+    if colors is None:
+        colors = cube.rgb_grid
+
+    def annotate_cells(ax: Axes, b: np.ndarray):
+        """
+        Draw a colored outline rectangle per cell using colors_compare.
+
+        edge_colors shape: (H, W, 3) in [0, 1].
+        """
+        H, W = b.shape[:2]
+        # Ensure axis limits correspond to the pixel grid
+        ax.set_xlim(-0.5, W - 0.5)
+        ax.set_ylim(H - 0.5, -0.5)
+        width = 0.3
+        half_width = width / 2
+        for r in range(H):
+            for c in range(W):
+                rect = Rectangle(
+                    (c - half_width, r - half_width),
+                    width,
+                    width,
+                    facecolor=b[r, c],
+                )
+                ax.add_patch(rect)
+
+    # Plot each slice of the cube (one for each value)
+    for i, ax in enumerate(axes):
+        if i >= len(main_coords):
+            ax.set_visible(False)
+            continue
+        row = i // n_cols
+        col = i % n_cols
+
+        ax.imshow(colors[i], vmin=0, vmax=1)
+        if colors_compare is not None:
+            annotate_cells(ax, colors_compare[i])
+
+        ax.set_aspect('equal')
+        ax.set_title(f'{axname(main_axis).capitalize()} = {fmt(main_axis, main_coords[i])}', fontsize=8)
+
+        # Add axes labels without cluttering the display
+        if row == n_rows - 1:
+            ax.xaxis.set_ticks([0, len(x_coords) - 1])
+            coord1 = fmt(x_axis, x_coords[0])
+            coord2 = fmt(x_axis, x_coords[-1])
+            ax.xaxis.set_ticklabels([coord1, coord2])
+            ax.xaxis.set_tick_params(labelsize=8)
+            ax.set_xlabel(axname(x_axis).capitalize(), fontsize=8)
+        else:
+            ax.xaxis.set_visible(False)
+
+        if col == 0:
+            ax.yaxis.set_ticks([0, len(y_coords) - 1])
+            coord1 = fmt(y_axis, y_coords[0])
+            coord2 = fmt(y_axis, y_coords[-1])
+            ax.yaxis.set_ticklabels([coord1, coord2])
+            ax.yaxis.set_tick_params(labelsize=8)
+            ax.set_ylabel(axname(y_axis).capitalize(), fontsize=8)
+        else:
+            ax.yaxis.set_visible(False)
+
+    _title = f'{title} · ' if title else ''
+    fig.suptitle(f'{_title}{y_axis.upper()} vs {x_axis.upper()} by {main_axis.upper()}')
+
+    plt.close()
+    return fig
