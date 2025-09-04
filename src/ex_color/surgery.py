@@ -128,14 +128,14 @@ def _find_surrounding_linears(model: nn.Module, layer_path: str) -> tuple[_Locat
     if prev_loc is None or next_loc is None:
         return _fallback_unique_linears(model)
 
-    prev_linear: nn.Linear = prev_loc.module  # type: ignore[assignment]
-    next_linear: nn.Linear = next_loc.module  # type: ignore[assignment]
-    if prev_linear.out_features != next_linear.in_features:
+    prev = prev_loc.module
+    next_ = next_loc.module
+    if prev.out_features != next_.in_features:
         raise RuntimeError(
             'Nearest Linear layers around the target do not agree on feature size: '
-            f'prev(out)={prev_linear.out_features}, next(in)={next_linear.in_features}'
+            f'prev(out)={prev.out_features}, next(in)={next_.in_features}'
         )
-    k = prev_linear.out_features
+    k = prev.out_features
     return prev_loc, next_loc, k
 
 
@@ -194,8 +194,8 @@ def ablate(model: M, layer_id: str, dims: Sequence[int]) -> M:
     drop = _validate_dims(dims, k)
     if len(drop) == 0:
         return new_model
-    prev: nn.Linear = prev_loc.module  # type: ignore[assignment]
-    next_: nn.Linear = next_loc.module  # type: ignore[assignment]
+    prev = prev_loc.module
+    next_ = next_loc.module
 
     # Zero producer rows and corresponding biases
     with torch.no_grad():
@@ -226,8 +226,8 @@ def prune(model: M, layer_id: str, dims: Sequence[int]) -> M:
     if new_k <= 0:
         raise ValueError('Ablation would result in zero latent width; at least one dimension must remain.')
 
-    prev: nn.Linear = prev_loc.module  # type: ignore[assignment]
-    next_: nn.Linear = next_loc.module  # type: ignore[assignment]
+    prev = prev_loc.module
+    next_ = next_loc.module
 
     keep = _compute_keep_indices(k, drop)
 

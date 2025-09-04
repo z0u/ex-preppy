@@ -1,8 +1,10 @@
 from __future__ import annotations
+
+from typing import Any, SupportsIndex, overload
+
 import numpy as np
 
 from ex_color.data.grid import coordinate_grid
-
 
 color_axes = {
     'r': 'red',
@@ -18,45 +20,102 @@ class ColorCube:
     """A tensor of RGB values with coordinates in various color spaces (e.g. HSV)."""
 
     coordinates: tuple[np.ndarray, ...]
-    """The coordinate axes of the cube, with shapes (a,), (b,), (c,)."""
+    """The coordinate axes of the cube, with shapes [a,], [b,], [c,]."""
     space: str
-    """The color space of the cube (e.g. 'vsh'), which is some permutation of the canonical space."""
+    """The color space of the cube [e.g. 'vsh'], which is some permutation of the canonical space."""
     canonical_space: str
-    """The well-known color space for the cube (e.g. 'hsv'), regardless of the current axis order."""
-    rgb_grid: np.ndarray
-    """The RGB values in the cube, with shape (a, b, c, 3)."""
-    bias: np.ndarray
-    """The probability distribution weights for the cube, with shape (a, b, c)."""
+    """The well-known color space for the cube [e.g. 'hsv'], regardless of the current axis order."""
 
     def __init__(
         self,
-        rgb_grid: np.ndarray,
-        bias: np.ndarray,
+        vars: dict[str, np.ndarray],
         coordinates: tuple[np.ndarray, ...],
         space: str,
         canonical_space: str,
     ):
         if sorted(space) != sorted(canonical_space):
             raise ValueError(f'Cannot create ColorCube with different spaces: {space} != {canonical_space}')
-        if rgb_grid.shape[-1] != 3:
-            raise ValueError(f'RGB grid must have three channels: {rgb_grid.shape[-1]} != 3')
-        grid_shape = rgb_grid.shape[:-1]
-        if grid_shape != bias.shape:
-            raise ValueError(f'RGB grid and bias must have the same shape: {grid_shape} != {bias.shape}')
         coord_shape = tuple(len(coord) for coord in coordinates)
-        if grid_shape != coord_shape:
-            raise ValueError(f'RGB grid shape {grid_shape} does not match coordinates {coord_shape}')
+
+        if 'color' not in vars:
+            raise ValueError('Variables must include a "color" array')
+        if len(vars['color'].shape) != len(space) + 1:
+            raise ValueError(f'"color" variable must have {len(space) + 1} dimensions (vector)')
+        if vars['color'].shape[-1] != 3:
+            raise ValueError('"color" grid must have three channels')
+
+        if 'bias' not in vars:
+            raise ValueError('Variables must include a "bias" array')
+
+        for k, v in vars.items():
+            grid_shape = v.shape[: len(coord_shape)]
+            if coord_shape != grid_shape:
+                raise ValueError(f'Variable "{k}" must match coordinates: {grid_shape} != {coord_shape}')
 
         self.space = space
         self.canonical_space = canonical_space
         self.coordinates = coordinates
-        self.rgb_grid = rgb_grid
-        self.bias = bias
+        self.vars = vars
+
+    @overload
+    def __getitem__(self, key: str, /) -> np.ndarray: ...
+    @overload
+    def __getitem__(self, key: tuple[np._ArrayInt_co, ...], /) -> np.ndarray: ...
+    @overload
+    def __getitem__(self, key: tuple[SupportsIndex, ...], /) -> Any: ...
+    @overload
+    def __getitem__(self, key: tuple[np._ToIndex, ...], /) -> np.ndarray: ...
+    def __getitem__(
+        self,
+        key: str | tuple[np._ArrayInt_co, ...] | tuple[SupportsIndex, ...] | tuple[np._ToIndex, ...],
+        /,
+    ) -> np.ndarray | ColorCube:
+        """
+        Get data from the cube.
+
+        Args:
+            key: Variable name or coordinate slices.
+
+        Return: The named variable (array) or a sliced cube as a view of the current one.
+        """
+        if isinstance(key, str):
+            return self.vars[key]
+
+        if len(key) != len(self.space):
+            raise ValueError(f'Expected {len(self.space)} slices, got {len(key)}')
+        new_vars = {k: v.__getitem__(key) for k, v in self.vars.items()}
+        new_coords = tuple(
+            c[k]  #
+            for c, k in zip(self.coordinates, key, strict=True)
+        )
+        return type(self)(new_vars, new_coords, self.space, self.canonical_space)
+
+    def assign(self, name: str, var: np.ndarray) -> ColorCube:
+        """
+        Assign a new variable to the cube.
+
+        Args:
+            name: The name of the new variable.
+            var: The variable array to assign. Must match the cube's grid shape.
+
+        Returns a new cube with all original variables in addition to new ones. Existing variables can be re-assigned.
+        """
+        return type(self)({**self.vars, name: var}, self.coordinates, self.space, self.canonical_space)
 
     @property
     def shape(self) -> tuple[int, ...]:
         """The shape of the cube grid (excluding the channel dimension)."""
         return self.bias.shape
+
+    @property
+    def rgb_grid(self) -> np.ndarray:
+        """The RGB values in the cube, with shape [a, b, c, 3]."""
+        return self.vars['color']
+
+    @property
+    def bias(self) -> np.ndarray:
+        """The probability distribution weights for the cube, with shape [a, b, c]."""
+        return self.vars['bias']
 
     @classmethod
     def from_hsv(cls, h: np.ndarray, s: np.ndarray, v: np.ndarray):
@@ -106,7 +165,7 @@ class ColorCube:
         # w(s, v) = w_black * (1-v) + w_white * (1-s) * v + w_vibrant * s * v
         bias = w_black * (1 - V_grid) + w_white * (1 - S_grid) * V_grid + w_vibrant * S_grid * V_grid
 
-        return cls(grid, bias, (h, s, v), 'hsv', 'hsv')
+        return cls({'color': grid, 'bias': bias}, (h, s, v), 'hsv', 'hsv')
 
     @classmethod
     def from_rgb(cls, r: np.ndarray, g: np.ndarray, b: np.ndarray):
@@ -127,14 +186,22 @@ class ColorCube:
         """
         grid = coordinate_grid(r, g, b)
         bias = np.ones(grid.shape[:-1], dtype=float)
-        return cls(grid, bias, (r, g, b), 'rgb', 'rgb')
+        return cls({'color': grid, 'bias': bias}, (r, g, b), 'rgb', 'rgb')
 
     def permute(self, new_space: str):
         """Re-order the axes of the ColorCube."""
+        indices = self.transpose_idx(new_space)
+        new_vars = {
+            k: np.transpose(a, indices) if len(a.shape) == len(indices) else np.transpose(a, indices + (-1,))  #
+            for k, a in self.vars.items()
+        }
+        new_coordinates = tuple(self.coordinates[i] for i in indices)
+        return ColorCube(new_vars, new_coordinates, new_space, self.canonical_space)
+
+    def transpose_idx(self, new_space: str) -> tuple[int, int, int]:
+        """Get the dimension indices that would transpose this cube to a target space."""
         if set(self.space) != set(new_space):
             raise ValueError(f'Cannot permute {self.space} to {new_space}: different axes')
         indices = tuple(self.space.index(axis) for axis in new_space)
-        new_grid = np.transpose(self.rgb_grid, indices + (-1,))
-        new_bias = np.transpose(self.bias, indices)
-        new_coordinates = tuple(self.coordinates[i] for i in indices)
-        return ColorCube(new_grid, new_bias, new_coordinates, new_space, self.canonical_space)
+        assert len(indices) == 3
+        return indices
