@@ -1,6 +1,7 @@
 xtick.labelsize: small
 ytick.labelsize: small
 
+axes.titlesize: small
 axes.grid: False
 axes3d.grid: False
 axes3d.xaxis.panecolor: none

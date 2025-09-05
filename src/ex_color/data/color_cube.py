@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, SupportsIndex, overload
+from typing import SupportsIndex, overload
 
 import numpy as np
 
@@ -53,6 +53,7 @@ class ColorCube:
                 raise ValueError(f'Variable "{k}" must match coordinates: {grid_shape} != {coord_shape}')
 
         self.space = space
+        self.shape = coord_shape
         self.canonical_space = canonical_space
         self.coordinates = coordinates
         self.vars = vars
@@ -60,11 +61,11 @@ class ColorCube:
     @overload
     def __getitem__(self, key: str, /) -> np.ndarray: ...
     @overload
-    def __getitem__(self, key: tuple[np._ArrayInt_co, ...], /) -> np.ndarray: ...
+    def __getitem__(self, key: tuple[np._ArrayInt_co, ...], /) -> ColorCube: ...
     @overload
-    def __getitem__(self, key: tuple[SupportsIndex, ...], /) -> Any: ...
+    def __getitem__(self, key: tuple[SupportsIndex, ...], /) -> ColorCube: ...
     @overload
-    def __getitem__(self, key: tuple[np._ToIndex, ...], /) -> np.ndarray: ...
+    def __getitem__(self, key: tuple[np._ToIndex, ...], /) -> ColorCube: ...
     def __getitem__(
         self,
         key: str | tuple[np._ArrayInt_co, ...] | tuple[SupportsIndex, ...] | tuple[np._ToIndex, ...],
@@ -101,11 +102,6 @@ class ColorCube:
         Returns a new cube with all original variables in addition to new ones. Existing variables can be re-assigned.
         """
         return type(self)({**self.vars, name: var}, self.coordinates, self.space, self.canonical_space)
-
-    @property
-    def shape(self) -> tuple[int, ...]:
-        """The shape of the cube grid (excluding the channel dimension)."""
-        return self.bias.shape
 
     @property
     def rgb_grid(self) -> np.ndarray:

@@ -1,168 +1,143 @@
+from itertools import product
+from typing import cast
+
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.axes import Axes
+from matplotlib.collections import LineCollection
 from matplotlib.figure import Figure
 from matplotlib.patheffects import Stroke
 
+from ex_color.data.color import hues3, hues6, hues12
 from ex_color.data.color_cube import ColorCube
 from ex_color.vis.prettify import axname, prettify
 
+# Accept either a single ColorCube or a sequence of ColorCubes
 
-def plot_loss_lines(  # noqa: C901
-    cube: ColorCube,
-    title: str,
-    loss: np.ndarray,
-    *,
-    ylabel: str = 'Loss',
-    colors: np.ndarray | None = None,
-    pretty: bool | str = True,
-    linewidth: float = 1.4,
-    figsize: tuple[int, int] | None = (12, 3),
-) -> Figure:
-    """
-    Plot reconstruction loss per color as colored line segments.
 
-    The x-axis is the first axis of the cube's canonical space (e.g., H for HSV).
-    Each line corresponds to a pair of coordinates from the remaining two axes.
-    Line color follows the true colors provided via ``colors`` (RGB in [0, 1]).
-
-    Parameters
-    ----------
-    loss : np.ndarray
-        Array shaped like the cube's grid in ``cube.space`` order, with one
-        scalar loss per color (no channel). This function does not compute loss.
-    cube : ColorCube
-        Color cube whose coordinates define axes and ordering.
-    title : str, default ''
-        Optional chart title prefix.
-    ylabel : str
-        Y-axis label.
-    colors : np.ndarray | None, default None
-        True colors as RGB floats in [0, 1], shaped like the cube's grid with a
-        trailing channel, i.e., (..., 3). Defaults to ``cube.rgb_grid``.
-    pretty : bool | str, default True
-        If True, prettify tick labels for all axes; if False, use raw numeric
-        formatting. If a string, it specifies which axes to prettify, e.g.,
-        'h' or 'hs'.
-    linewidth : float, default 1.4
-        Width of the line segments.
-    figsize : tuple[int, int] | None, default (9, 4)
-        Figure size in inches.
-
-    Returns
-    -------
-    matplotlib.figure.Figure
-        The Matplotlib figure containing the plot.
-    """
-    from itertools import product
-    from math import isnan
-
-    from matplotlib.collections import LineCollection
-
-    # Resolve pretty axes selection string
+def _resolve_pretty(pretty: bool | str, space: str) -> str:
     if pretty is True:
-        pretty = cube.space
-    elif pretty is False:
-        pretty = ''
+        return space
+    if pretty is False:
+        return ''
+    return str(pretty)
 
-    # Validate and default colors
-    if colors is None:
-        colors = cube.rgb_grid
 
-    # Map current space ordering to canonical ordering
-    # cube.space is the ordering of the grid dimensions (e.g., 'svh') used in arrays
-    # cube.canonical_space is the semantic ordering (e.g., 'hsv')
-    space = tuple(cube.space)
-    canon = tuple(cube.canonical_space)
+def _add_series_segments(
+    ax: Axes, x_coords: np.ndarray, y: np.ndarray, seg_colors: np.ndarray, linewidth: float
+) -> None:
+    """Add colored line segments for a single Y series across X into the axes."""
 
-    axis_to_dim = {axis: i for i, axis in enumerate(space)}
-    axis_to_coords = dict(zip(space, cube.coordinates, strict=True))
+    # Skip entirely NaN series
+    if np.isnan(y).all():
+        return
 
-    # Build permutation to transpose arrays from space->canonical order
-    perm = [axis_to_dim[canon[0]], axis_to_dim[canon[1]], axis_to_dim[canon[2]]]
+    xy0 = np.column_stack((x_coords[:-1], y[:-1]))
+    xy1 = np.column_stack((x_coords[1:], y[1:]))
+    if len(xy0) == 0:
+        return
+    # Drop segments containing NaNs
+    mask = ~(np.isnan(xy0).any(axis=1) | np.isnan(xy1).any(axis=1))
+    if not np.any(mask):
+        return
+    segs = np.stack((xy0[mask], xy1[mask]), axis=1)
+    seg_colors = np.clip(seg_colors[mask], 0.0, 1.0)
 
-    # Bring arrays into canonical order: (X, A, B) where X is canon[0]
-    loss_c = np.transpose(loss, perm)
-    if colors.ndim == 4:
-        colors_c = np.transpose(colors, perm + [3])
-    else:
-        raise ValueError('colors must be an array of shape (..., 3) with RGB channels')
+    lc = LineCollection(
+        list(segs),
+        colors=seg_colors,
+        linewidths=linewidth,
+        alpha=1.0,
+        path_effects=[Stroke(capstyle='round')],  # Round caps prevent gaps
+    )
+    ax.add_collection(lc)
 
-    x_coords = np.asarray(axis_to_coords[canon[0]])
-    a_coords = np.asarray(axis_to_coords[canon[1]])
-    b_coords = np.asarray(axis_to_coords[canon[2]])
 
-    # Figure sizing based on resolution
-    n_x = len(x_coords)
-    n_a = len(a_coords)
-    n_b = len(b_coords)
-
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
-
-    # Build line segments per (a, b) series; color per segment using true color at start point
-    y_min = np.nanmin(loss_c)
-    y_max = np.nanmax(loss_c)
-    if isnan(y_min) or isnan(y_max):  # guard
-        y_min, y_max = 0.0, 1.0
-
-    for ia, ib in product(range(n_a), range(n_b)):
-        y = np.asarray(loss_c[:, ia, ib])
-        # Skip entirely nan series
-        if np.isnan(y).all():
-            continue
-        # Build segments: shape (n_segments, 2, 2)
-        xy0 = np.column_stack((x_coords[:-1], y[:-1]))
-        xy1 = np.column_stack((x_coords[1:], y[1:]))
-        if len(xy0) == 0:
-            continue
-        # Drop segments with NaNs
-        mask = ~(np.isnan(xy0).any(axis=1) | np.isnan(xy1).any(axis=1))
-        if not np.any(mask):
-            continue
-        segs = np.stack((xy0[mask], xy1[mask]), axis=1)
-        segs_list = list(segs)
-        seg_colors = colors_c[:-1, ia, ib, :][mask]
-        # Clamp to [0, 1]
-        seg_colors = np.clip(seg_colors, 0.0, 1.0)
-        lc = LineCollection(
-            segs_list,
-            colors=seg_colors,
-            linewidths=linewidth,
-            alpha=1.0,
-            path_effects=[Stroke(capstyle='round')],  # Round caps prevent gaps between segments
-        )
-        ax.add_collection(lc)
-
-    # Axes formatting
+def _format_axes_for_cube(ax: Axes, cube: ColorCube, var: str, *, ylim: tuple[float, float] | None = None, pretty: str):
     # X: show min/max (and maybe middle) to avoid clutter
-    ax.set_xlim(float(x_coords[0]), float(x_coords[-1]))
-    x_label = axname(canon[0])
-    ax.set_xlabel(x_label.capitalize())
+    x_coords = cube.coordinates[0]
+    ax.set_xlim(x_coords[0], x_coords[-1])
+    ax.set_xlabel(axname(cube.space[0]).capitalize())
 
-    # Choose sparse ticks: first, middle, last
-    if n_x >= 3:
-        mid_idx = n_x // 2
-        ticks = [0, mid_idx, n_x - 1]
+    if cube.space[0] == 'h':
+        # Special case for hue
+        domain = np.nanmax(x_coords) - np.nanmin(x_coords)
+        hues = hues12 if domain <= 1 / 2 else hues6 if domain <= 2 / 3 else hues3
+        tick_positions = list(hues.values())
+        tick_labels = [h.capitalize() for h in hues.keys()]
+        ax.set_xticks(tick_positions, tick_labels)
+    elif x_coords[0] == 0 and x_coords[-1] == 1:
+        ax.set_xticks([0, 1])
     else:
-        ticks = list(range(n_x))
-    tick_positions = [float(x_coords[i]) for i in ticks]
+        # Choose sparse ticks: first, middle, last
+        if len(x_coords) >= 3:
+            mid_idx = len(x_coords) // 2
+            ticks = [0, mid_idx, len(x_coords) - 1]
+        else:
+            ticks = list(range(len(x_coords)))
+        tick_positions = [x_coords[i] for i in ticks]
 
-    def fmt_val(axis: str, v: float | int) -> str:
-        return prettify(float(v)) if axis in pretty else f'{float(v):.3g}'
+        def fmt_val(axis: str, v: float | int) -> str:
+            return prettify(float(v)) if axis in pretty else f'{float(v):.3g}'
 
-    tick_labels = [fmt_val(canon[0], x_coords[i]) for i in ticks]
-    ax.set_xticks(tick_positions, tick_labels)
+        tick_labels = [fmt_val(cube.space[0], x_coords[i]) for i in ticks]
+        ax.set_xticks(tick_positions, tick_labels)
 
     # Y limits with small margin
+    y_min, y_max = ylim if ylim else (np.nanmin(cube[var]), np.nanmax(cube[var]))
     margin = 0.05 * (y_max - y_min if y_max > y_min else 1.0)
     ax.set_ylim(y_min, y_max + margin)
-    ax.set_ylabel(ylabel)
+    if cast(Figure, ax.get_figure()).get_axes().index(ax) == 0:
+        ax.set_ylabel(var.capitalize() if not var[0].isupper() else var)
 
-    # Title
-    _title = f'{title} · ' if title else ''
-    ax.set_title(
-        f'{_title}{cube.canonical_space.upper()} loss vs {x_label}',
-        fontsize=10,
-    )
 
-    plt.close()
+def _plot_cube_on_axes(ax: Axes, cube: ColorCube, *, var: str, linewidth: float) -> None:
+    """Render one cube's variable as colored segments into the provided axes."""
+    data = cube[var]
+    colors = cube['color']
+    x, a, b = cube.coordinates
+
+    for ia, ib in product(range(len(a)), range(len(b))):
+        y = np.asarray(data[:, ia, ib])
+        seg_colors = colors[:-1, ia, ib, :]
+        _add_series_segments(ax, x, y, seg_colors, linewidth)
+
+
+def plot_cube_series(
+    *cubes: ColorCube,
+    title: str,
+    var: str,
+    pretty: bool | str = True,
+    linewidth: float = 1.4,
+    figsize: tuple[int, int] | None = None,
+    y_min: float | None = None,
+) -> Figure:
+    """
+    Plot scalar variable per color as colored line segments.
+
+    Args:
+        *cubes: One or more ColorCubes to plot side-by-side.
+        title: Chart title.
+        var: Name of the scalar variable to plot (e.g., 'loss').
+        pretty: If True, prettify tick labels for all axes; if False, use raw numeric formatting. If a string, it specifies which axes to prettify, e.g., 'h' or 'hs'.
+        linewidth: Width of the line segments.
+        figsize: Figure size in inches.
+        y_min: Optional minimum y-axis limit. If None, it is computed from the data.
+    """
+    if not cubes:
+        raise ValueError('At least one ColorCube is required')
+
+    y_min = cast(float, y_min if y_min is not None else min(np.nanmin(c[var]) for c in cubes))
+    y_max = cast(float, max(np.nanmax(c[var]) for c in cubes))
+    nx = [c.shape[0] for c in cubes]
+
+    pretty = cubes[0].space if pretty is True else '' if pretty is False else pretty
+    fig, axs = plt.subplots(1, len(cubes), figsize=figsize, width_ratios=nx, squeeze=False, sharey=True)
+    _axs: list[Axes] = axs[0, :].tolist()
+    for ax, cube in zip(_axs, cubes, strict=True):
+        _plot_cube_on_axes(ax, cube, var=var, linewidth=linewidth)
+        _format_axes_for_cube(ax, cube, var, ylim=(y_min, y_max), pretty=pretty)
+
+    fig.suptitle(title, fontsize=10)
+
     return fig

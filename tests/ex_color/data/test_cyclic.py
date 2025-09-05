@@ -45,15 +45,15 @@ def test_isbetween_cyclic_edge_cases():
 def test_isbetween_cyclic_with_hues():
     """Test isbetween_cyclic using the hues enum values."""
     # Check if colors are in expected ranges
-    assert isbetween_cyclic(hues.yellow, hues.orange, hues.green)
-    assert isbetween_cyclic(hues.blue, hues.cyan, hues.purple)
+    assert isbetween_cyclic(hues['yellow'], hues['orange'], hues['green'])
+    assert isbetween_cyclic(hues['blue'], hues['cyan'], hues['purple'])
 
     # Wrap-around test with hues
-    assert isbetween_cyclic(hues.red, hues.purple, hues.orange)
-    assert isbetween_cyclic(hues.magenta, hues.purple, hues.orange)
+    assert isbetween_cyclic(hues['red'], hues['purple'], hues['orange'])
+    assert isbetween_cyclic(hues['magenta'], hues['purple'], hues['orange'])
 
     # Color not in range
-    assert not isbetween_cyclic(hues.green, hues.purple, hues.orange)
+    assert not isbetween_cyclic(hues['green'], hues['purple'], hues['orange'])
 
 
 def test_isbetween_cyclic_different_period():

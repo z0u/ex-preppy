@@ -5,6 +5,7 @@ import numpy as np
 from matplotlib.axes import Axes
 from numpy.typing import NDArray
 
+from ex_color.data.color import hues3, hues6, hues12
 from ex_color.data.color_cube import ColorCube
 from ex_color.vis.prettify import axname, prettify
 
@@ -102,26 +103,24 @@ def plot_colors(  # noqa: C901
             annotate_cells(ax, colors_compare[i])
 
         ax.set_aspect('equal')
-        ax.set_title(f'{axname(main_axis).capitalize()} = {fmt(main_axis, main_coords[i])}', fontsize=8)
+        ax.set_title(f'{axname(main_axis).capitalize()} = {fmt(main_axis, main_coords[i])}')
 
         # Add axes labels without cluttering the display
         if row == n_rows - 1:
-            ax.xaxis.set_ticks([0, len(x_coords) - 1])
-            coord1 = fmt(x_axis, x_coords[0])
-            coord2 = fmt(x_axis, x_coords[-1])
-            ax.xaxis.set_ticklabels([coord1, coord2])
-            ax.xaxis.set_tick_params(labelsize=8)
-            ax.set_xlabel(axname(x_axis).capitalize(), fontsize=8)
+            if x_axis in pretty:
+                ax.xaxis.set_ticks(*_get_pretty_ticks(x_axis, x_coords))
+            else:
+                ax.xaxis.set_ticks(*_get_plain_ticks(x_coords))
+            ax.set_xlabel(axname(x_axis).capitalize())
         else:
             ax.xaxis.set_visible(False)
 
         if col == 0:
-            ax.yaxis.set_ticks([0, len(y_coords) - 1])
-            coord1 = fmt(y_axis, y_coords[0])
-            coord2 = fmt(y_axis, y_coords[-1])
-            ax.yaxis.set_ticklabels([coord1, coord2])
-            ax.yaxis.set_tick_params(labelsize=8)
-            ax.set_ylabel(axname(y_axis).capitalize(), fontsize=8)
+            if y_axis in pretty:
+                ax.yaxis.set_ticks(*_get_pretty_ticks(y_axis, y_coords))
+            else:
+                ax.yaxis.set_ticks(*_get_plain_ticks(y_coords))
+            ax.set_ylabel(axname(y_axis).capitalize())
         else:
             ax.yaxis.set_visible(False)
 
@@ -130,3 +129,32 @@ def plot_colors(  # noqa: C901
 
     plt.close()
     return fig
+
+
+def _get_plain_ticks(values: np.ndarray):
+    return [0, len(values) - 1], [values[0], values[-1]]
+
+
+def _get_pretty_ticks(axis: str, values: np.ndarray):
+    if axis == 'h':
+        idxs, labels = _get_close_hue_ticks(values)
+        if idxs:
+            return idxs, labels
+    return [0, len(values) - 1], [prettify(values[0]), prettify(values[-1])]
+
+
+def _get_close_hue_ticks(values: np.ndarray) -> tuple[list[float], list[str]]:
+    close_x_idxs = None
+    names = None
+    cluse_hue_idxs = None
+
+    for hues in [hues3, hues6, hues12]:
+        names = [h.capitalize() for h in hues.keys()]
+        close_x_idxs, close_hue_idxs = np.where(np.isclose(values[:, None], list(hues.values())))
+        if len(close_x_idxs) >= 2:
+            return (close_x_idxs.tolist(), np.array(names)[close_hue_idxs].tolist())
+
+    assert close_x_idxs is not None
+    assert names is not None
+    assert cluse_hue_idxs is not None
+    return (close_x_idxs.tolist(), np.array(names)[cluse_hue_idxs].tolist())
