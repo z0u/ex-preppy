@@ -83,8 +83,8 @@ In this milestone, we develop intervention functions and apply them to the struc
 4. [Post-norm regularization](docs/m2-control/ex-2.4-post-norm-reg.ipynb): Further improved the model and intervention effectiveness by applying all regularizers except for unit norm after the explicit normalization step.
 5. [Only one anchor](docs/m2-control/ex-2.5-only-red.ipynb): Demonstration of intervention without the planarity constraint. Red is still anchored at the top, but other colors are placed arbitrarily. Interventions are shown to be almost as precise.
 6. [Permanent concept deletion](docs/m2-control/ex-2.6-delete-warm-cool.ipynb): Demonstrate that the latent space can be further manipulated to completely remove a concept. We train the color autoencoder such that it rediscovers the color wheel with _red_ at $(1,0,0,0)$; _cyan_ is naturally opposed to that and positions itself at $(-1,0,0,0)$. Then we modify the model parameters to delete the concept of warmth by: 1. ablation, in which the associated parameters are zeroed; 2. pruning, in which the parameters are removed (which reduces the dimensionality of the bottleneck).
+7. [Subspace deletion](docs/m2-control/ex-2.7-delete-hue.ipynb): Removal of the model's ability to work with _hue_ by ablating the first two dimensions of latent space. This shows the removal of a multidimensional concept (or family of concepts, i.e. _hues_), with minimal impact on other concetps (_white_, _black_, and _grays_).
 
-- TODO: Delete a larger subspace, e.g. hue (not just warmth).
 - TODO: Renormalize activations after deletion.
 - TODO: Isolate red for deletion. For example, pressure the network to reconfigure the space so that _only_ red colors are on one particular embedding dimension, and then _delete_ that dimension from the network. Hopefully, this would make it difficult to fine-tune the model later to restore the deleted capability.
 
