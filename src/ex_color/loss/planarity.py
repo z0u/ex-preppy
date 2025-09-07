@@ -4,31 +4,33 @@ from torch import Tensor
 from ex_color.loss.regularizer import Regularizer
 
 
-class Planarity(Regularizer):
-    def __init__(self, keep_indices: tuple[int, ...] = (0, 1)) -> None:
+class AxisAlignedSubspace(Regularizer):
+    """Encourages activations to stay within a nominated set of dimensions."""
+
+    def __init__(self, dims: tuple[int, ...]) -> None:
         """
-        Initialize planarity regularizer for a target subspace.
+        Initialize regularizer for a target subspace.
 
         Args:
-            keep_indices: Indices of activation features to keep (allowed to be non-zero).
+            dims: Indices of activation features to keep (allowed to be non-zero).
                 All other feature dimensions are penalized (L2) toward zero.
                 Default keeps the first two dims, matching previous behavior.
         """
         super().__init__()
         # Normalize + validate
-        if len(keep_indices) == 0:
-            msg = 'keep_indices must contain at least one index'
+        if len(dims) == 0:
+            msg = 'dims must contain at least one index'
             raise ValueError(msg)
-        if len(set(keep_indices)) != len(keep_indices):
-            msg = 'keep_indices must not contain duplicates'
+        if len(set(dims)) != len(dims):
+            msg = 'dims must not contain duplicates'
             raise ValueError(msg)
-        if any(i < 0 for i in keep_indices):
-            msg = 'keep_indices must be non-negative'
+        if any(i < 0 for i in dims):
+            msg = 'dims must be non-negative'
             raise ValueError(msg)
-        self.keep_indices = tuple(sorted(keep_indices))
+        self.dims = tuple(sorted(dims))
 
     def __repr__(self) -> str:  # pragma: no cover - trivial
-        return f'{self.__class__.__name__}(keep_indices={self.keep_indices})'
+        return f'{self.__class__.__name__}(dims={self.dims})'
 
     def __call__(self, activations: Tensor) -> Tensor:  # type: ignore[override]
         """
@@ -44,7 +46,7 @@ class Planarity(Regularizer):
 
         B, F = activations.shape[0], activations.shape[1]
         # Filter keep indices that actually exist in current tensor
-        effective_keep = {i for i in self.keep_indices if i < F}
+        effective_keep = {i for i in self.dims if i < F}
         if len(effective_keep) == F:  # everything kept -> zero penalty
             return torch.zeros(B, device=activations.device, dtype=activations.dtype)
 
@@ -61,3 +63,10 @@ class Planarity(Regularizer):
             return torch.zeros(B, device=device, dtype=activations.dtype)
         # Sum across feature (and any broadcast leftover) dims except batch
         return torch.sum(penalized * penalized, dim=tuple(range(1, penalized.ndim)))
+
+
+class Planarity(AxisAlignedSubspace):
+    """Encourages activations to stay within two dimensions."""
+
+    def __init__(self, dims: tuple[int, int] = (0, 1)):
+        super().__init__(dims)
