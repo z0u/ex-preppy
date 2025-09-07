@@ -27,6 +27,7 @@ def generate_color_labels(data: Tensor, vibrancies: Tensor) -> dict[str, Tensor]
 
     # Proximity to any fully-saturated, fully-bright color
     labels['vibrant'] = vibrancies**100
+    labels['desaturated'] = (1 - vibrancies) ** 10
 
     return labels
 
