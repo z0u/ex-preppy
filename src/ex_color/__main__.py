@@ -45,7 +45,8 @@ def prep_data() -> tuple[DataLoader, Tensor]:
     labeller = partial(
         collate_with_generated_labels,
         soft=False,  # Use binary labels (stochastic) to simulate the labelling of internet text
-        scale={'red': 0.5, 'vibrant': 0.5},
+        red=0.5,
+        vibrant=0.5,
     )
     # Desaturated and dark colors are over-represented in the cube, so we use a weighted sampler to balance them out
     hsv_loader = DataLoader(
