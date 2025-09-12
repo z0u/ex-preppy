@@ -86,6 +86,7 @@ In this milestone, we develop intervention functions and apply them to the struc
 7. [Subspace deletion](docs/m2-control/ex-2.7-delete-hue.ipynb): Removal of the model's ability to work with _hue_ by ablating the first two dimensions of latent space. This shows the removal of a multidimensional concept (or family of concepts, i.e. _hues_), with minimal impact on other concetps (_white_, _black_, and _grays_).
 8. [Delete only red (failed)](docs/m2-control/ex-2.8-delete-only-red.ipynb): Attempt to completely remove _red_ without affecting _cyan_. We removed the planarity term and added an anti-anchor term to push colors away from being opposed to _red_. This experiment failed: ablating _red_ also heavily impacted other colors, especially desaturated ones.
 9. [Delete only red](docs/m2-control/ex-2.9-delete-only-red-5d.ipynb): Completely remove _red_ without affecting _cyan_. This time we succeeded. It turns out the model needed additional capacity to warp latent space into the shape required to isolate _red_: the bottleneck needed an extra dimension, and the model needed more layers (extra nonlinearity).
+10. [Fewer regularizers](docs/m2-control/ex-2.10-delete-only-red-5d-no-subspace.ipynb): Completely remove _red_ (only) without using the unitarity and subspace regularizer terms. We're left with only three terms: separate, anchor, and anti-anchor.
 
 - TODO: Renormalize activations after deletion.
 
