@@ -120,7 +120,7 @@ def test_vibrancy_hsv(hsv_cube_3x3x3: ColorCube):
     cube = hsv_cube_3x3x3
     vib = vibrancy(cube)
 
-    assert vib.shape == cube.shape  # Use the new shape property
+    assert vib.shape == cube.shape
     assert np.all(vib >= 0) and np.all(vib <= 1)
 
     # Expected vibrancy = S * V for the 3x3x3 grid (H, S, V axes)
@@ -140,5 +140,35 @@ def test_vibrancy_hsv(hsv_cube_3x3x3: ColorCube):
 
 def test_vibrancy_non_hsv_error(rgb_cube_3x3x3: ColorCube):
     """Test vibrancy raises ValueError for non-HSV cubes."""
-    with pytest.raises(ValueError, match='Cannot create vibrant focus for non-HSV cube'):
-        vibrancy(rgb_cube_3x3x3)
+    cube = rgb_cube_3x3x3
+    vib = vibrancy(cube)
+
+    assert vib.shape == cube.shape
+    assert np.all(vib >= 0) and np.all(vib <= 1)
+
+    # Expected vibrancy:
+    # - 0 at black, white, gray
+    # - 1 at primary and secondary colors (other corners)
+    # - 1 at ternaries (edges between primaries and secondaries)
+    # - 0.5 half-way between the ones and zeroes.
+    expected_vibrancy = np.array(
+        [
+            [
+                [0.0, 0.5, 1.0],  # zero at black
+                [0.5, 0.5, 1.0],
+                [1.0, 1.0, 1.0],
+            ],
+            [
+                [0.5, 0.5, 1.0],
+                [0.5, 0.0, 0.5],  # zero at gray
+                [1.0, 0.5, 0.5],
+            ],
+            [
+                [1.0, 1.0, 1.0],
+                [1.0, 0.5, 0.5],
+                [1.0, 0.5, 0.0],  # zero at white
+            ],
+        ]
+    )
+
+    np.testing.assert_allclose(vib, expected_vibrancy)

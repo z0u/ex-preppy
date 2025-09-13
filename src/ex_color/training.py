@@ -60,6 +60,8 @@ class TrainingModule(L.LightningModule):
         for reg in self.regularizers:
             if len(reg.layer_affinities) == 0:
                 log.warning(f'Regularizer {reg.name} has no layer affinities and will not run')
+            if reg.name not in self.timeline.props:
+                log.warning(f'Regularizer {reg.name} is not in the timeline and will have full weight')
 
         regularized_layers = {
             name  #

@@ -1,6 +1,7 @@
 import logging
 from typing import Iterator, List, TypeAlias
 
+import skimage as ski
 import numpy as np
 import numpy.typing as npt
 from torch.utils.data import Sampler
@@ -59,23 +60,17 @@ def vibrancy(cube: ColorCube) -> npt.NDArray[np.float64]:
     Create a weights array focusing on vibrant colors (high S, high V).
 
     Args:
-        cube: An HSV ColorCube instance to create the vibrant focus for.
+        cube: A ColorCube instance to create the vibrant focus for.
 
     Returns:
         An array with the same shape as the cube, with ones for vibrant colors
         (high S and high V), zeros for black (V=0) and grays (S=0), and
         intermediate values for other colors.
     """
-    if cube.canonical_space != 'hsv':
-        raise ValueError(f'Cannot create vibrant focus for non-HSV cube ({cube.canonical_space}).')
+    grid = ski.color.rgb2hsv(cube.rgb_grid)
 
-    # Need the original grid shape to find S and V
-    grid = coordinate_grid(*cube.coordinates)
-
-    s_idx = cube.space.index('s')
-    v_idx = cube.space.index('v')
-    S_grid = grid[..., s_idx]
-    V_grid = grid[..., v_idx]
+    S_grid = grid[..., 1]
+    V_grid = grid[..., 2]
 
     # Vibrant focus = S * V (ranges 0-1)
     vibrant_focus = S_grid * V_grid
