@@ -2,17 +2,17 @@ version = 1
 revision = 3
 requires-python = "==3.13.*"
 resolution-markers = [
-    "sys_platform == 'linux' and extra != 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu'",
-    "sys_platform != 'darwin' and sys_platform != 'linux' and extra != 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu'",
-    "sys_platform == 'darwin' and extra != 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu'",
-    "sys_platform == 'linux' and extra == 'extra-20-ex-color-transformer-torch' and extra != 'extra-20-ex-color-transformer-torch-cpu'",
-    "sys_platform != 'linux' and extra == 'extra-20-ex-color-transformer-torch' and extra != 'extra-20-ex-color-transformer-torch-cpu'",
-    "sys_platform == 'linux' and extra != 'extra-20-ex-color-transformer-torch' and extra != 'extra-20-ex-color-transformer-torch-cpu'",
-    "sys_platform != 'linux' and extra != 'extra-20-ex-color-transformer-torch' and extra != 'extra-20-ex-color-transformer-torch-cpu'",
+    "sys_platform == 'linux' and extra != 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu'",
+    "sys_platform != 'darwin' and sys_platform != 'linux' and extra != 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu'",
+    "sys_platform == 'darwin' and extra != 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu'",
+    "sys_platform == 'linux' and extra == 'extra-9-ex-preppy-torch' and extra != 'extra-9-ex-preppy-torch-cpu'",
+    "sys_platform != 'linux' and extra == 'extra-9-ex-preppy-torch' and extra != 'extra-9-ex-preppy-torch-cpu'",
+    "sys_platform == 'linux' and extra != 'extra-9-ex-preppy-torch' and extra != 'extra-9-ex-preppy-torch-cpu'",
+    "sys_platform != 'linux' and extra != 'extra-9-ex-preppy-torch' and extra != 'extra-9-ex-preppy-torch-cpu'",
 ]
 conflicts = [[
-    { package = "ex-color-transformer", extra = "torch" },
-    { package = "ex-color-transformer", extra = "torch-cpu" },
+    { package = "ex-preppy", extra = "torch" },
+    { package = "ex-preppy", extra = "torch-cpu" },
 ]]
 
 [[package]]
@@ -228,7 +228,7 @@ name = "click"
 version = "8.1.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32' or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
+    { name = "colorama", marker = "sys_platform == 'win32' or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/b9/2e/0090cbf739cee7d23781ad4b89a9894a41538e4fcf4c31dcdd705b78eb8b/click-8.1.8.tar.gz", hash = "sha256:ed53c9d8990d83c2a27deae68e4ee337473f6330c040a31d4225c9574d16096a", size = 226593, upload-time = "2024-12-21T18:38:44.339Z" }
 wheels = [
@@ -328,7 +328,7 @@ wheels = [
 ]
 
 [[package]]
-name = "ex-color-transformer"
+name = "ex-preppy"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
@@ -352,8 +352,8 @@ torch = [
     { name = "torch", version = "2.6.0", source = { registry = "https://pypi.org/simple" } },
 ]
 torch-cpu = [
-    { name = "torch", version = "2.6.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
-    { name = "torch", version = "2.6.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
+    { name = "torch", version = "2.6.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-9-ex-preppy-torch-cpu') or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
+    { name = "torch", version = "2.6.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'extra-9-ex-preppy-torch-cpu') or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
 ]
 
 [package.dev-dependencies]
@@ -393,7 +393,7 @@ requires-dist = [
     { name = "scikit-learn", specifier = ">=1.6.1" },
     { name = "sympy", specifier = ">=1.13.1" },
     { name = "torch", marker = "extra == 'torch'", specifier = "~=2.6.0" },
-    { name = "torch", marker = "extra == 'torch-cpu'", specifier = "~=2.6.0", index = "https://download.pytorch.org/whl/cpu", conflict = { package = "ex-color-transformer", extra = "torch-cpu" } },
+    { name = "torch", marker = "extra == 'torch-cpu'", specifier = "~=2.6.0", index = "https://download.pytorch.org/whl/cpu", conflict = { package = "ex-preppy", extra = "torch-cpu" } },
     { name = "wandb", specifier = ">=0.21.0" },
 ]
 provides-extras = ["torch-cpu", "torch"]
@@ -649,7 +649,7 @@ name = "ipykernel"
 version = "6.30.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "appnope", marker = "sys_platform == 'darwin' or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
+    { name = "appnope", marker = "sys_platform == 'darwin' or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
     { name = "comm" },
     { name = "debugpy" },
     { name = "ipython" },
@@ -673,12 +673,12 @@ name = "ipython"
 version = "9.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32' or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
+    { name = "colorama", marker = "sys_platform == 'win32' or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
     { name = "decorator" },
     { name = "ipython-pygments-lexers" },
     { name = "jedi" },
     { name = "matplotlib-inline" },
-    { name = "pexpect", marker = "(sys_platform != 'emscripten' and sys_platform != 'win32') or (sys_platform == 'emscripten' and extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (sys_platform == 'win32' and extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
+    { name = "pexpect", marker = "(sys_platform != 'emscripten' and sys_platform != 'win32') or (sys_platform == 'emscripten' and extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu') or (sys_platform == 'win32' and extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
     { name = "prompt-toolkit" },
     { name = "pygments" },
     { name = "stack-data" },
@@ -795,7 +795,7 @@ version = "5.8.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "platformdirs" },
-    { name = "pywin32", marker = "(platform_python_implementation != 'PyPy' and sys_platform == 'win32') or (platform_python_implementation == 'PyPy' and extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (sys_platform != 'win32' and extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
+    { name = "pywin32", marker = "(platform_python_implementation != 'PyPy' and sys_platform == 'win32') or (platform_python_implementation == 'PyPy' and extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu') or (sys_platform != 'win32' and extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
     { name = "traitlets" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/99/1b/72906d554acfeb588332eaaa6f61577705e9ec752ddb486f302dafa292d9/jupyter_core-5.8.1.tar.gz", hash = "sha256:0a5f9706f70e64786b75acba995988915ebd4601c8a52e534a40b51c95f59941", size = 88923, upload-time = "2025-05-27T07:38:16.655Z" }
@@ -870,9 +870,9 @@ dependencies = [
     { name = "packaging" },
     { name = "pytorch-lightning" },
     { name = "pyyaml" },
-    { name = "torch", version = "2.6.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
-    { name = "torch", version = "2.6.0", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-20-ex-color-transformer-torch' or extra != 'extra-20-ex-color-transformer-torch-cpu'" },
-    { name = "torch", version = "2.6.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
+    { name = "torch", version = "2.6.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-9-ex-preppy-torch-cpu') or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
+    { name = "torch", version = "2.6.0", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-9-ex-preppy-torch' or extra != 'extra-9-ex-preppy-torch-cpu'" },
+    { name = "torch", version = "2.6.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'extra-9-ex-preppy-torch-cpu') or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
     { name = "torchmetrics" },
     { name = "tqdm" },
     { name = "typing-extensions" },
@@ -1239,7 +1239,7 @@ name = "nvidia-cudnn-cu12"
 version = "9.1.0.70"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-cublas-cu12", marker = "(sys_platform == 'linux' and extra == 'extra-20-ex-color-transformer-torch') or (sys_platform == 'linux' and extra != 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
+    { name = "nvidia-cublas-cu12", marker = "(sys_platform == 'linux' and extra == 'extra-9-ex-preppy-torch') or (sys_platform == 'linux' and extra != 'extra-9-ex-preppy-torch-cpu') or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/9f/fd/713452cd72343f682b1c7b9321e23829f00b842ceaedcda96e742ea0b0b3/nvidia_cudnn_cu12-9.1.0.70-py3-none-manylinux2014_x86_64.whl", hash = "sha256:165764f44ef8c61fcdfdfdbe769d687e06374059fbb388b6c89ecb0e28793a6f", size = 664752741, upload-time = "2024-04-22T15:24:15.253Z" },
@@ -1251,7 +1251,7 @@ name = "nvidia-cufft-cu12"
 version = "11.2.1.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-nvjitlink-cu12", marker = "(sys_platform == 'linux' and extra == 'extra-20-ex-color-transformer-torch') or (sys_platform == 'linux' and extra != 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
+    { name = "nvidia-nvjitlink-cu12", marker = "(sys_platform == 'linux' and extra == 'extra-9-ex-preppy-torch') or (sys_platform == 'linux' and extra != 'extra-9-ex-preppy-torch-cpu') or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7a/8a/0e728f749baca3fbeffad762738276e5df60851958be7783af121a7221e7/nvidia_cufft_cu12-11.2.1.3-py3-none-manylinux2014_aarch64.whl", hash = "sha256:5dad8008fc7f92f5ddfa2101430917ce2ffacd86824914c82e28990ad7f00399", size = 211422548, upload-time = "2024-06-18T19:33:39.396Z" },
@@ -1274,9 +1274,9 @@ name = "nvidia-cusolver-cu12"
 version = "11.6.1.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-cublas-cu12", marker = "(sys_platform == 'linux' and extra == 'extra-20-ex-color-transformer-torch') or (sys_platform == 'linux' and extra != 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
-    { name = "nvidia-cusparse-cu12", marker = "(sys_platform == 'linux' and extra == 'extra-20-ex-color-transformer-torch') or (sys_platform == 'linux' and extra != 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
-    { name = "nvidia-nvjitlink-cu12", marker = "(sys_platform == 'linux' and extra == 'extra-20-ex-color-transformer-torch') or (sys_platform == 'linux' and extra != 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
+    { name = "nvidia-cublas-cu12", marker = "(sys_platform == 'linux' and extra == 'extra-9-ex-preppy-torch') or (sys_platform == 'linux' and extra != 'extra-9-ex-preppy-torch-cpu') or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
+    { name = "nvidia-cusparse-cu12", marker = "(sys_platform == 'linux' and extra == 'extra-9-ex-preppy-torch') or (sys_platform == 'linux' and extra != 'extra-9-ex-preppy-torch-cpu') or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
+    { name = "nvidia-nvjitlink-cu12", marker = "(sys_platform == 'linux' and extra == 'extra-9-ex-preppy-torch') or (sys_platform == 'linux' and extra != 'extra-9-ex-preppy-torch-cpu') or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/46/6b/a5c33cf16af09166845345275c34ad2190944bcc6026797a39f8e0a282e0/nvidia_cusolver_cu12-11.6.1.9-py3-none-manylinux2014_aarch64.whl", hash = "sha256:d338f155f174f90724bbde3758b7ac375a70ce8e706d70b018dd3375545fc84e", size = 127634111, upload-time = "2024-06-18T19:35:01.793Z" },
@@ -1289,7 +1289,7 @@ name = "nvidia-cusparse-cu12"
 version = "12.3.1.170"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-nvjitlink-cu12", marker = "(sys_platform == 'linux' and extra == 'extra-20-ex-color-transformer-torch') or (sys_platform == 'linux' and extra != 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
+    { name = "nvidia-nvjitlink-cu12", marker = "(sys_platform == 'linux' and extra == 'extra-9-ex-preppy-torch') or (sys_platform == 'linux' and extra != 'extra-9-ex-preppy-torch-cpu') or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/96/a9/c0d2f83a53d40a4a41be14cea6a0bf9e668ffcf8b004bd65633f433050c0/nvidia_cusparse_cu12-12.3.1.170-py3-none-manylinux2014_aarch64.whl", hash = "sha256:9d32f62896231ebe0480efd8a7f702e143c98cfaa0e8a76df3386c1ba2b54df3", size = 207381987, upload-time = "2024-06-18T19:35:32.989Z" },
@@ -1663,7 +1663,7 @@ name = "pytest"
 version = "8.4.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32' or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
+    { name = "colorama", marker = "sys_platform == 'win32' or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
     { name = "iniconfig" },
     { name = "packaging" },
     { name = "pluggy" },
@@ -1707,9 +1707,9 @@ dependencies = [
     { name = "lightning-utilities" },
     { name = "packaging" },
     { name = "pyyaml" },
-    { name = "torch", version = "2.6.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
-    { name = "torch", version = "2.6.0", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-20-ex-color-transformer-torch' or extra != 'extra-20-ex-color-transformer-torch-cpu'" },
-    { name = "torch", version = "2.6.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
+    { name = "torch", version = "2.6.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-9-ex-preppy-torch-cpu') or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
+    { name = "torch", version = "2.6.0", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-9-ex-preppy-torch' or extra != 'extra-9-ex-preppy-torch-cpu'" },
+    { name = "torch", version = "2.6.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'extra-9-ex-preppy-torch-cpu') or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
     { name = "torchmetrics" },
     { name = "tqdm" },
     { name = "typing-extensions" },
@@ -1760,7 +1760,7 @@ name = "pyzmq"
 version = "27.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cffi", marker = "implementation_name == 'pypy' or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
+    { name = "cffi", marker = "implementation_name == 'pypy' or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/f1/06/50a4e9648b3e8b992bef8eb632e457307553a89d294103213cfd47b3da69/pyzmq-27.0.0.tar.gz", hash = "sha256:b1f08eeb9ce1510e6939b6e5dcd46a17765e2333daae78ecf4606808442e52cf", size = 280478, upload-time = "2025-06-13T14:09:07.087Z" }
 wheels = [
@@ -2152,13 +2152,13 @@ resolution-markers = [
     "sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "filelock", marker = "(sys_platform == 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
-    { name = "fsspec", marker = "(sys_platform == 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
-    { name = "jinja2", marker = "(sys_platform == 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
-    { name = "networkx", marker = "(sys_platform == 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
-    { name = "setuptools", marker = "(sys_platform == 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
-    { name = "sympy", marker = "(sys_platform == 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
-    { name = "typing-extensions", marker = "(sys_platform == 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
+    { name = "filelock", marker = "(sys_platform == 'darwin' and extra == 'extra-9-ex-preppy-torch-cpu') or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
+    { name = "fsspec", marker = "(sys_platform == 'darwin' and extra == 'extra-9-ex-preppy-torch-cpu') or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
+    { name = "jinja2", marker = "(sys_platform == 'darwin' and extra == 'extra-9-ex-preppy-torch-cpu') or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
+    { name = "networkx", marker = "(sys_platform == 'darwin' and extra == 'extra-9-ex-preppy-torch-cpu') or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
+    { name = "setuptools", marker = "(sys_platform == 'darwin' and extra == 'extra-9-ex-preppy-torch-cpu') or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
+    { name = "sympy", marker = "(sys_platform == 'darwin' and extra == 'extra-9-ex-preppy-torch-cpu') or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
+    { name = "typing-extensions", marker = "(sys_platform == 'darwin' and extra == 'extra-9-ex-preppy-torch-cpu') or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
 ]
 wheels = [
     { url = "https://download.pytorch.org/whl/cpu/torch-2.6.0-cp313-none-macosx_11_0_arm64.whl", hash = "sha256:ff96f4038f8af9f7ec4231710ed4549da1bdebad95923953a25045dcf6fd87e2" },
@@ -2173,27 +2173,27 @@ resolution-markers = [
     "sys_platform != 'linux'",
 ]
 dependencies = [
-    { name = "filelock", marker = "extra == 'extra-20-ex-color-transformer-torch' or extra != 'extra-20-ex-color-transformer-torch-cpu'" },
-    { name = "fsspec", marker = "extra == 'extra-20-ex-color-transformer-torch' or extra != 'extra-20-ex-color-transformer-torch-cpu'" },
-    { name = "jinja2", marker = "extra == 'extra-20-ex-color-transformer-torch' or extra != 'extra-20-ex-color-transformer-torch-cpu'" },
-    { name = "networkx", marker = "extra == 'extra-20-ex-color-transformer-torch' or extra != 'extra-20-ex-color-transformer-torch-cpu'" },
-    { name = "nvidia-cublas-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-20-ex-color-transformer-torch') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-20-ex-color-transformer-torch-cpu') or (platform_machine != 'x86_64' and extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (sys_platform != 'linux' and extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
-    { name = "nvidia-cuda-cupti-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-20-ex-color-transformer-torch') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-20-ex-color-transformer-torch-cpu') or (platform_machine != 'x86_64' and extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (sys_platform != 'linux' and extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
-    { name = "nvidia-cuda-nvrtc-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-20-ex-color-transformer-torch') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-20-ex-color-transformer-torch-cpu') or (platform_machine != 'x86_64' and extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (sys_platform != 'linux' and extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
-    { name = "nvidia-cuda-runtime-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-20-ex-color-transformer-torch') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-20-ex-color-transformer-torch-cpu') or (platform_machine != 'x86_64' and extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (sys_platform != 'linux' and extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
-    { name = "nvidia-cudnn-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-20-ex-color-transformer-torch') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-20-ex-color-transformer-torch-cpu') or (platform_machine != 'x86_64' and extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (sys_platform != 'linux' and extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
-    { name = "nvidia-cufft-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-20-ex-color-transformer-torch') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-20-ex-color-transformer-torch-cpu') or (platform_machine != 'x86_64' and extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (sys_platform != 'linux' and extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
-    { name = "nvidia-curand-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-20-ex-color-transformer-torch') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-20-ex-color-transformer-torch-cpu') or (platform_machine != 'x86_64' and extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (sys_platform != 'linux' and extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
-    { name = "nvidia-cusolver-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-20-ex-color-transformer-torch') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-20-ex-color-transformer-torch-cpu') or (platform_machine != 'x86_64' and extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (sys_platform != 'linux' and extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
-    { name = "nvidia-cusparse-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-20-ex-color-transformer-torch') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-20-ex-color-transformer-torch-cpu') or (platform_machine != 'x86_64' and extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (sys_platform != 'linux' and extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
-    { name = "nvidia-cusparselt-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-20-ex-color-transformer-torch') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-20-ex-color-transformer-torch-cpu') or (platform_machine != 'x86_64' and extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (sys_platform != 'linux' and extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
-    { name = "nvidia-nccl-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-20-ex-color-transformer-torch') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-20-ex-color-transformer-torch-cpu') or (platform_machine != 'x86_64' and extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (sys_platform != 'linux' and extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
-    { name = "nvidia-nvjitlink-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-20-ex-color-transformer-torch') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-20-ex-color-transformer-torch-cpu') or (platform_machine != 'x86_64' and extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (sys_platform != 'linux' and extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
-    { name = "nvidia-nvtx-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-20-ex-color-transformer-torch') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-20-ex-color-transformer-torch-cpu') or (platform_machine != 'x86_64' and extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (sys_platform != 'linux' and extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
-    { name = "setuptools", marker = "extra == 'extra-20-ex-color-transformer-torch' or extra != 'extra-20-ex-color-transformer-torch-cpu'" },
-    { name = "sympy", marker = "extra == 'extra-20-ex-color-transformer-torch' or extra != 'extra-20-ex-color-transformer-torch-cpu'" },
-    { name = "triton", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-20-ex-color-transformer-torch') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-20-ex-color-transformer-torch-cpu') or (platform_machine != 'x86_64' and extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (sys_platform != 'linux' and extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
-    { name = "typing-extensions", marker = "extra == 'extra-20-ex-color-transformer-torch' or extra != 'extra-20-ex-color-transformer-torch-cpu'" },
+    { name = "filelock", marker = "extra == 'extra-9-ex-preppy-torch' or extra != 'extra-9-ex-preppy-torch-cpu'" },
+    { name = "fsspec", marker = "extra == 'extra-9-ex-preppy-torch' or extra != 'extra-9-ex-preppy-torch-cpu'" },
+    { name = "jinja2", marker = "extra == 'extra-9-ex-preppy-torch' or extra != 'extra-9-ex-preppy-torch-cpu'" },
+    { name = "networkx", marker = "extra == 'extra-9-ex-preppy-torch' or extra != 'extra-9-ex-preppy-torch-cpu'" },
+    { name = "nvidia-cublas-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-9-ex-preppy-torch') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-9-ex-preppy-torch-cpu') or (platform_machine != 'x86_64' and extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu') or (sys_platform != 'linux' and extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
+    { name = "nvidia-cuda-cupti-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-9-ex-preppy-torch') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-9-ex-preppy-torch-cpu') or (platform_machine != 'x86_64' and extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu') or (sys_platform != 'linux' and extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
+    { name = "nvidia-cuda-nvrtc-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-9-ex-preppy-torch') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-9-ex-preppy-torch-cpu') or (platform_machine != 'x86_64' and extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu') or (sys_platform != 'linux' and extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
+    { name = "nvidia-cuda-runtime-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-9-ex-preppy-torch') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-9-ex-preppy-torch-cpu') or (platform_machine != 'x86_64' and extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu') or (sys_platform != 'linux' and extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
+    { name = "nvidia-cudnn-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-9-ex-preppy-torch') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-9-ex-preppy-torch-cpu') or (platform_machine != 'x86_64' and extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu') or (sys_platform != 'linux' and extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
+    { name = "nvidia-cufft-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-9-ex-preppy-torch') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-9-ex-preppy-torch-cpu') or (platform_machine != 'x86_64' and extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu') or (sys_platform != 'linux' and extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
+    { name = "nvidia-curand-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-9-ex-preppy-torch') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-9-ex-preppy-torch-cpu') or (platform_machine != 'x86_64' and extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu') or (sys_platform != 'linux' and extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
+    { name = "nvidia-cusolver-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-9-ex-preppy-torch') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-9-ex-preppy-torch-cpu') or (platform_machine != 'x86_64' and extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu') or (sys_platform != 'linux' and extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
+    { name = "nvidia-cusparse-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-9-ex-preppy-torch') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-9-ex-preppy-torch-cpu') or (platform_machine != 'x86_64' and extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu') or (sys_platform != 'linux' and extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
+    { name = "nvidia-cusparselt-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-9-ex-preppy-torch') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-9-ex-preppy-torch-cpu') or (platform_machine != 'x86_64' and extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu') or (sys_platform != 'linux' and extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
+    { name = "nvidia-nccl-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-9-ex-preppy-torch') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-9-ex-preppy-torch-cpu') or (platform_machine != 'x86_64' and extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu') or (sys_platform != 'linux' and extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
+    { name = "nvidia-nvjitlink-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-9-ex-preppy-torch') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-9-ex-preppy-torch-cpu') or (platform_machine != 'x86_64' and extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu') or (sys_platform != 'linux' and extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
+    { name = "nvidia-nvtx-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-9-ex-preppy-torch') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-9-ex-preppy-torch-cpu') or (platform_machine != 'x86_64' and extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu') or (sys_platform != 'linux' and extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
+    { name = "setuptools", marker = "extra == 'extra-9-ex-preppy-torch' or extra != 'extra-9-ex-preppy-torch-cpu'" },
+    { name = "sympy", marker = "extra == 'extra-9-ex-preppy-torch' or extra != 'extra-9-ex-preppy-torch-cpu'" },
+    { name = "triton", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-9-ex-preppy-torch') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-9-ex-preppy-torch-cpu') or (platform_machine != 'x86_64' and extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu') or (sys_platform != 'linux' and extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
+    { name = "typing-extensions", marker = "extra == 'extra-9-ex-preppy-torch' or extra != 'extra-9-ex-preppy-torch-cpu'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/24/85/ead1349fc30fe5a32cadd947c91bda4a62fbfd7f8c34ee61f6398d38fb48/torch-2.6.0-cp313-cp313-manylinux1_x86_64.whl", hash = "sha256:4874a73507a300a5d089ceaff616a569e7bb7c613c56f37f63ec3ffac65259cf", size = 766626191, upload-time = "2025-01-29T16:17:26.26Z" },
@@ -2211,13 +2211,13 @@ resolution-markers = [
     "sys_platform != 'darwin' and sys_platform != 'linux'",
 ]
 dependencies = [
-    { name = "filelock", marker = "(sys_platform != 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
-    { name = "fsspec", marker = "(sys_platform != 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
-    { name = "jinja2", marker = "(sys_platform != 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
-    { name = "networkx", marker = "(sys_platform != 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
-    { name = "setuptools", marker = "(sys_platform != 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
-    { name = "sympy", marker = "(sys_platform != 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
-    { name = "typing-extensions", marker = "(sys_platform != 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
+    { name = "filelock", marker = "(sys_platform != 'darwin' and extra == 'extra-9-ex-preppy-torch-cpu') or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
+    { name = "fsspec", marker = "(sys_platform != 'darwin' and extra == 'extra-9-ex-preppy-torch-cpu') or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
+    { name = "jinja2", marker = "(sys_platform != 'darwin' and extra == 'extra-9-ex-preppy-torch-cpu') or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
+    { name = "networkx", marker = "(sys_platform != 'darwin' and extra == 'extra-9-ex-preppy-torch-cpu') or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
+    { name = "setuptools", marker = "(sys_platform != 'darwin' and extra == 'extra-9-ex-preppy-torch-cpu') or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
+    { name = "sympy", marker = "(sys_platform != 'darwin' and extra == 'extra-9-ex-preppy-torch-cpu') or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
+    { name = "typing-extensions", marker = "(sys_platform != 'darwin' and extra == 'extra-9-ex-preppy-torch-cpu') or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
 ]
 wheels = [
     { url = "https://download.pytorch.org/whl/cpu/torch-2.6.0%2Bcpu-cp313-cp313-linux_x86_64.whl", hash = "sha256:e70ee2e37ad27a90201d101a41c2e10df7cf15a9ebd17c084f54cf2518c57bdf" },
@@ -2235,9 +2235,9 @@ dependencies = [
     { name = "lightning-utilities" },
     { name = "numpy" },
     { name = "packaging" },
-    { name = "torch", version = "2.6.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
-    { name = "torch", version = "2.6.0", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-20-ex-color-transformer-torch' or extra != 'extra-20-ex-color-transformer-torch-cpu'" },
-    { name = "torch", version = "2.6.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'extra-20-ex-color-transformer-torch-cpu') or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
+    { name = "torch", version = "2.6.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-9-ex-preppy-torch-cpu') or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
+    { name = "torch", version = "2.6.0", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-9-ex-preppy-torch' or extra != 'extra-9-ex-preppy-torch-cpu'" },
+    { name = "torch", version = "2.6.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'extra-9-ex-preppy-torch-cpu') or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/b0/1d/01fdf2595ac344dcfb2d837e7596c71cd8659e99f0b1fd72a93c76ea2c05/torchmetrics-1.8.0.tar.gz", hash = "sha256:8b4d011963a602109fb8255018c2386391e8c4c7f48a09669fbf7bb7889fda8c", size = 578941, upload-time = "2025-07-23T17:39:11.719Z" }
 wheels = [
@@ -2268,7 +2268,7 @@ name = "tqdm"
 version = "4.67.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32' or (extra == 'extra-20-ex-color-transformer-torch' and extra == 'extra-20-ex-color-transformer-torch-cpu')" },
+    { name = "colorama", marker = "sys_platform == 'win32' or (extra == 'extra-9-ex-preppy-torch' and extra == 'extra-9-ex-preppy-torch-cpu')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a8/4b/29b4ef32e036bb34e4ab51796dd745cdba7ed47ad142a9f4a1eb8e0c744d/tqdm-4.67.1.tar.gz", hash = "sha256:f8aef9c52c08c13a65f30ea34f4e5aac3fd1a34959879d7e59e63027286627f2", size = 169737, upload-time = "2024-11-24T20:12:22.481Z" }
 wheels = [

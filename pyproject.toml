@@ -1,7 +1,7 @@
 [project]
-name = "ex-color-transformer"
+name = "ex-preppy"
 version = "0.1.0"
-description = "AI experiments"
+description = "Prescriptive representation engineering experiments"
 readme = "README.md"
 requires-python = "~=3.13.0"
 dependencies = [
