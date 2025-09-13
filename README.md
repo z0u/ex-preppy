@@ -1,6 +1,6 @@
-# DevInterp experiments with color embeddings
+# Prescriptive representation engineering (PRepE) experiments
 
-This is a series of experiments in which we attempt to impose structure on (latent) embeddings. Ultimately, the goal is to develop a capability to structure the latent spaces in complex models like LLMs.
+This is a series of experiments in which we attempt to impose structure on latent embeddings. Ultimately, the goal is to develop a capability to structure the latent spaces in complex models like LLMs.
 
 <br>
 
@@ -8,16 +8,20 @@ This is a series of experiments in which we attempt to impose structure on (late
 
 Recent experiments have provided some evidence that "bad" behaviors in LLMS cluster together (such as _writing malicious code_ and _being racist_). Although surprising, it makes some intuitive sense: perhaps such behaviors cluster together because it's just the most efficient way to compress knowledge. However, _intervening_ on model behavior remains a tremendous challenge — partly because we don't know which directions in latent space correspond to undesirable traits, and we don't know how tangled up they might be with benign concepts. Indeed, attempts to align models to display "good" behavior often comes at the cost of reduced performance overall.
 
-We hope that this research will reveal more precise and robust ways to constrain the capabilities of LLMs. In contrast to mech interp — which attempts to discover model characteristics _after_ training — we anticipate that anchoring core concepts to known directions will make alignment efforts more robust, through two mechanisms:
+We hope that this research will reveal more precise and robust ways to constrain the capabilities of LLMs. In contrast to representation engineering (RepE) — which attempts to discover model characteristics _after_ training — we expect that anchoring core concepts to known directions will make alignment efforts more robust, through two mechanisms:
 
 1. The relevant directions would be known _even before training_, so you don't need to look for them. This could improve the prospect of both measuring model alignment throughout training, and intervening on misaligned behavior after training.
 2. Directions of interest should act as attractors for similar concepts, reducing the chance that unrelated (benign) concepts become entangled with them.
+
+**What PRepE is not**: We are not suggesting that we structure the _entire_ latent space. Deep learning is good at discovering embeddings, and we give the model the freedom to do so. We only prescribe the embeddings for the handful of prototype concepts that we wish to intervene on.
 
 <br>
 
 ## M1. Preliminary experiments with color
 
 We begin with some experiments with color, because color spaces are well defined and highly intuitive for visualization. Our goal is to demonstrate that it's possible to impose interpretable structure on latent space in a toy model.
+
+:star: Good results in [Ex 1.7: regularization with sparse labels](docs/m1-color-mlp/ex-1.7-sparse-labels.ipynb).
 
 <picture>
     <source srcset="docs/m1-color-mlp/large-assets/ex-1.7-color-phase-history.dark.png" media="(prefers-color-scheme: dark)" />
@@ -33,7 +37,7 @@ We begin with some experiments with color, because color spaces are well defined
 4. [Parameter transitions](docs/m1-color-mlp/ex-1.4-parameter-transitions.ipynb): Exploration of ways to cause hyperparameters to vary smoothly over time, both to a schedule, and in reaction to measurements during training.
 5. [Smooth curriculum](docs/m1-color-mlp/ex-1.5-color-mlp-anchoring.ipynb): Like experiment 1.3, but with 4D embeddings, and hyperparameters smoothly varying across curriculum phases. For example, the extents of the color space of the training data (HSV) are gradually increased instead of extending it in large discrete steps.
 6. [Smooth vs. stepped curricula](docs/m1-color-mlp/ex-1.6-curriculum-comparison.ipynb): A direct comparison of training stability and latent space evolution when using smooth hyperparameter transitions versus traditional stepped phase changes. This experiment had a negative result: it seems the smooth transitions don't help with training dynamics (although they do make curriculum specification easier).
-7. [Sparse labels for regularization](docs/m1-color-mlp/ex-1.7-sparse-labels.ipynb): We do away with the data phases, training on the full dataset from the start but with targeted (but noisy) regularization. We achieve similar results to the earlier experiments, but with a more realistic training dataset: previously, the curriculum phases were "clean" in a way that is probably hard to replicate in LLM corpora.
+7. :star: [Sparse labels for regularization](docs/m1-color-mlp/ex-1.7-sparse-labels.ipynb): We do away with the data phases, training on the full dataset from the start but with targeted (but noisy) regularization. We achieve similar results to the earlier experiments, but with a more realistic training dataset: previously, the curriculum phases were "clean" in a way that is probably hard to replicate in LLM corpora.
 8. [Regularizer combinations](docs/m1-color-mlp/ex-1.8-regularizer-combinations.ipynb): Systematic study to see the effects of each regularizer by itself, and all combinations of the regularizers. In each run, the regularizer weight schedules are kept the same, but select regularizers are not applied at all. We observe that they are all needed to produce a latent space with the desired characteristics.
 
 <br>
@@ -69,6 +73,8 @@ Publications relating to this milestone:
 
 In this milestone, we develop intervention functions and apply them to the structured color model from M1.
 
+:star: Good results in: [Ex 2.4: intervention on _red_](docs/m2-control/ex-2.4-post-norm-reg.ipynb) •&nbsp;[Ex 2.7: ablation of _hue_ subspace](docs/m2-control/ex-2.7-delete-hue.ipynb) •&nbsp;[Ex 2.9: ablation of _red_](docs/m2-control/ex-2.9-delete-only-red-5d.ipynb).
+
 <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/m2-control/large-assets/ex-2.1-suppression.dark.png">
     <source media="(prefers-color-scheme: light)" srcset="docs/m2-control/large-assets/ex-2.1-suppression.png">
@@ -80,12 +86,12 @@ In this milestone, we develop intervention functions and apply them to the struc
 1. [Intervention lobes](docs/m2-control/ex-2.1-intervention-lobe.ipynb): Exploration of intervention function shape. Taking inspiration from computer graphics shader literature, we visualize intervention functions and their falloffs as polar plots. We implement two functions: suppression (which subtracts the concept vector) and repulsion (which steers activations away from the concept vector).
 2. [Specific concept intervention](docs/m2-control/ex-2.2-inhibit-red.ipynb): Application of interventions to the color autoencoder. We train a bottleneck autoencoder, predict where one key concept will be located, and then intervene on its activations.
 3. [Explicit normalization](docs/m2-control/ex-2.3-explicit-norm.ipynb): Improved the autoencoder model by explicitly normalizing the bottleneck activations (in addition to regularizing them to have unit norm), and by removing the sigmoid layer from the decoder. This gives a much more regular latent structure, improves reconstruction loss, and improves intervention effectiveness.
-4. [Post-norm regularization](docs/m2-control/ex-2.4-post-norm-reg.ipynb): Further improved the model and intervention effectiveness by applying all regularizers except for unit norm after the explicit normalization step.
+4. :star: [Post-norm regularization](docs/m2-control/ex-2.4-post-norm-reg.ipynb): Further improved the model and intervention effectiveness by applying all regularizers except for unit norm after the explicit normalization step.
 5. [Only one anchor](docs/m2-control/ex-2.5-only-red.ipynb): Demonstration of intervention without the planarity constraint. Red is still anchored at the top, but other colors are placed arbitrarily. Interventions are shown to be almost as precise.
 6. [Permanent concept deletion](docs/m2-control/ex-2.6-delete-warm-cool.ipynb): Demonstrate that the latent space can be further manipulated to completely remove a concept. We train the color autoencoder such that it rediscovers the color wheel with _red_ at $(1,0,0,0)$; _cyan_ is naturally opposed to that and positions itself at $(-1,0,0,0)$. Then we modify the model parameters to delete the concept of warmth by: 1. ablation, in which the associated parameters are zeroed; 2. pruning, in which the parameters are removed (which reduces the dimensionality of the bottleneck).
-7. [Subspace deletion](docs/m2-control/ex-2.7-delete-hue.ipynb): Removal of the model's ability to work with _hue_ by ablating the first two dimensions of latent space. This shows the removal of a multidimensional concept (or family of concepts, i.e. _hues_), with minimal impact on other concetps (_white_, _black_, and _grays_).
+7. :star: [Subspace deletion](docs/m2-control/ex-2.7-delete-hue.ipynb): Removal of the model's ability to work with _hue_ by ablating the first two dimensions of latent space. This shows the removal of a multidimensional concept (or family of concepts, i.e. _hues_), with minimal impact on other concetps (_white_, _black_, and _grays_).
 8. [Delete only red (failed)](docs/m2-control/ex-2.8-delete-only-red.ipynb): Attempt to completely remove _red_ without affecting _cyan_. We removed the planarity term and added an anti-anchor term to push colors away from being opposed to _red_. This experiment failed: ablating _red_ also heavily impacted other colors, especially desaturated ones.
-9. [Delete only red](docs/m2-control/ex-2.9-delete-only-red-5d.ipynb): Completely remove _red_ without affecting _cyan_. This time we succeeded. It turns out the model needed additional capacity to warp latent space into the shape required to isolate _red_: the bottleneck needed an extra dimension, and the model needed more layers (extra nonlinearity).
+9. :star: [Delete only red](docs/m2-control/ex-2.9-delete-only-red-5d.ipynb): Completely remove _red_ without affecting _cyan_. This time we succeeded. It turns out the model needed additional capacity to warp latent space into the shape required to isolate _red_: the bottleneck needed an extra dimension, and the model needed more layers (extra nonlinearity).
 10. [Fewer regularizers](docs/m2-control/ex-2.10-delete-only-red-5d-no-subspace.ipynb): Completely remove _red_ (only) without using the unitarity and subspace regularizer terms. We're left with only three terms: separate, anchor, and anti-anchor.
 
 - TODO: Renormalize activations after deletion.
@@ -94,20 +100,19 @@ In this milestone, we develop intervention functions and apply them to the struc
 
 ## M3. Structured color transformer (TO DO)
 
-Proof-of-concept transformer network with similar latent space structure. It could be a very small transfomer that can perform simple color operations, such as mixing colors.
-
-1. Simple transformer doing color operations (mixing, complementary colors, etc.)
-2. Successful transfer of anchoring techniques to the residual stream or QK space (attention mechanism), with validation that structure persists through transformer training dynamics
+Application of techniques from M1 and M2 to the transformer architecture. Train a small transformer to do color mixing operations, and structure its latent space similarly to the autoencoder from our earlier experiments. Demonstrate precise suppression and removal of concepts.
 
 <br>
 
 ## M4. Language model application (TO DO)
 
-Impose structure on the latent representations of a transformer language model.
+Applying what we have learned to impose structure on the latent representations of a transformer language model. In this milestone, we will step away from the color domain to train an LLM on text. Anticipated activities:
 
-1. Weak labeling pipeline for internet text (identifying "harmful," "deceptive," etc.)
-2. Application to actual language model training
-3. Evaluation of structured representations in the residual stream or QK space
+1. Identify a small number of concepts to anchor: some concrete ("the Golden Gate Bridge") and some abstract ("deception")
+2. Source text data, similar to the datasets used by Karpathy to train nanoGPT (a GPT-2-like model)
+3. Use sentiment analysis and other available metadata to label some of the data with the concepts identified in (1). Our experiments from M1 indicate that only a small number of samples needs to be labelled to effectively anchor concepts, and our technique seems to be robust in the presence of incorrect labels (noise).
+4. Train the LLM from scratch on the labelled data, applying regularisation to the residual stream and/or QK space at select layers. We expect to base our architecture on nGPT, since its activation space is similar to our color autoencoder.
+5. Intervene on the trained model as in M2 and M3. We expect to see elevated rates of surprisal for samples relating to suppressed/ablated concepts.
 
 <br>
 
