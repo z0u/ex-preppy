@@ -21,7 +21,7 @@ We hope that this research will reveal more precise and robust ways to constrain
 
 We begin with some experiments with color, because color spaces are well defined and highly intuitive for visualization. Our goal is to demonstrate that it's possible to impose interpretable structure on latent space in a toy model.
 
-:star: Good results in [Ex 1.7: regularization with sparse labels](docs/m1-color-mlp/ex-1.7-sparse-labels.ipynb).
+⭐️ Good results in [Ex 1.7: regularization with sparse labels](docs/m1-color-mlp/ex-1.7-sparse-labels.ipynb).
 
 <picture>
     <source srcset="docs/m1-color-mlp/large-assets/ex-1.7-color-phase-history.dark.png" media="(prefers-color-scheme: dark)" />
@@ -37,7 +37,7 @@ We begin with some experiments with color, because color spaces are well defined
 4. [Parameter transitions](docs/m1-color-mlp/ex-1.4-parameter-transitions.ipynb): Exploration of ways to cause hyperparameters to vary smoothly over time, both to a schedule, and in reaction to measurements during training.
 5. [Smooth curriculum](docs/m1-color-mlp/ex-1.5-color-mlp-anchoring.ipynb): Like experiment 1.3, but with 4D embeddings, and hyperparameters smoothly varying across curriculum phases. For example, the extents of the color space of the training data (HSV) are gradually increased instead of extending it in large discrete steps.
 6. [Smooth vs. stepped curricula](docs/m1-color-mlp/ex-1.6-curriculum-comparison.ipynb): A direct comparison of training stability and latent space evolution when using smooth hyperparameter transitions versus traditional stepped phase changes. This experiment had a negative result: it seems the smooth transitions don't help with training dynamics (although they do make curriculum specification easier).
-7. :star: [Sparse labels for regularization](docs/m1-color-mlp/ex-1.7-sparse-labels.ipynb): We do away with the data phases, training on the full dataset from the start but with targeted (but noisy) regularization. We achieve similar results to the earlier experiments, but with a more realistic training dataset: previously, the curriculum phases were "clean" in a way that is probably hard to replicate in LLM corpora.
+7. ⭐️ [Sparse labels for regularization](docs/m1-color-mlp/ex-1.7-sparse-labels.ipynb): We do away with the data phases, training on the full dataset from the start but with targeted (but noisy) regularization. We achieve similar results to the earlier experiments, but with a more realistic training dataset: previously, the curriculum phases were "clean" in a way that is probably hard to replicate in LLM corpora.
 8. [Regularizer combinations](docs/m1-color-mlp/ex-1.8-regularizer-combinations.ipynb): Systematic study to see the effects of each regularizer by itself, and all combinations of the regularizers. In each run, the regularizer weight schedules are kept the same, but select regularizers are not applied at all. We observe that they are all needed to produce a latent space with the desired characteristics.
 
 <br>
@@ -73,7 +73,7 @@ Publications relating to this milestone:
 
 In this milestone, we develop intervention functions and apply them to the structured color model from M1.
 
-:star: Good results in: [Ex 2.4: intervention on _red_](docs/m2-control/ex-2.4-post-norm-reg.ipynb) •&nbsp;[Ex 2.7: ablation of _hue_ subspace](docs/m2-control/ex-2.7-delete-hue.ipynb) •&nbsp;[Ex 2.9: ablation of _red_](docs/m2-control/ex-2.9-delete-only-red-5d.ipynb).
+⭐️ Good results in: [Ex 2.4: intervention on _red_](docs/m2-control/ex-2.4-post-norm-reg.ipynb) •&nbsp;[Ex 2.7: ablation of _hue_ subspace](docs/m2-control/ex-2.7-delete-hue.ipynb) •&nbsp;[Ex 2.9: ablation of _red_](docs/m2-control/ex-2.9-delete-only-red-5d.ipynb).
 
 <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/m2-control/large-assets/ex-2.1-suppression.dark.png">
@@ -86,12 +86,12 @@ In this milestone, we develop intervention functions and apply them to the struc
 1. [Intervention lobes](docs/m2-control/ex-2.1-intervention-lobe.ipynb): Exploration of intervention function shape. Taking inspiration from computer graphics shader literature, we visualize intervention functions and their falloffs as polar plots. We implement two functions: suppression (which subtracts the concept vector) and repulsion (which steers activations away from the concept vector).
 2. [Specific concept intervention](docs/m2-control/ex-2.2-inhibit-red.ipynb): Application of interventions to the color autoencoder. We train a bottleneck autoencoder, predict where one key concept will be located, and then intervene on its activations.
 3. [Explicit normalization](docs/m2-control/ex-2.3-explicit-norm.ipynb): Improved the autoencoder model by explicitly normalizing the bottleneck activations (in addition to regularizing them to have unit norm), and by removing the sigmoid layer from the decoder. This gives a much more regular latent structure, improves reconstruction loss, and improves intervention effectiveness.
-4. :star: [Post-norm regularization](docs/m2-control/ex-2.4-post-norm-reg.ipynb): Further improved the model and intervention effectiveness by applying all regularizers except for unit norm after the explicit normalization step.
+4. ⭐️ [Post-norm regularization](docs/m2-control/ex-2.4-post-norm-reg.ipynb): Further improved the model and intervention effectiveness by applying all regularizers except for unit norm after the explicit normalization step.
 5. [Only one anchor](docs/m2-control/ex-2.5-only-red.ipynb): Demonstration of intervention without the planarity constraint. Red is still anchored at the top, but other colors are placed arbitrarily. Interventions are shown to be almost as precise.
 6. [Permanent concept deletion](docs/m2-control/ex-2.6-delete-warm-cool.ipynb): Demonstrate that the latent space can be further manipulated to completely remove a concept. We train the color autoencoder such that it rediscovers the color wheel with _red_ at $(1,0,0,0)$; _cyan_ is naturally opposed to that and positions itself at $(-1,0,0,0)$. Then we modify the model parameters to delete the concept of warmth by: 1. ablation, in which the associated parameters are zeroed; 2. pruning, in which the parameters are removed (which reduces the dimensionality of the bottleneck).
-7. :star: [Subspace deletion](docs/m2-control/ex-2.7-delete-hue.ipynb): Removal of the model's ability to work with _hue_ by ablating the first two dimensions of latent space. This shows the removal of a multidimensional concept (or family of concepts, i.e. _hues_), with minimal impact on other concetps (_white_, _black_, and _grays_).
+7. ⭐️ [Subspace deletion](docs/m2-control/ex-2.7-delete-hue.ipynb): Removal of the model's ability to work with _hue_ by ablating the first two dimensions of latent space. This shows the removal of a multidimensional concept (or family of concepts, i.e. _hues_), with minimal impact on other concetps (_white_, _black_, and _grays_).
 8. [Delete only red (failed)](docs/m2-control/ex-2.8-delete-only-red.ipynb): Attempt to completely remove _red_ without affecting _cyan_. We removed the planarity term and added an anti-anchor term to push colors away from being opposed to _red_. This experiment failed: ablating _red_ also heavily impacted other colors, especially desaturated ones.
-9. :star: [Delete only red](docs/m2-control/ex-2.9-delete-only-red-5d.ipynb): Completely remove _red_ without affecting _cyan_. This time we succeeded. It turns out the model needed additional capacity to warp latent space into the shape required to isolate _red_: the bottleneck needed an extra dimension, and the model needed more layers (extra nonlinearity).
+9. ⭐️ [Delete only red](docs/m2-control/ex-2.9-delete-only-red-5d.ipynb): Completely remove _red_ without affecting _cyan_. This time we succeeded. It turns out the model needed additional capacity to warp latent space into the shape required to isolate _red_: the bottleneck needed an extra dimension, and the model needed more layers (extra nonlinearity).
 10. [Fewer regularizers](docs/m2-control/ex-2.10-delete-only-red-5d-no-subspace.ipynb): Completely remove _red_ (only) without using the unitarity and subspace regularizer terms. We're left with only three terms: separate, anchor, and anti-anchor.
 
 - TODO: Renormalize activations after deletion.
