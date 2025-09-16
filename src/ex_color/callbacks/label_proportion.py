@@ -62,6 +62,15 @@ class LabelProportionCallback(Callback):
             sum_global = trainer.strategy.reduce(sum_local, reduce_op='sum')  # type: ignore[arg-type]
             label_sums[name] = float(sum_global.item())
 
+        # Count samples with any label (at least one label > 0)
+        # Stack all label tensors and check if any label is > 0 for each sample
+        label_tensors = [t.detach().float() for t in labels.values()]
+        stacked_labels = torch.stack(label_tensors, dim=1)  # [batch_size, num_labels]
+        any_label_mask = (stacked_labels > 0).any(dim=1)  # [batch_size]
+        any_label_count_local = any_label_mask.sum()
+        any_label_count_global = trainer.strategy.reduce(any_label_count_local, reduce_op='sum')  # type: ignore[arg-type]
+        any_label_count = float(any_label_count_global.item())
+
         # Global batch size across devices
         count_local = torch.tensor(batch_size_local, device=any_label.device, dtype=torch.float32)
         count_global = trainer.strategy.reduce(count_local, reduce_op='sum')  # type: ignore[arg-type]
@@ -71,6 +80,8 @@ class LabelProportionCallback(Callback):
         for name, s in label_sums.items():
             self._epoch_label_sums[name] += s
             self._total_label_sums[name] += s
+        self._epoch_label_sums['_any'] += any_label_count
+        self._total_label_sums['_any'] += any_label_count
         self._epoch_counts += batch_count_global
         self._total_counts += batch_count_global
 
@@ -121,7 +132,7 @@ class LabelProportionCallback(Callback):
         def _log():
             if trainer.logger:
                 trainer.logger.log_metrics(metrics)
-            human_readable = [f'{k}: {v:.2%}' for k, v in metrics_.items()]
-            log.info('Label frequencies: %s', ', '.join(human_readable))
+            human_readable = [f'{k}: {v:.3%}' for k, v in metrics_.items()]
+            log.info('Label frequencies (n=%d): %s', self._total_counts, ', '.join(human_readable))
 
         _log()
