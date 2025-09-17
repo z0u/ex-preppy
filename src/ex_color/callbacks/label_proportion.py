@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from typing import Dict
+from typing import Callable, Collection, Dict, override
 
 import torch
 from lightning.fabric.utilities.rank_zero import rank_zero_only
@@ -33,9 +33,10 @@ class LabelProportionCallback(Callback):
     >>> cbs = [LabelProportionCallback(prefix="labels")]  # add to Trainer(callbacks=cbs)
     """
 
-    def __init__(self, *, prefix: str = 'labels') -> None:
+    def __init__(self, *, prefix: str = 'labels', get_active_labels: Callable[[], Collection[str]] | None):
         super().__init__()
         self.prefix = prefix
+        self.get_active_labels = get_active_labels
         self._epoch_label_sums: Dict[str, float] = defaultdict(float)
         self._epoch_counts: int = 0
         self._total_label_sums: Dict[str, float] = defaultdict(float)
@@ -92,21 +93,29 @@ class LabelProportionCallback(Callback):
         logger.log_metrics(values, step=step if step is not None else trainer.global_step)
 
     # ---- Lightning hooks ----
-    def on_train_batch_end(self, trainer: Trainer, pl_module, outputs, batch, batch_idx: int) -> None:  # noqa: ANN001
+    @override
+    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
         # batch is expected to be (data, labels)
         if not isinstance(batch, (tuple, list)) or len(batch) < 2:
-            return
+            raise ValueError("Batch isn't labelled. Add a collate function or remove this callback.")
         labels = batch[1]
         if not isinstance(labels, dict):
-            return
+            raise ValueError("Batch isn't labelled. Add a collate function or remove this callback.")
+
+        if self.get_active_labels:
+            # Select labels that are used in this batch. E.g. according to which regularizers are on-schedule (active).
+            active_labels = self.get_active_labels()
+            labels = {k: v for k, v in labels.items() if k in active_labels}
         self._accumulate_batch(trainer, labels)
 
-    def on_train_epoch_start(self, trainer: Trainer, pl_module) -> None:  # noqa: ANN001
+    @override
+    def on_train_epoch_start(self, trainer, pl_module):
         # Reset epoch accumulators
         self._epoch_label_sums.clear()
         self._epoch_counts = 0
 
-    def on_train_epoch_end(self, trainer: Trainer, pl_module) -> None:  # noqa: ANN001
+    @override
+    def on_train_epoch_end(self, trainer, pl_module):
         # Compute and log per-epoch proportions
         if self._epoch_counts <= 0:
             return
@@ -121,7 +130,8 @@ class LabelProportionCallback(Callback):
 
         _log()
 
-    def on_fit_end(self, trainer: Trainer, pl_module) -> None:  # noqa: ANN001
+    @override
+    def on_fit_end(self, trainer, pl_module):
         # Log total proportions over the entire training
         if self._total_counts <= 0:
             return

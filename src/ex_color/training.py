@@ -55,12 +55,16 @@ class TrainingModule(L.LightningModule):
         self.latent_hooks: dict[str, ActivationCaptureHook] = {}
         self.hook_handles: list[RemovableHandle] = []
 
+        # Names of labels that are currently "active" (used by any on-schedule regularizer)
+        # Updated each training step; consumed by callbacks for conditional logging.
+        self.active_labels: set[str] = set()
+
     def _setup_latent_hooks(self):
         """Set up hooks for all unique layers specified in regularizer layer_affinities."""
         for reg in self.regularizers:
             if len(reg.layer_affinities) == 0:
                 log.warning(f'Regularizer {reg.name} has no layer affinities and will not run')
-            if reg.name not in self.timeline.props:
+            if reg.name not in self.timeline.props and reg.train:
                 log.warning(f'Regularizer {reg.name} is not in the timeline and will have full weight')
 
         regularized_layers = {
@@ -132,8 +136,21 @@ class TrainingModule(L.LightningModule):
         losses = {'recon': primary_loss.item()}
         total_loss = primary_loss
 
+        # Determine which labels are "active" this step, i.e., referenced by at least one
+        # regularizer that is training and has a non-zero weight in the current schedule.
+        # Expose this for callbacks to optionally filter their logging.
+        self.active_labels = {
+            label
+            for reg in self.regularizers
+            if reg.train and self.schedule.get(reg.name, 1.0) != 0 and reg.label_affinities is not None
+            for label in reg.label_affinities.keys()
+        }
+
         # Calculate regularizer losses
         for reg in self.regularizers:
+            # Respect training flag
+            if not reg.train:
+                continue
             # Default to full weight for regularizers that aren't in the timeline
             weight = self.schedule.get(reg.name, 1.0)
             if weight == 0:
@@ -189,8 +206,73 @@ class TrainingModule(L.LightningModule):
         if self.global_step < len(self.timeline) - 1:
             self.timeline.step()
 
+    @override
+    def on_validation_start(self) -> None:
+        """Called at the beginning of validation."""
+        # Ensure hooks are available for capturing latents during validation.
+        # If we're running validation inside fit, hooks are already set up in on_fit_start.
+        # For standalone validate(), ensure they are registered.
+        if not self.latent_hooks:
+            self._setup_latent_hooks()
 
-def compute_loss_term(regularizer: RegularizerConfig, batch_labels, latents: Tensor):
+    @override
+    def on_validation_end(self) -> None:
+        """Called at the end of validation."""
+        # Keep hooks intact if we're in a fit loop; they'll be removed in on_fit_end.
+        # If we ever set them up specifically for standalone validation, we could
+        # clean them here. For now, no action needed.
+
+    @override
+    def validation_step(self, batch, batch_idx, dataloader_idx=0):
+        """
+        Operates on a single batch of data from the validation set.
+
+        In this step you'd might generate examples or calculate anything of interest like accuracy.
+        """
+        batch_data, batch_labels = batch
+        assert all(isinstance(k, str) and isinstance(v, Tensor) for k, v in batch_labels.items())
+
+        # Forward pass
+        outputs: Tensor = self(batch_data)
+
+        # Primary reconstruction/objective loss (reported as val_loss)
+        primary_loss = self.objective(outputs, batch_data).mean()
+        losses: dict[str, float] = {'recon': primary_loss.item()}
+
+        # Compute regularizer metrics (do not add to val_loss); respect validate flag
+        for reg in self.regularizers:
+            if not reg.validate:
+                continue
+
+            for layer_name in reg.layer_affinities:
+                hook = self.latent_hooks.get(layer_name)
+                if hook is None or hook.activations is None:
+                    log.warning(
+                        f'No latents captured for layer {layer_name}, skipping validation metric for {reg.name}'
+                    )
+                    continue
+
+                term_loss = compute_loss_term(reg, batch_labels, hook.activations)
+                if term_loss is None:
+                    continue
+
+                if not torch.isfinite(term_loss):
+                    raise RuntimeError(
+                        f'Validation loss term {reg.name}:{layer_name} at step {self.global_step} is {term_loss:f}'
+                    )
+
+                loss_key = f'{reg.name}:{layer_name}' if len(reg.layer_affinities) > 1 else reg.name
+                losses[loss_key] = term_loss.item()
+
+        # Log metrics
+        self.log('val_loss', primary_loss, prog_bar=True)
+        for loss_name, loss_value in losses.items():
+            self.log(f'val_{loss_name}', loss_value)
+
+        return {'loss': primary_loss, 'losses': losses}
+
+
+def compute_loss_term(regularizer: RegularizerConfig, batch_labels: dict[str, Tensor], latents: Tensor):
     per_sample_loss = regularizer.compute_loss_term(latents)
 
     if regularizer.label_affinities is None:

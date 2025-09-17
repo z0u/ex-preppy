@@ -91,17 +91,25 @@ class ColorCube:
         )
         return type(self)(new_vars, new_coords, self.space, self.canonical_space)
 
-    def assign(self, name: str, var: np.ndarray) -> ColorCube:
+    @overload
+    def assign(self, name: str, var: np.ndarray) -> ColorCube: ...
+    @overload
+    def assign(self, **kwargs: np.ndarray) -> ColorCube: ...
+    def assign(self, name: str | None = None, var: np.ndarray | None = None, /, **kwargs) -> ColorCube:
         """
         Assign a new variable to the cube.
 
         Args:
             name: The name of the new variable.
             var: The variable array to assign. Must match the cube's grid shape.
+            **kwargs: Named variables to assign.
 
         Returns a new cube with all original variables in addition to new ones. Existing variables can be re-assigned.
         """
-        return type(self)({**self.vars, name: var}, self.coordinates, self.space, self.canonical_space)
+        if name is not None:
+            return type(self)({**self.vars, name: var}, self.coordinates, self.space, self.canonical_space)
+        else:
+            return type(self)({**self.vars, **kwargs}, self.coordinates, self.space, self.canonical_space)
 
     @property
     def rgb_grid(self) -> np.ndarray:

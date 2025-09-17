@@ -3,17 +3,17 @@ from torch import Tensor
 from torch.utils.data.dataloader import default_collate
 
 
-def red_labels(data: Tensor):
+def redness(data: Tensor):
     r, g, b = data[:, 0], data[:, 1], data[:, 2]
     return r * (1 - g / 2 - b / 2)
 
 
-def green_labels(data: Tensor):
+def greenness(data: Tensor):
     r, g, b = data[:, 0], data[:, 1], data[:, 2]
     return g * (1 - r / 2 - b / 2)
 
 
-def blue_labels(data: Tensor):
+def blueness(data: Tensor):
     r, g, b = data[:, 0], data[:, 1], data[:, 2]
     return b * (1 - r / 2 - g / 2)
 
@@ -56,11 +56,11 @@ def collate_with_generated_labels(
 
     label_probs: dict[str, Tensor] = {}
     if red:
-        label_probs['red'] = red_labels(colors) ** 10 * red
+        label_probs['red'] = redness(colors) ** 10 * red
     if green:
-        label_probs['green'] = green_labels(colors) ** 10 * green
+        label_probs['green'] = greenness(colors) ** 10 * green
     if blue:
-        label_probs['blue'] = blue_labels(colors) ** 10 * blue
+        label_probs['blue'] = blueness(colors) ** 10 * blue
     if vibrant:
         label_probs['vibrant'] = vibrancies**100 * vibrant
     if desaturated:

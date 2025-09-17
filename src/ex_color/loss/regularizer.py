@@ -1,5 +1,6 @@
 import logging
 from dataclasses import dataclass
+from typing import Literal
 
 from torch import Tensor
 import torch.nn as nn
@@ -22,6 +23,9 @@ class Regularizer(nn.Module):
     def __call__(self, activations: Tensor, /) -> Tensor: ...
 
 
+Phase = Literal['train', 'validate']
+
+
 @dataclass
 class RegularizerConfig:
     """Configuration for a regularizer, including label and layer affinities."""
@@ -34,3 +38,14 @@ class RegularizerConfig:
     """Maps label names to affinity strengths"""
     layer_affinities: list[str]
     """List of layer names to apply this regularizer to, e.g. ['encoder', 'decoder.0']"""
+    phase: Phase | tuple[Phase, ...] = 'train'
+
+    @property
+    def train(self):
+        """Regularizer is active in training (fit) phase"""
+        return 'train' == self.phase or 'train' in self.phase
+
+    @property
+    def validate(self):
+        """Emits loss as metric in validation phase"""
+        return 'validate' == self.phase or 'validate' in self.phase
