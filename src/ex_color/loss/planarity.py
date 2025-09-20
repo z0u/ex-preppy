@@ -7,7 +7,7 @@ from ex_color.loss.regularizer import Regularizer
 class AxisAlignedSubspace(Regularizer):
     """Encourages activations to stay within a nominated set of dimensions."""
 
-    def __init__(self, dims: tuple[int, ...]) -> None:
+    def __init__(self, dims: tuple[int, ...], invert=False) -> None:
         """
         Initialize regularizer for a target subspace.
 
@@ -15,6 +15,7 @@ class AxisAlignedSubspace(Regularizer):
             dims: Indices of activation features to keep (allowed to be non-zero).
                 All other feature dimensions are penalized (L2) toward zero.
                 Default keeps the first two dims, matching previous behavior.
+            invert: If True, penalize the specified dims instead of keeping them.
         """
         super().__init__()
         # Normalize + validate
@@ -28,6 +29,7 @@ class AxisAlignedSubspace(Regularizer):
             msg = 'dims must be non-negative'
             raise ValueError(msg)
         self.dims = tuple(sorted(dims))
+        self.invert = invert
 
     def __repr__(self) -> str:  # pragma: no cover - trivial
         return f'{self.__class__.__name__}(dims={self.dims})'
@@ -46,7 +48,11 @@ class AxisAlignedSubspace(Regularizer):
 
         B, F = activations.shape[0], activations.shape[1]
         # Filter keep indices that actually exist in current tensor
-        effective_keep = {i for i in self.dims if i < F}
+        if not self.invert:
+            effective_keep = tuple(i for i in range(F) if i in self.dims)
+        else:
+            effective_keep = tuple(i for i in range(F) if i not in self.dims)
+        # effective_keep = {i for i in self.dims if i < F}
         if len(effective_keep) == F:  # everything kept -> zero penalty
             return torch.zeros(B, device=activations.device, dtype=activations.dtype)
 

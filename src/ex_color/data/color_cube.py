@@ -92,9 +92,9 @@ class ColorCube:
         return type(self)(new_vars, new_coords, self.space, self.canonical_space)
 
     @overload
-    def assign(self, name: str, var: np.ndarray) -> ColorCube: ...
+    def assign(self, name: str, var: np.ndarray, /) -> ColorCube: ...
     @overload
-    def assign(self, **kwargs: np.ndarray) -> ColorCube: ...
+    def assign(self, /, **kwargs: np.ndarray) -> ColorCube: ...
     def assign(self, name: str | None = None, var: np.ndarray | None = None, /, **kwargs) -> ColorCube:
         """
         Assign a new variable to the cube.
@@ -107,6 +107,7 @@ class ColorCube:
         Returns a new cube with all original variables in addition to new ones. Existing variables can be re-assigned.
         """
         if name is not None:
+            assert var is not None
             return type(self)({**self.vars, name: var}, self.coordinates, self.space, self.canonical_space)
         else:
             return type(self)({**self.vars, **kwargs}, self.coordinates, self.space, self.canonical_space)

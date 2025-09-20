@@ -9,6 +9,7 @@ from matplotlib.typing import ColorType
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
+from ex_color.data.color_cube import ColorCube
 from utils.plt import Theme
 
 
@@ -331,10 +332,36 @@ class ConicalAnnotation:
         self.line_kwargs = line_kwargs
 
 
+def plot_latent_grid_3d_from_cube(
+    cube: ColorCube,
+    colors: str = 'color',
+    colors_compare: str | None = None,
+    latents: str = 'latents',
+    *,
+    dims: list[tuple[int, int, int]],
+    title: str | None = None,
+    figsize_per_plot: tuple[float, float] = (6, 6),
+    dot_radius: float = 10.0,
+    theme: Theme,
+    annotations: Sequence[ConicalAnnotation] | None = None,
+):
+    return plot_latent_grid_3d(
+        cube[latents],
+        cube[colors],
+        cube[colors_compare] if colors_compare is not None else None,
+        dims=dims,
+        title=title,
+        figsize_per_plot=figsize_per_plot,
+        dot_radius=dot_radius,
+        theme=theme,
+        annotations=annotations,
+    )
+
+
 def plot_latent_grid_3d(
-    latents: torch.Tensor,
-    colors: torch.Tensor,
-    colors_compare: torch.Tensor | None = None,
+    latents: torch.Tensor | np.ndarray,
+    colors: torch.Tensor | np.ndarray,
+    colors_compare: torch.Tensor | np.ndarray | None = None,
     *,
     dims: list[tuple[int, int, int]],
     title: str | None = None,
@@ -344,11 +371,20 @@ def plot_latent_grid_3d(
     annotations: Sequence[ConicalAnnotation] | None = None,
 ):
     """Plot 4D+ latent data as 3D visualizations."""
-    lat_np = latents.detach().cpu().numpy()
-    col_np = colors.detach().cpu().reshape(-1, colors.shape[-1]).numpy()
-    col_compare_np = (
-        colors_compare.detach().cpu().reshape(-1, colors.shape[-1]).numpy() if colors_compare is not None else col_np
-    )
+    if colors_compare is None:
+        colors_compare = colors
+
+    if isinstance(latents, torch.Tensor):
+        latents = latents.detach().cpu().numpy()
+    if isinstance(colors, torch.Tensor):
+        colors = colors.detach().cpu().numpy()  # .reshape(-1, colors.shape[-1]).numpy()
+    if isinstance(colors_compare, torch.Tensor):
+        colors_compare = colors_compare.detach().cpu().numpy()  # .reshape(-1, colors.shape[-1]).numpy()
+
+    # flatten all but last dim
+    latents = latents.reshape(-1, latents.shape[-1])
+    colors = colors.reshape(-1, colors.shape[-1])
+    colors_compare = colors_compare.reshape(-1, colors_compare.shape[-1])
 
     n = len(dims)
     cols = min(3, n)  # Max 3 columns
@@ -361,10 +397,10 @@ def plot_latent_grid_3d(
         ax = cast(Axes3D, fig.add_subplot(rows, cols, idx + 1, axes_class=Axes3D))
 
         # Extract 3D coordinates
-        lat_3d = lat_np[:, [i, j, k]]
+        lat_3d = latents[:, [i, j, k]]
 
         draw_circle_3d(ax, facecolor=theme.val('#8888', dark='#111', light='#eee'), zorder=-10)
-        draw_latent_3d(ax, lat_3d, edgecolors=col_np, facecolors=col_compare_np, alpha=1.0, dot_radius=dot_radius)
+        draw_latent_3d(ax, lat_3d, edgecolors=colors, facecolors=colors_compare, alpha=1.0, dot_radius=dot_radius)
         draw_circle_3d(ax, edgecolor='#0005', linewidth=1, zorder=10)
         for a in annotations or []:
             direction = np.asarray(a.direction)[[i, j, k]]

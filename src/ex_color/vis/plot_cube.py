@@ -15,8 +15,8 @@ def plot_colors(  # noqa: C901
     pretty: bool | str = True,
     patch_size: float = 0.25,
     title: str = '',
-    colors: np.ndarray | None = None,
-    colors_compare: np.ndarray | None = None,
+    colors: np.ndarray | str | None = None,
+    colors_compare: np.ndarray | str | None = None,
 ):
     """Plot a ColorCube in 2D slices."""
     from itertools import chain
@@ -67,6 +67,10 @@ def plot_colors(  # noqa: C901
 
     if colors is None:
         colors = cube.rgb_grid
+    if isinstance(colors, str):
+        colors = cube[colors]
+    if isinstance(colors_compare, str):
+        colors_compare = cube[colors_compare]
 
     def annotate_cells(ax: Axes, b: np.ndarray):
         """
