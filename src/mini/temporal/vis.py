@@ -249,14 +249,14 @@ def plot_timeline(  # noqa: C901
 
     # --- Labels, Title, Grid (Apply to main_ax) ---
     if ax is None:  # Only set title if we created the figure
-        main_ax.set_title(title, fontsize=14)
-    main_ax.set_ylabel('Property value', fontsize=12)
-    main_ax.set_xlabel('Step', fontsize=12)
-    main_ax.grid(True, which='major', axis='both', linestyle=':', alpha=0.1)
-    main_ax.margins(y=0.15)
+        main_ax.set_title(title)
+    main_ax.set_ylabel('Property value')
+    main_ax.set_xlabel('Step')
 
     # --- Final Adjustments ---
     if ax is None and theme is None:  # Only call tight_layout if we created the figure
+        main_ax.grid(True, which='major', axis='both', linestyle=':', alpha=0.1)
+        main_ax.margins(y=0.15)
         plt.tight_layout()
 
     # Return the figure and the main axes (or list of axes if created internally)
