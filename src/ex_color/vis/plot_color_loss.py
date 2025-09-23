@@ -103,6 +103,31 @@ def _plot_cube_on_axes(ax: Axes, cube: ColorCube, *, var: str, linewidth: float)
         _add_series_segments(ax, x, y, seg_colors, linewidth)
 
 
+def draw_cube_series_on_ax(
+    ax: Axes,
+    cube: ColorCube,
+    *,
+    title: str | None = None,
+    var: str,
+    pretty: bool | str = True,
+    linewidth: float = 1.4,
+    y_min: float | None = None,
+) -> Axes:
+    """
+    Draw a single cube series into an existing Axes.
+
+    Draws colored line segments for the given scalar variable.
+    Returns the axes for chaining.
+    """
+    _plot_cube_on_axes(ax, cube, var=var, linewidth=linewidth)
+    y_max = float(np.nanmax(cube[var]))
+    y_min_v = float(y_min) if y_min is not None else float(np.nanmin(cube[var]))
+    _format_axes_for_cube(ax, cube, var, ylim=(y_min_v, y_max), pretty=_resolve_pretty(pretty, cube.space))
+    if title:
+        ax.set_title(title)
+    return ax
+
+
 def plot_cube_series(
     *cubes: ColorCube,
     title: str,

@@ -358,6 +358,99 @@ def plot_latent_grid_3d_from_cube(
     )
 
 
+def draw_latent_panel(
+    ax: Axes3D,
+    latents: torch.Tensor | np.ndarray,
+    colors: torch.Tensor | np.ndarray,
+    colors_compare: torch.Tensor | np.ndarray | None,
+    *,
+    dims: tuple[int, int, int],
+    dot_radius: float,
+    theme: Theme,
+    annotations: Sequence[ConicalAnnotation] | None = None,
+    title: str | None = None,
+):
+    """
+    Draw a single 3D latent slice into the provided Axes3D.
+
+    Contract
+    - Inputs: latents [..., D], colors [..., 3], colors_compare [..., 3] or None; dims (i,j,k)
+    - Output: draws on ax; returns ax
+    - Errors: raises if dims out of range
+    """
+    if colors_compare is None:
+        colors_compare = colors
+
+    if isinstance(latents, torch.Tensor):
+        latents = latents.detach().cpu().numpy()
+    if isinstance(colors, torch.Tensor):
+        colors = colors.detach().cpu().numpy()
+    if isinstance(colors_compare, torch.Tensor):
+        colors_compare = colors_compare.detach().cpu().numpy()
+
+    # flatten all but last dim
+    latents = latents.reshape(-1, latents.shape[-1])
+    colors = colors.reshape(-1, colors.shape[-1])
+    colors_compare = colors_compare.reshape(-1, colors_compare.shape[-1])
+
+    i, j, k = dims
+    lat_3d = latents[:, [i, j, k]]
+
+    draw_circle_3d(ax, facecolor=theme.val('#8888', dark='#111', light='#eee'), zorder=-10)
+    draw_latent_3d(
+        ax,
+        lat_3d,
+        edgecolors=colors,
+        facecolors=colors_compare,
+        alpha=1.0,
+        dot_radius=dot_radius,
+    )
+    draw_circle_3d(ax, edgecolor='#0005', linewidth=1, zorder=10)
+    for a in annotations or []:
+        direction = np.asarray(a.direction)[[i, j, k]]
+        draw_cone_3d(ax, direction=direction, angle=a.angle, **a.line_kwargs)
+
+    # Clean up the 3D axes
+    ax.set_axis_off()
+    ax.patch.set_alpha(0)
+    if title:
+        ax.set_title(title)
+    # Always look downwards from the "top": the axis ordering (i,j,k) determines the view
+    ax.view_init(elev=90, azim=-90)
+    ax.set_proj_type('ortho')
+    ax.set_xlim(-1.0, 1.0)
+    ax.set_ylim(-1.0, 1.0)
+
+    return ax
+
+
+def draw_latent_panel_from_cube(
+    ax: Axes3D,
+    cube: ColorCube,
+    *,
+    dims: tuple[int, int, int],
+    colors: str = 'color',
+    colors_compare: str | None = None,
+    latents: str = 'latents',
+    dot_radius: float = 10.0,
+    theme: Theme,
+    annotations: Sequence[ConicalAnnotation] | None = None,
+    title: str | None = None,
+):
+    """Draw a single 3D latent panel from a ColorCube into ax."""
+    return draw_latent_panel(
+        ax,
+        cube[latents],
+        cube[colors],
+        cube[colors_compare] if colors_compare is not None else None,
+        dims=dims,
+        dot_radius=dot_radius,
+        theme=theme,
+        annotations=annotations,
+        title=title,
+    )
+
+
 def plot_latent_grid_3d(
     latents: torch.Tensor | np.ndarray,
     colors: torch.Tensor | np.ndarray,
@@ -392,29 +485,20 @@ def plot_latent_grid_3d(
 
     fig = plt.figure(figsize=(figsize_per_plot[0] * cols, figsize_per_plot[1] * rows), constrained_layout=True)
 
-    for idx, (i, j, k) in enumerate(dims):
-        # Create 3D subplot
+    for idx, dims_ijk in enumerate(dims):
+        # Create 3D subplot and delegate drawing
         ax = cast(Axes3D, fig.add_subplot(rows, cols, idx + 1, axes_class=Axes3D))
-
-        # Extract 3D coordinates
-        lat_3d = latents[:, [i, j, k]]
-
-        draw_circle_3d(ax, facecolor=theme.val('#8888', dark='#111', light='#eee'), zorder=-10)
-        draw_latent_3d(ax, lat_3d, edgecolors=colors, facecolors=colors_compare, alpha=1.0, dot_radius=dot_radius)
-        draw_circle_3d(ax, edgecolor='#0005', linewidth=1, zorder=10)
-        for a in annotations or []:
-            direction = np.asarray(a.direction)[[i, j, k]]
-            draw_cone_3d(ax, direction=direction, angle=a.angle, **a.line_kwargs)
-
-        # Clean up the 3D axes
-        ax.set_axis_off()
-        ax.patch.set_alpha(0)
-        ax.set_title(f'({i},{j},{k})')
-        # Always look downwards from the "top": the axis ordering (i,j,k) determines the view
-        ax.view_init(elev=90, azim=-90)
-        ax.set_proj_type('ortho')
-        ax.set_xlim(-1.0, 1.0)
-        ax.set_ylim(-1.0, 1.0)
+        draw_latent_panel(
+            ax,
+            latents,
+            colors,
+            colors_compare,
+            dims=dims_ijk,
+            dot_radius=dot_radius,
+            theme=theme,
+            annotations=annotations,
+            title=f'({dims_ijk[0]},{dims_ijk[1]},{dims_ijk[2]})',
+        )
 
     if title:
         fig.suptitle(title)
