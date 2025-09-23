@@ -17,7 +17,11 @@ class StackedFigure:
     ax_loss: Axes
 
 
-def build_stacked_figure(*, figsize=(10, 10)) -> StackedFigure:
+def build_stacked_figure(
+    *,
+    figsize=(10, 10),
+    height_ratios: tuple[float, float, float] = (2.5, 2.0, 1.5),
+) -> StackedFigure:
     """
     Create a 3-row stacked figure layout without drawing.
 
@@ -29,7 +33,7 @@ def build_stacked_figure(*, figsize=(10, 10)) -> StackedFigure:
     Returns a StackedFigure containing the figure and axes.
     """
     fig = plt.figure(figsize=figsize, constrained_layout=True)
-    gs = GridSpec(3, 2, figure=fig, height_ratios=[1.0, 1.0, 0.8])
+    gs = GridSpec(3, 2, figure=fig, height_ratios=height_ratios)
 
     # Top: two 3D axes
     ax_lat1 = cast(Axes3D, fig.add_subplot(gs[0, 0], axes_class=Axes3D))
@@ -39,6 +43,6 @@ def build_stacked_figure(*, figsize=(10, 10)) -> StackedFigure:
     ax_colors = fig.add_subplot(gs[1, :])
 
     # Bottom: full-width loss
-    ax_loss = fig.add_subplot(gs[2, :])
+    ax_loss = fig.add_subplot(gs[2, :], sharex=ax_colors)
 
     return StackedFigure(fig=fig, ax_lat1=ax_lat1, ax_lat2=ax_lat2, ax_colors=ax_colors, ax_loss=ax_loss)

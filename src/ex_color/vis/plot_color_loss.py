@@ -56,7 +56,6 @@ def _add_series_segments(
 def _format_axes_for_cube(ax: Axes, cube: ColorCube, var: str, *, ylim: tuple[float, float] | None = None, pretty: str):
     # X: show min/max (and maybe middle) to avoid clutter
     x_coords = cube.coordinates[0]
-    ax.set_xlim(x_coords[0], x_coords[-1])
     ax.set_xlabel(axname(cube.space[0]).capitalize())
 
     if cube.space[0] == 'h':
@@ -107,7 +106,6 @@ def draw_cube_series_on_ax(
     ax: Axes,
     cube: ColorCube,
     *,
-    title: str | None = None,
     var: str,
     pretty: bool | str = True,
     linewidth: float = 1.4,
@@ -123,8 +121,6 @@ def draw_cube_series_on_ax(
     y_max = float(np.nanmax(cube[var]))
     y_min_v = float(y_min) if y_min is not None else float(np.nanmin(cube[var]))
     _format_axes_for_cube(ax, cube, var, ylim=(y_min_v, y_max), pretty=_resolve_pretty(pretty, cube.space))
-    if title:
-        ax.set_title(title)
     return ax
 
 

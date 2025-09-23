@@ -145,7 +145,8 @@ class ColorCube:
         """
         import skimage as ski
 
-        hsv_grid_coords = coordinate_grid(h, s, v)
+        # Wrap hue (because it's cyclic), but clip saturation and value
+        hsv_grid_coords = coordinate_grid(h % 1, np.clip(s, 0, 1), np.clip(v, 0, 1))
         grid = ski.color.hsv2rgb(hsv_grid_coords)
 
         # Calculate bias based on S and V coordinates using bilinear interpolation

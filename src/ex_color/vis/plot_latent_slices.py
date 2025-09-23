@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Sequence, cast
+from typing import Any, Sequence, TypeAlias, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,6 +11,9 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 from ex_color.data.color_cube import ColorCube
 from utils.plt import Theme
+
+Dim: TypeAlias = int | None
+LatentD: TypeAlias = tuple[Dim, Dim, Dim]
 
 
 def draw_latent_3d(
@@ -54,6 +57,7 @@ def draw_latent_3d(
         linewidths=linewidths,
         s=s,  # type: ignore
         alpha=alpha,
+        clip_on=False,
     )
 
     return {'scatter': scatter}
@@ -63,18 +67,39 @@ def draw_circle_3d(
     ax: Axes3D,
     r=1,
     *,
+    rx: float | None = None,
+    ry: float | None = None,
     verts=100,
     facecolor: ColorType | None = 'none',
     edgecolor: ColorType | None = 'none',
     linewidth: float | None = 1.0,
     zorder: float | None = None,
 ):
-    theta = np.linspace(0, 2 * np.pi, verts)
-    x = r * np.cos(theta)
-    y = r * np.sin(theta)
-    z = np.full_like(x, zorder or 0.0)
+    """
+    Draw a circle or ellipse in the XY plane at a fixed Z, degenerating to a line if needed.
 
-    # Create vertices for the filled circle
+    Args:
+        ax: 3D axes to draw on.
+        r: Base radius when rx/ry are not provided.
+        rx: Ellipse radius along X. If 0 (or nearly), degenerate to a vertical line.
+        ry: Ellipse radius along Y. If 0 (or nearly), degenerate to a horizontal line.
+        verts: Sampling resolution for the polygonal approximation.
+        facecolor: Face color for the filled polygon.
+        edgecolor: Edge color for the polygon outline or line.
+        linewidth: Line width for outline or degenerate line.
+        zorder: Z plane at which to draw (used as the Z coordinate, not 2D painter's z-order).
+    """
+    # Effective radii
+    Rx = float(r if rx is None else rx)
+    Ry = float(r if ry is None else ry)
+    zplane = float(0.0 if (zorder is None) else zorder)
+
+    theta = np.linspace(0, 2 * np.pi, verts)
+    x = Rx * np.cos(theta)
+    y = Ry * np.sin(theta)
+    z = np.full_like(x, zplane)
+
+    # Create vertices for the filled ellipse
     circle_verts = [list(zip(x, y, z, strict=True))]
     facecolors = [facecolor] * len(circle_verts)
     edgecolors = [edgecolor] * len(circle_verts)
@@ -358,13 +383,13 @@ def plot_latent_grid_3d_from_cube(
     )
 
 
-def draw_latent_panel(
+def draw_latent_panel(  # noqa: C901
     ax: Axes3D,
     latents: torch.Tensor | np.ndarray,
     colors: torch.Tensor | np.ndarray,
     colors_compare: torch.Tensor | np.ndarray | None,
     *,
-    dims: tuple[int, int, int],
+    dims: LatentD,
     dot_radius: float,
     theme: Theme,
     annotations: Sequence[ConicalAnnotation] | None = None,
@@ -376,7 +401,12 @@ def draw_latent_panel(
     Contract
     - Inputs: latents [..., D], colors [..., 3], colors_compare [..., 3] or None; dims (i,j,k)
     - Output: draws on ax; returns ax
-    - Errors: raises if dims out of range
+    - Errors: raises if any integer in dims is out of range
+
+    Notes
+    -----
+    - If a component of dims is None, that axis is projected to 0 for all points
+      (i.e., we plot as if that coordinate were 0 for every sample).
     """
     if colors_compare is None:
         colors_compare = colors
@@ -394,9 +424,26 @@ def draw_latent_panel(
     colors_compare = colors_compare.reshape(-1, colors_compare.shape[-1])
 
     i, j, k = dims
-    lat_3d = latents[:, [i, j, k]]
+    D = int(latents.shape[-1])
 
-    draw_circle_3d(ax, facecolor=theme.val('#8888', dark='#111', light='#eee'), zorder=-10)
+    # Validate any provided integer indices
+    for d in (i, j, k):
+        if d is not None and (d < 0 or d >= D):
+            raise IndexError(f'dims contains index out of range: {d} for latent dimension {D}')
+
+    N = int(latents.shape[0])
+
+    def _col(d: Dim) -> np.ndarray:
+        if d is None:
+            return np.zeros((N,), dtype=latents.dtype)
+        return latents[:, d]
+
+    lat_3d = np.stack((_col(i), _col(j), _col(k)), axis=1)
+
+    # Degenerate the unit circle to a line when i or j are None by collapsing the corresponding radius.
+    rx = 0.0 if i is None else 1.0
+    ry = 0.0 if j is None else 1.0
+    draw_circle_3d(ax, rx=rx, ry=ry, facecolor=theme.val('#8888', dark='#111', light='#eee'), zorder=-10)
     draw_latent_3d(
         ax,
         lat_3d,
@@ -405,9 +452,21 @@ def draw_latent_panel(
         alpha=1.0,
         dot_radius=dot_radius,
     )
-    draw_circle_3d(ax, edgecolor='#0005', linewidth=1, zorder=10)
+    draw_circle_3d(ax, rx=rx, ry=ry, edgecolor='#0005', linewidth=1, zorder=10)
     for a in annotations or []:
-        direction = np.asarray(a.direction)[[i, j, k]]
+        dir_full = np.asarray(a.direction)
+        if dir_full.ndim != 1:
+            dir_full = dir_full.reshape(-1)
+        dD = dir_full.shape[0]
+
+        if any(d is not None and (d < 0 or d >= dD) for d in (i, j, k)):
+            raise IndexError(f'annotation direction index out of range for direction length {dD}')
+
+        i_a = 0 if i is None else dir_full[i]
+        j_a = 0 if j is None else dir_full[j]
+        k_a = 0 if k is None else dir_full[k]
+
+        direction = np.array([i_a, j_a, k_a], dtype=float)
         draw_cone_3d(ax, direction=direction, angle=a.angle, **a.line_kwargs)
 
     # Clean up the 3D axes
@@ -418,8 +477,8 @@ def draw_latent_panel(
     # Always look downwards from the "top": the axis ordering (i,j,k) determines the view
     ax.view_init(elev=90, azim=-90)
     ax.set_proj_type('ortho')
-    ax.set_xlim(-1.0, 1.0)
-    ax.set_ylim(-1.0, 1.0)
+    ax.set_xlim(-1.0, 1.0, view_margin=0.0)
+    ax.set_ylim(-1.0, 1.0, view_margin=0.0)
 
     return ax
 
@@ -428,7 +487,7 @@ def draw_latent_panel_from_cube(
     ax: Axes3D,
     cube: ColorCube,
     *,
-    dims: tuple[int, int, int],
+    dims: LatentD,
     colors: str = 'color',
     colors_compare: str | None = None,
     latents: str = 'latents',
@@ -456,7 +515,7 @@ def plot_latent_grid_3d(
     colors: torch.Tensor | np.ndarray,
     colors_compare: torch.Tensor | np.ndarray | None = None,
     *,
-    dims: Sequence[tuple[int, int, int]],
+    dims: Sequence[LatentD],
     title: str | None = None,
     figsize_per_plot: tuple[float, float] = (6, 6),
     dot_radius: float = 10.0,
