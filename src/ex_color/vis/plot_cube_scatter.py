@@ -23,17 +23,17 @@ def draw_cube_scatter(
 
     x = cube[x_var].flatten()
     y = cube[y_var].flatten()
-    color = cube[color_var].reshape((-1, 3))
+    color = cube[color_var].reshape((-1, 3)) if color_var else None
 
     ax.scatter(
         x,
         y,
-        alpha=((x + y) / 2) * 0.9 + 0.1,
+        alpha=((x + y) / 2) * 0.9 + 0.1,  # type: ignore[reportArgumentType]
         s=2,
         color=color,
     )
     if regression:
-        slope, intercept, r, p_value, std_err = linregress(x, y)
+        slope, intercept, r = linregress(x, y)[:3]
         x_line = np.array([x.min(), x.max()])
         y_line = slope * x_line + intercept
         ax.plot(
