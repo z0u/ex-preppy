@@ -12,7 +12,7 @@ def levels(
     """
     Map values from one range to another.
 
-    Behaves like the Levels filter in Krita and PHotoshop.
+    Behaves like the Levels filter in Krita and Photoshop.
     """
     if abs(in_low - in_high) < 1e-10:
         # Degenerate to constant value

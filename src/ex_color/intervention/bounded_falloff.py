@@ -14,7 +14,7 @@ class BoundedFalloff(Mapper):
         self,
         a: Annotated[float, [Ge(0), Le(1)]],
         b: Annotated[float, [Ge(0), Le(1)]],
-        power: Annotated[float, [Ge(1)]] = 1.0,
+        power: Annotated[float, [Ge(0)]] = 1.0,
         eps=1e-8,
     ):
         super().__init__()
