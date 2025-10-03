@@ -97,7 +97,8 @@ In this milestone, we develop intervention functions and apply them to the struc
 Additional experiment runs for publication, including backports of features from later experiments: newer regularizers and standardized plots — including tables and plots for reconstruction error vs. color.
 
 - ⭐️ [2.4.1](docs/m2-control/ex-2.4.1-redux.ipynb): Re-run of [2.4](docs/m2-control/ex-2.4-post-norm-reg.ipynb), in which the network constructs a color wheel and we intervene on _red_.
-- ⭐️ [2.10.1](docs/m2-control/ex-2.10.1-delete-only-red-reformat.ipynb): Re-run of [2.10](docs/m2-control/ex-2.10-delete-only-red-5d-no-subspace.ipynb), in which the network isolates _red_ on its own dimension, and we ablate related weights.
+- ⭐️ [2.9.1](docs/m2-control/ex-2.9.1-redux.ipynb): Similar to [2.9](docs/m2-control/ex-2.9-delete-only-red-5d.ipynb), in which the network isolates _red_ on its own dimension, and we ablate related weights. Like 2.9, an anti-anchor regularizer is used; but unlike 2.9, the _desaturated_ label is not.
+- ⭐️ [2.10.1](docs/m2-control/ex-2.10.1-redux.ipynb): Re-run of [2.10](docs/m2-control/ex-2.10-delete-only-red-5d-no-subspace.ipynb), in which the network isolates _red_ on its own dimension, and we ablate related weights.
 
 To do:
 - Renormalize activations after deletion to "heal" the hole in latent space to make knowledge recovery harder.
