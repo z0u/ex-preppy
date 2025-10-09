@@ -43,13 +43,30 @@ class LabelProportionCallback(Callback):
         self._total_counts: int = 0
 
     # ---- helpers ----
-    def _accumulate_batch(self, trainer: Trainer, labels: dict[str, Tensor]):
+    def _accumulate_batch(self, trainer: Trainer, batch_size: int, labels: dict[str, Tensor]):
+        """
+        Accumulate label statistics for a batch.
+
+        Args:
+            trainer: The Lightning trainer.
+            batch_size: The local batch size (number of samples in this batch on this device).
+            labels: Dictionary of label tensors, may be empty if no labels are active.
+        """
+        # Get the device from trainer or default to CPU
+        device = trainer.strategy.root_device if hasattr(trainer.strategy, 'root_device') else torch.device('cpu')
+
+        # Global batch size across devices - always count this regardless of whether labels are active
+        count_local = torch.tensor(batch_size, device=device, dtype=torch.float32)
+        count_global = trainer.strategy.reduce(count_local, reduce_op='sum')  # type: ignore[arg-type]
+        batch_count_global = int(count_global.item())
+
+        # Update batch counts (always, even if no active labels)
+        self._epoch_counts += batch_count_global
+        self._total_counts += batch_count_global
+
+        # If no labels are active, we're done (but we've still counted the batch)
         if not labels:
             return
-        # Assume all labels tensors share batch dimension size
-        # Count samples from the first label tensor
-        any_label = next(iter(labels.values()))
-        batch_size_local = int(any_label.shape[0])
 
         # Device-safe: ensure tensors are float32 on the current device
         # Reduce sums across processes/devices
@@ -72,19 +89,12 @@ class LabelProportionCallback(Callback):
         any_label_count_global = trainer.strategy.reduce(any_label_count_local, reduce_op='sum')  # type: ignore[arg-type]
         any_label_count = float(any_label_count_global.item())
 
-        # Global batch size across devices
-        count_local = torch.tensor(batch_size_local, device=any_label.device, dtype=torch.float32)
-        count_global = trainer.strategy.reduce(count_local, reduce_op='sum')  # type: ignore[arg-type]
-        batch_count_global = int(count_global.item())
-
         # Update epoch and total accumulators
         for name, s in label_sums.items():
             self._epoch_label_sums[name] += s
             self._total_label_sums[name] += s
         self._epoch_label_sums['_any'] += any_label_count
         self._total_label_sums['_any'] += any_label_count
-        self._epoch_counts += batch_count_global
-        self._total_counts += batch_count_global
 
     def _log_dict(self, trainer: Trainer, values: Dict[str, float], *, step: int | None = None):
         logger = trainer.logger
@@ -98,15 +108,19 @@ class LabelProportionCallback(Callback):
         # batch is expected to be (data, labels)
         if not isinstance(batch, (tuple, list)) or len(batch) < 2:
             raise ValueError("Batch isn't labelled. Add a collate function or remove this callback.")
+        data = batch[0]
         labels = batch[1]
         if not isinstance(labels, dict):
             raise ValueError("Batch isn't labelled. Add a collate function or remove this callback.")
+
+        # Get batch size from data tensor
+        batch_size = int(data.shape[0])
 
         if self.get_active_labels:
             # Select labels that are used in this batch. E.g. according to which regularizers are on-schedule (active).
             active_labels = self.get_active_labels()
             labels = {k: v for k, v in labels.items() if k in active_labels}
-        self._accumulate_batch(trainer, labels)
+        self._accumulate_batch(trainer, batch_size, labels)
 
     @override
     def on_train_epoch_start(self, trainer, pl_module):
@@ -142,7 +156,8 @@ class LabelProportionCallback(Callback):
         def _log():
             if trainer.logger:
                 trainer.logger.log_metrics(metrics)
-            human_readable = [f'{k}: {v:.3%}' for k, v in metrics_.items()]
+            # Format: label: count (percentage)
+            human_readable = [f'{k}: {int(self._total_label_sums[k])} ({v:.3%})' for k, v in metrics_.items()]
             log.info('Label frequencies (n=%d): %s', self._total_counts, ', '.join(human_readable))
 
         _log()
