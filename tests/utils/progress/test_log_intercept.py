@@ -40,12 +40,13 @@ def test_progress_aware_log_handler_handles_exceptions():
     def raise_exc(record):
         raise RuntimeError('fail')
 
-    handler.handle = raise_exc
+    handler.handle = raise_exc  # type: ignore[method-assign]
     # Patch handleError to track call
-    wrapper.handleError = Mock()
+    mock_handler_error = Mock()
+    wrapper.handleError = mock_handler_error  # type: ignore[method-assign]
     record = logging.LogRecord('test', logging.INFO, '', 0, 'msg', (), None)
     wrapper.emit(record)
-    wrapper.handleError.assert_called_once_with(record)
+    mock_handler_error.assert_called_once_with(record)
 
 
 def test_log_interceptor_start_and_stop_restores_handlers(monkeypatch):

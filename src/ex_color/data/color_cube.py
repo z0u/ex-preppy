@@ -143,11 +143,11 @@ class ColorCube:
                 - White (S=0, V=1) has a bias of 1 / n_hues.
                 - Black (S=any, V=0) has a bias of 1 / (n_sat * n_hues).
         """
-        import skimage as ski
+        from skimage.color import hsv2rgb
 
         # Wrap hue (because it's cyclic), but clip saturation and value
         hsv_grid_coords = coordinate_grid(h % 1, np.clip(s, 0, 1), np.clip(v, 0, 1))
-        grid = ski.color.hsv2rgb(hsv_grid_coords)
+        grid = hsv2rgb(hsv_grid_coords)
 
         # Calculate bias based on S and V coordinates using bilinear interpolation
         # Corner weights:

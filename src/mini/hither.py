@@ -23,14 +23,14 @@ CallbackContextManager: TypeAlias = AbstractAsyncContextManager[Callback[P]]
 AsyncCallbackContextManager: TypeAlias = AbstractAsyncContextManager[AsyncCallback[P]]
 
 # @asynccontextmanager needs *both* of these types to match
-AsyncCallbackContextDecorator: TypeAlias = Factory[[], AsyncContextDecorator | AsyncCallbackContextManager[P]]
+AsyncCallbackContextDecorator: TypeAlias = Factory[tuple[()], AsyncContextDecorator | AsyncCallbackContextManager[P]]  # type: ignore[misc]
 """Functions decorated with @asynccontextmanager (they're factories that return CMs)"""
 
 AsyncBatchCallback: TypeAlias = AsyncCallback[[list[T]]]
 AsyncBatchCallbackContextManager: TypeAlias = AbstractAsyncContextManager[AsyncBatchCallback[T]]
 
 # @asynccontextmanager needs *both* of these types to match
-AsyncBatchCallbackContextDecorator: TypeAlias = Factory[[], AsyncContextDecorator | AsyncBatchCallbackContextManager[T]]
+AsyncBatchCallbackContextDecorator: TypeAlias = Factory[tuple[()], AsyncContextDecorator | AsyncBatchCallbackContextManager[T]]  # type: ignore[misc]
 """Functions decorated with @asynccontextmanager (they're factories that return CMs)"""
 
 # These function decorators cause a function to always run locally, even when called in a remote Modal worker.
@@ -62,7 +62,7 @@ def run_hither(callback: AsyncCallbackContextManager[P]) -> CallbackContextManag
 
 
 @overload
-def run_hither(callback: AsyncCallbackContextDecorator[P]) -> Factory[[], CallbackContextManager[P]]: ...
+def run_hither(callback: AsyncCallbackContextDecorator[P]) -> Factory[tuple[()], CallbackContextManager[P]]: ...
 
 
 def run_hither(callback):  # type: ignore
@@ -110,7 +110,7 @@ def run_hither_batch(callback: AsyncBatchCallbackContextManager[T]) -> CallbackC
 
 
 @overload
-def run_hither_batch(callback: AsyncBatchCallbackContextDecorator[T]) -> Factory[[], CallbackContextManager[T]]: ...
+def run_hither_batch(callback: AsyncBatchCallbackContextDecorator[T]) -> Factory[tuple[()], CallbackContextManager[T]]: ...
 
 
 def run_hither_batch(callback):  # type: ignore

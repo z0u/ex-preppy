@@ -8,7 +8,7 @@ R = TypeVar('R')
 
 def coerce_to_async(fn: Callable[P, R | Coroutine[Any, Any, R]]) -> Callable[P, Coroutine[Any, Any, R]]:
     if inspect.iscoroutinefunction(fn):
-        return fn
+        return cast(Callable[P, Coroutine[Any, Any, R]], fn)
 
     fn = cast(Callable[P, R], fn)
 

@@ -44,6 +44,7 @@ class Mapper(nn.Module, ABC):
     def forward(self, alignment: Tensor) -> Tensor: ...
 
     @property
+    @abstractmethod
     def annotations(self) -> Sequence[ConstAnnotation]:
         """Annotations for visualization of hyperparameters"""
         ...

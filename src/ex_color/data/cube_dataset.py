@@ -1,7 +1,7 @@
 from typing import Callable, Literal, overload
 
 import numpy as np
-import skimage as ski
+from skimage.color import rgb2hsv
 import torch
 from torch import Tensor
 from torch.utils.data import ConcatDataset, Dataset
@@ -30,7 +30,7 @@ def blueness(rgb_array: np.ndarray) -> np.ndarray:
 
 def vibrancy(rgb_array: np.ndarray) -> np.ndarray:
     """Compute vibrancy (saturation) for numpy RGB array with shape [..., 3]"""
-    grid = ski.color.rgb2hsv(rgb_array)
+    grid = rgb2hsv(rgb_array)
 
     S_grid = grid[..., 1]
     V_grid = grid[..., 2]
