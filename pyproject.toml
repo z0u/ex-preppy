@@ -115,13 +115,6 @@ ignore = [
 # Exclude notebooks and visualization files from type checking to reduce memory usage
 # ty struggles with notebooks and optional dependencies like matplotlib/IPython
 exclude = [
-    "**/*.ipynb",
-    "src/**/vis.py",
-    "src/**/vis/",
-    "src/utils/plt.py",
-    "src/utils/nb.py",
-    "src/utils/_nb.py",
-    "src/utils/lr_finder/vis.py",
     "scripts/build-site-config.py",
 ]
 
