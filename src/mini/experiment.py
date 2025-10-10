@@ -315,7 +315,7 @@ class Experiment:
 
 
 def _wrap_with_guard(
-    async_fn: AsyncCallable[tuple[()], R],
+    async_fn: AsyncCallable[..., R],
     guard: GuardContext | GuardContextFn[P] | GuardContextFn[...],
     original_fn: AsyncCallable[P, R],
 ):
