@@ -1,8 +1,10 @@
+from typing import Callable, Literal, overload
+
 import numpy as np
+import skimage as ski
 import torch
 from torch import Tensor
-from torch.utils.data import Dataset
-import skimage as ski
+from torch.utils.data import ConcatDataset, Dataset
 
 from ex_color.data.color_cube import ColorCube
 
@@ -37,7 +39,7 @@ def vibrancy(rgb_array: np.ndarray) -> np.ndarray:
     return S_grid * V_grid
 
 
-class CubeDataset(Dataset):
+class CubeDataset(Dataset[dict[str, Tensor]]):
     """PyTorch Dataset that wraps a ColorCube."""
 
     def __init__(self, cube: ColorCube):
@@ -111,3 +113,63 @@ def exact_labels(batch) -> tuple[Tensor, dict[str, Tensor]]:
     }
 
     return colors, labels
+
+
+@overload
+def prep_color_dataset(
+    subs: int,
+    sample_at: Literal['cell-corners'],
+    **attributes: Callable[[np.ndarray], np.ndarray],
+) -> CubeDataset: ...
+@overload
+def prep_color_dataset(
+    subs: int,
+    sample_at: Literal['cell-centers'],
+    *,
+    add_corners: bool = True,
+    **attributes: Callable[[np.ndarray], np.ndarray],
+) -> ConcatDataset[dict[str, Tensor]]: ...
+def prep_color_dataset(
+    subs: int,
+    sample_at='cell-corners',
+    *,
+    add_corners=None,
+    **attributes: Callable[[np.ndarray], np.ndarray],
+):
+    """
+    Prepare an RGB cube dataset.
+
+    Args:
+        subs: Number of subdivisions along each axis
+        sample_at: 'cell-corners' or 'cell-centers' to specify sampling strategy
+        add_corners: Whether to add corner points (only relevant if sampling at cell centers)
+        **attributes: Additional attributes to compute from RGB colors
+
+    If sampling at cell corners, the dataset will contain `subs³` points. If
+    sampling at cell centers, the dataset will contain `(subs-1)³` points plus
+    optionally the `8` corner points if `add_corners` is True (default).
+    """
+    if sample_at == 'cell-centers':
+        # Generate points at cell centers
+        offset = 1 / (2 * subs)
+        coords = np.linspace(offset, 1 - offset, subs - 1)
+    else:
+        # Generate points at cell corners
+        coords = np.linspace(0, 1, subs)
+    cube = ColorCube.from_rgb(r=coords, g=coords, b=coords)
+    for name, func in attributes.items():
+        cube = cube.assign(name, func(cube['color']))
+
+    if add_corners is None:
+        add_corners = sample_at == 'cell-centers'  # Default to add corners if offset is used
+    if add_corners:
+        # Add the corners of the cube as key points - useful for validation
+        # data, where the points are the centers of the cells but we still want
+        # to check the primary and secondary colors, and black and white.
+        corner_coords = np.array([0.0, 1.0])
+        corner_cube = ColorCube.from_rgb(r=corner_coords, g=corner_coords, b=corner_coords)
+        for name, func in attributes.items():
+            corner_cube = corner_cube.assign(name, func(corner_cube['color']))
+        return ConcatDataset([CubeDataset(cube), CubeDataset(corner_cube)])
+
+    return CubeDataset(cube)
