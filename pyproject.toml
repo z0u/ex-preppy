@@ -32,7 +32,7 @@ torch = [
 
 [dependency-groups]
 dev = [
-    "basedpyright>=1.29.1",
+    "ty>=0.0.1a21",
     "pandas-stubs",
     "pytest-asyncio>=0.25.3",
     "pytest>=8.3.5",
@@ -111,15 +111,7 @@ ignore = [
     "D",
 ]
 
-[tool.basedpyright]
-venvPath = "."
-venv = ".venv"
-typeCheckingMode = "standard"
-include = [
-    "src",
-    "tests",
-    "docs",
-]
+[tool.ty]
 
 
 [tool.pytest.ini_options]

@@ -2,6 +2,6 @@
 
 set -euo pipefail
 
-( set -x; uv run --no-sync basedpyright "$@" )
+( set -x; uv run --no-sync ty check "$@" )
 
 echo "✅ Type check passed"
