@@ -1,7 +1,7 @@
 import logging
 from typing import Iterator, List, TypeAlias
 
-import skimage as ski
+from skimage.color import rgb2hsv
 import numpy as np
 import numpy.typing as npt
 from torch.utils.data import Sampler
@@ -67,7 +67,7 @@ def vibrancy(cube: ColorCube) -> npt.NDArray[np.float64]:
         (high S and high V), zeros for black (V=0) and grays (S=0), and
         intermediate values for other colors.
     """
-    grid = ski.color.rgb2hsv(cube.rgb_grid)
+    grid = rgb2hsv(cube.rgb_grid)
 
     S_grid = grid[..., 1]
     V_grid = grid[..., 2]

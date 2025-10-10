@@ -97,13 +97,12 @@ run_typecheck() {
     # Analyze the snapshot as the project to reflect what will be pushed
     (
       set -x
+      cd "$SNAPSHOT_DIR"
       # Use the main venv directory to avoid reinstalling packages
-      uv run --project "$REPO_ROOT" --no-sync basedpyright \
-        --project "$SNAPSHOT_DIR" \
-        --venvpath "$REPO_ROOT"
+      uv run --project "$REPO_ROOT" --no-sync ty check
     )
   else
-    ( set -x; uv run --no-sync basedpyright )
+    ( set -x; uv run --no-sync ty check )
   fi
 }
 

@@ -428,7 +428,7 @@ def resolve_timesteps(steps: pd.Series) -> pd.Series:
     relative_indices = steps.index.difference(anchor_indices)
 
     for idx in relative_indices:
-        step_str = steps.loc[idx]
+        step_str: str = steps.loc[idx]  # type: ignore[assignment]
 
         if not step_str.startswith(('-', '+')):
             log.warning(

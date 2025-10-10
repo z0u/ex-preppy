@@ -53,7 +53,7 @@ case "${1:-all}" in
 			  auth:              authenticate with Modal and WandB
 			  format [...args]:  format code (ruff format)
 			  lint   [...args]:  run linters (ruff check)
-			  types  [...args]:  check types (basedpyright)
+			  types  [...args]:  check types (ty)
 			  tests  [...args]:  run tests (pytest)
 			  dead   [...args]:  look for dead code (vulture)
 			  check  [...args]:  run checks (default: all checks)

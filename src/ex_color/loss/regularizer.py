@@ -1,4 +1,5 @@
 import logging
+from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Literal
 
@@ -20,6 +21,7 @@ class Regularizer(nn.Module):
         Tensor: A tensor of shape [B] containing the regularization loss for each sample, or [] (scalar) for mean loss.
     """
 
+    @abstractmethod
     def __call__(self, activations: Tensor, /) -> Tensor: ...
 
 
