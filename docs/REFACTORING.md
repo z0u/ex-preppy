@@ -12,35 +12,6 @@ Three new modules have been created to promote code reuse across experiment note
 
 ## Workflows Module (`ex_color.workflows`)
 
-### Data Preparation
-
-```python
-from ex_color.workflows import prep_train_data, prep_val_data
-
-# Create training data loader with default red weighting
-train_loader = prep_train_data(
-    training_subs=8,
-    batch_size=64,
-)
-
-# Create validation data loader with default red filtering
-val_loader = prep_val_data(
-    training_subs=8,
-    batch_size=64,
-)
-
-# Custom weighting/filtering functions
-def custom_red_weight(c):
-    from ex_color.data.cube_dataset import redness
-    return redness(c) ** 10 * 0.1
-
-train_loader = prep_train_data(
-    training_subs=8,
-    batch_size=64,
-    red_weight_fn=custom_red_weight,
-)
-```
-
 ### Training
 
 ```python
@@ -236,57 +207,3 @@ display(comparison_df)
 ## Migration from Notebook Code
 
 If you have existing notebook code, here's how to migrate:
-
-### Before (inline in notebook)
-
-```python
-# Cell: Data preparation
-from ex_color.data.cube_dataset import prep_color_dataset, redness, stochastic_labels
-
-def prep_train_data(training_subs: int, *, batch_size: int) -> DataLoader:
-    dataset = prep_color_dataset(
-        training_subs,
-        sample_at='cell-corners',
-        red=lambda c: redness(c) ** 8 * 0.08,
-    )
-    return DataLoader(
-        dataset,
-        batch_size=batch_size,
-        num_workers=4,
-        sampler=RandomSampler(dataset, num_samples=len(dataset), replacement=True),
-        collate_fn=stochastic_labels,
-    )
-
-train_loader = prep_train_data(CUBE_SUBDIVISIONS, batch_size=BATCH_SIZE)
-```
-
-### After (using refactored module)
-
-```python
-# Cell: Data preparation
-from ex_color.workflows import prep_train_data
-
-train_loader = prep_train_data(CUBE_SUBDIVISIONS, batch_size=BATCH_SIZE)
-```
-
-### Benefits
-
-1. **Less boilerplate**: Focus on experiment-specific code
-2. **Consistency**: Same patterns across notebooks
-3. **Tested**: All refactored code has unit tests
-4. **Maintainable**: Bug fixes and improvements propagate to all notebooks
-5. **Type-safe**: Full type annotations and type checking
-
-## Examples in Practice
-
-See these notebooks for examples of the refactored code:
-
-- `docs/m2-control/ex-2.9.1-redux.ipynb` - Original source of patterns
-- (Future) Updated notebooks using the refactored modules
-
-## Notes
-
-- All functions support customization through optional parameters
-- The evaluation framework is designed for async workflows
-- Visualization functions use the existing `utils.nb.displayer_mpl` pattern
-- The modules integrate seamlessly with existing infrastructure (Modal, Wandb, Lightning)

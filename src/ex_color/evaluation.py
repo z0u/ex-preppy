@@ -182,7 +182,7 @@ def correlation_stats(
 def evaluate_single_plan(
     model: nn.Module,
     plan: EvaluationPlan,
-    test_fn: Callable[[nn.Module, list[InterventionConfig], ColorCube], ColorCube],
+    test_fn: Callable[[nn.Module, Sequence[InterventionConfig], ColorCube], ColorCube],
     test_data: ColorCube,
 ) -> tuple[Resultset, EvaluationContext]:
     """
@@ -219,7 +219,7 @@ async def evaluate_seed(
     model_factory: Callable[[int], Awaitable[nn.Module]],
     plans: Mapping[str, EvaluationPlan],
     correlation_specs: Sequence[CorrelationSpec],
-    test_fn: Callable[[nn.Module, list[InterventionConfig], ColorCube], ColorCube],
+    test_fn: Callable[[nn.Module, Sequence[InterventionConfig], ColorCube], ColorCube],
     test_data: ColorCube,
 ) -> tuple[RunMetrics, nn.Module, dict[str, EvaluationContext]]:
     """
@@ -340,8 +340,8 @@ async def run_multi_seed_training(
     train_fn: Callable[[int], Awaitable[nn.Module]],
     plans: Sequence[EvaluationPlan],
     correlation_specs: Sequence[CorrelationSpec],
-    test_fn: Callable[[nn.Module, list[InterventionConfig], ColorCube], ColorCube],
-    test_fn_named: Callable[[nn.Module, list[InterventionConfig], Any], Any],
+    test_fn: Callable[[nn.Module, Sequence[InterventionConfig], ColorCube], ColorCube],
+    test_fn_named: Callable[[nn.Module, Sequence[InterventionConfig], Any], Any],
     test_data: ColorCube,
     named_colors_factory: Callable[[], Any],
     *,

@@ -7,14 +7,17 @@ plots across multiple experiment notebooks.
 
 import re
 from collections.abc import Callable, Sequence
-from typing import Any
+from typing import Any, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.figure import Figure
+from matplotlib.axes import Axes
 
+from mini.temporal import Dopesheet, ParamGroup, Timeline, plot_timeline, realize_timeline
 from ex_color.data.color_cube import ColorCube
-from ex_color.vis import draw_stacked_results, ConicalAnnotation, draw_cube_scatter, plot_colors, plot_cube_series
+from ex_color.evaluation import Resultset
+from ex_color.vis import ConicalAnnotation, draw_cube_scatter, draw_stacked_results, plot_colors, plot_cube_series
 from ex_color.vis.plot_latent_slices import LatentD
 from utils.nb import displayer_mpl
 from utils.plt import Theme
@@ -104,7 +107,7 @@ def visualize_reconstruction_loss(
 
 
 def visualize_stacked_results(
-    resultset: Any,  # Resultset from evaluation module
+    resultset: Resultset,
     *,
     latent_dims: tuple[LatentD, LatentD],
     max_error: float | None = None,
@@ -223,3 +226,126 @@ def hstack_named_results(*resultsets: Any) -> Any:  # pd.DataFrame
         )
         df[f'{name}-delta'] = df[name] - df[names[0]]
     return df
+
+
+def plot_dopesheet(dopesheet: Dopesheet, theme: Theme):
+    timeline = Timeline(dopesheet)
+    history_df = realize_timeline(timeline)
+    keyframes_df = dopesheet.as_df()
+
+    fig = plt.figure(figsize=(9, 3), constrained_layout=True)
+    axs = fig.subplots(2, 1, sharex=True, height_ratios=[3, 1])
+    ax1, ax2 = cast(tuple[Axes, ...], axs)
+
+    plot_timeline(
+        history_df,
+        keyframes_df,
+        groups=(ParamGroup(name='', params=[p for p in dopesheet.props if p not in {'lr'}]),),
+        theme=theme,
+        ax=ax1,
+        show_phase_labels=False,
+    )
+    ax1.set_ylabel('Weight')
+    ax1.set_xlabel('')
+
+    plot_timeline(
+        history_df,
+        keyframes_df,
+        groups=(ParamGroup(name='', params=['lr']),),
+        theme=theme,
+        ax=ax2,
+        show_legend=False,
+        show_phase_labels=False,
+    )
+    ax2.set_ylabel('LR')
+
+    # add a little space on the y-axis extents
+    ax1.set_ylim(ax1.get_ylim()[0] * 1.1, ax1.get_ylim()[1] * 1.1)
+    ax2.set_ylim(ax2.get_ylim()[0] * 1.1, ax2.get_ylim()[1] * 1.1)
+
+    return fig
+
+
+def show_dopesheet_as_md(dopesheet: Dopesheet, nbid: str) -> None:
+    """
+    Display a parameter schedule dopesheet with markdown and a plot.
+
+    Args:
+        dopesheet: Dopesheet object with parameter schedule
+        title: Title for the plot
+        nbid: Notebook ID for filename prefix
+    """
+    from IPython.display import Markdown, display
+
+    display(Markdown(f"""## Parameter schedule \n{dopesheet.to_markdown()}"""))
+
+
+def visualize_dopesheet(dopesheet: Dopesheet, nbid: str) -> None:
+    """
+    Display a parameter schedule dopesheet with markdown and a plot.
+
+    Args:
+        dopesheet: Dopesheet object with parameter schedule
+        nbid: Notebook ID for filename prefix
+    """
+    with displayer_mpl(
+        f'large-assets/ex-{nbid}-dopesheet.png',
+        alt_text="""Plot showing the parameter schedule for the training run. The plot has two sections: the upper section shows various regularization weights over time, and the lower section shows the learning rate over time. The x-axis represents training steps.""",
+    ) as show:
+        show(lambda theme: plot_dopesheet(dopesheet, theme))
+
+
+class NbViz:
+    """
+    Helper class to manage visualization state and utilities.
+
+    Attributes:
+        nbid: Notebook ID for filename prefix
+    """
+
+    def __init__(self, nbid: str) -> None:
+        self.nbid = nbid
+
+    def vis_recon_loss(self, data: ColorCube, tags: Sequence[str] = ()):
+        visualize_reconstruction_loss(data, tags=tags, nbid=self.nbid)
+
+    def vis_recon_colors(self, data: ColorCube, tags: Sequence[str] = ()):
+        visualize_reconstructed_cube(data, tags=tags, nbid=self.nbid)
+
+    def vis_stacked(
+        self,
+        resultset: Resultset,
+        latent_dims: tuple[LatentD, LatentD],
+        max_error: float | None = None,
+        latent_annotations: Sequence[ConicalAnnotation | Callable[[Theme], ConicalAnnotation]] = (),
+    ):
+        visualize_stacked_results(
+            resultset,
+            latent_dims=latent_dims,
+            max_error=max_error,
+            latent_annotations=latent_annotations,
+            nbid=self.nbid,
+        )
+
+    def vis_error_vs_similarity(
+        self,
+        cube: ColorCube,
+        anchor_hsv: tuple[float, float, float],
+        tags: Sequence[str] = (),
+        anchor_name: str = 'anchor',
+        power: float = 2.0,
+    ):
+        visualize_error_vs_similarity(
+            cube,
+            anchor_hsv,
+            tags=tags,
+            anchor_name=anchor_name,
+            power=power,
+            nbid=self.nbid,
+        )
+
+    def dopesheet_md(self, dopesheet: Dopesheet):
+        show_dopesheet_as_md(dopesheet, nbid=self.nbid)
+
+    def vis_dopesheet(self, dopesheet: Dopesheet):
+        visualize_dopesheet(dopesheet, nbid=self.nbid)
