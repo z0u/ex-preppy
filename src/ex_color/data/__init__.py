@@ -5,6 +5,7 @@ from ex_color.data.cube_dataset import (
     blueness,
     exact_labels,
     greenness,
+    prep_color_dataset,
     redness,
     stochastic_labels,
     vibrancy,
@@ -14,14 +15,15 @@ from ex_color.data.similarity import hsv_similarity
 __all__ = [
     'ColorCube',
     'CubeDataset',
-    'hsv_similarity',
+    'prep_color_dataset',
     'redness',
     'greenness',
     'blueness',
     'vibrancy',
+    'hsv_similarity',
     'stochastic_labels',
     'exact_labels',
-    'get_named_colors_df',
+    # Colors
     'hues',
     'hues3',
     'hues6',
@@ -29,4 +31,5 @@ __all__ = [
     'grays2',
     'grays3',
     'grays5',
+    'get_named_colors_df',
 ]
