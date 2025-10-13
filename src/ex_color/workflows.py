@@ -228,13 +228,13 @@ def infer_with_latent_capture(
     return y, latents
 
 
-def test_model_on_cube(
+def evaluate_model_on_cube(
     model: nn.Module,
     interventions: list[InterventionConfig],
     test_data: ColorCube,
 ) -> ColorCube:
     """
-    Test model on a color cube and return reconstructions with latents and loss.
+    Evaluate model on a color cube and return reconstructions with latents and loss.
 
     Args:
         model: Trained model
@@ -254,13 +254,13 @@ def test_model_on_cube(
     )
 
 
-def test_model_on_named_colors(
+def evaluate_model_on_named_colors(
     model: nn.Module,
     interventions: list[InterventionConfig],
     test_data,  # pd.DataFrame
 ):
     """
-    Test model on named colors and return reconstructions with loss.
+    Evaluate model on named colors and return reconstructions with loss.
 
     Args:
         model: Trained model
