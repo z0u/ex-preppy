@@ -104,6 +104,7 @@ def infer_with_latent_capture(
     test_data: Tensor,
     interventions: list[InterventionConfig],
     layer_name: str = 'bottleneck',
+    num_workers: int = 0,
 ) -> tuple[Tensor, Tensor]:
     """
     Run inference on test data and capture latent activations.
@@ -113,6 +114,7 @@ def infer_with_latent_capture(
         test_data: Test data tensor with shape [..., 3] (RGB)
         interventions: List of intervention configurations to apply
         layer_name: Name of the layer to capture activations from
+        num_workers: Number of worker processes for data loading
 
     Returns:
         Tuple of (predictions, latents):
@@ -133,6 +135,7 @@ def infer_with_latent_capture(
             TensorDataset(test_data.reshape((-1, 3))),
             batch_size=64,
             collate_fn=lambda batch: torch.stack([row[0] for row in batch], 0),
+            num_workers=num_workers,
         ),
     )
     assert batches is not None
