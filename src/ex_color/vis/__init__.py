@@ -10,11 +10,13 @@ from ex_color.vis.plot_latent_slices import (
 )
 from ex_color.vis.stacked_fig import StackedFigure, build_stacked_figure, draw_stacked_results
 from ex_color.vis.tabular import ColorTableHtmlFormatter, ColorTableLatexFormatter
+from ex_color.vis.helpers import NbViz
 
 __all__ = [
     'build_stacked_figure',
     'ColorTableHtmlFormatter',
     'ColorTableLatexFormatter',
+    'NbViz',
     'ConicalAnnotation',
     'draw_color_slice',
     'draw_cube_series_on_ax',

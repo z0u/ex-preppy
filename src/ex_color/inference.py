@@ -1,12 +1,12 @@
 import logging
-from typing import override
+from typing import Sequence, override
 
 import lightning as L
 import torch.nn as nn
 from torch import Tensor
 from torch.utils.hooks import RemovableHandle
 
-from ex_color.hooks import ActivationModifyHook, ActivationCaptureBufferHook
+from ex_color.hooks import ActivationCaptureBufferHook, ActivationModifyHook
 from ex_color.intervention.intervention import InterventionConfig
 
 log = logging.getLogger(__name__)
@@ -18,8 +18,8 @@ class InferenceModule(L.LightningModule):
     def __init__(
         self,
         model: nn.Module,
-        interventions: list[InterventionConfig],
-        capture_layers: list[str] | None = None,
+        interventions: Sequence[InterventionConfig],
+        capture_layers: Sequence[str] | None = None,
     ):
         super().__init__()
         self.save_hyperparameters(ignore=['model'])
