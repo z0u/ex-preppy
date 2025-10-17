@@ -251,7 +251,7 @@ def draw_boxplot(
     # else:
     #     ax.ticklabel_format(style='sci', axis='x', scilimits=(0, 0), useMathText=True)
     if xlim is not None:
-        ax.set_xlim(xlim)
+        ax.set_xlim(*xlim)
     return fig
 
 
