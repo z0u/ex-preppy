@@ -6,6 +6,7 @@ across multiple experiment notebooks.
 """
 
 import logging
+from dataclasses import dataclass
 from tempfile import gettempdir
 from typing import Any, Sequence
 
@@ -28,6 +29,14 @@ from utils.progress.lightning import LightningProgress
 log = logging.getLogger(__name__)
 
 
+@dataclass
+class _Result:
+    model: CNColorMLP
+    id_: str
+    url: str
+    summary: dict[str, Any]
+
+
 def train_model(
     model: CNColorMLP,
     dopesheet: Dopesheet,
@@ -38,7 +47,7 @@ def train_model(
     experiment_name: str,
     project: str,
     hparams: dict[str, Any] | None = None,
-) -> CNColorMLP:
+) -> _Result:
     """
     Train a model with the given dopesheet and regularizers.
 
@@ -56,6 +65,7 @@ def train_model(
         Trained model
     """
     import wandb
+    from wandb.sdk.wandb_run import Run as WandbRun
 
     log.info(f'Training with: {[r.name for r in regularizers]}')
 
@@ -84,15 +94,19 @@ def train_model(
         log_every_n_steps=min(50, len(train_loader)),
     )
 
-    print(f'max_steps: {len(dopesheet)}, train_loader length: {len(train_loader)}')
+    log.info(f'max_steps: {len(dopesheet)}, train_loader length: {len(train_loader)}')
 
     # Train the model
     try:
         trainer.fit(training_module, train_loader, val_loader)
+        experiment = logger.experiment
+        url = experiment.url
+        assert isinstance(experiment, WandbRun) and url is not None
+        summary = {k: experiment.summary[k] for k in experiment.summary.keys()}
     finally:
         wandb.finish()
 
-    return model
+    return _Result(model=model, id_=experiment.id, url=url, summary=summary)
 
 
 def infer_with_latent_capture(

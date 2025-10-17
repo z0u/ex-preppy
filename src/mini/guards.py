@@ -1,8 +1,7 @@
 import inspect
 from contextlib import contextmanager
 from functools import wraps
-from typing import ParamSpec, TypeVar, cast
-from typing import overload
+from typing import ParamSpec, TypeVar, cast, overload
 
 from mini.types import ExceptionInfo, Guard, GuardContext, GuardContextFn, GuardExc, GuardFn, GuardFnExc, RemoteFunction
 

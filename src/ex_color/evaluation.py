@@ -2,23 +2,22 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Literal, Sequence
+from typing import Any, Callable, Literal, Sequence
+from warnings import deprecated
 
 import numpy as np
 import pandas as pd
+import skimage as ski
 import torch
 import torch.nn as nn
+from scipy.stats import pearsonr
 from torch.nn import functional as F
 
-from ex_color.data import ColorCube, arange_cyclic
+from ex_color.data import ColorCube, arange_cyclic, hsv_similarity
 from ex_color.data.color import get_named_colors_df
 from ex_color.intervention.intervention import InterventionConfig
 from ex_color.model import CNColorMLP
 from ex_color.workflow import infer_with_latent_capture
-import skimage as ski
-from scipy.stats import pearsonr
-
-from ex_color.data import hsv_similarity
 
 log = logging.getLogger(__name__)
 
@@ -168,7 +167,10 @@ def hstack_named_results(baseline: TestSet, *res: TestSet) -> pd.DataFrame:
 
 
 def error_correlation(
-    data: ColorCube | TestSet, anchor_hsv: tuple[float, float, float], *, power: float
+    data: ColorCube | TestSet,
+    anchor_hsv: tuple[float, float, float],
+    *,
+    power: float,
 ) -> tuple[float, float]:
     """Compute correlation between similarity to anchor and reconstruction error."""
     # Use loss_cube because its coordinates are RGB (by convention) so it is unbiased
@@ -177,3 +179,130 @@ def error_correlation(
     cube = cube.assign(similarity=hsv_similarity(cube['hsv'], np.array(anchor_hsv), hemi=True, mode='angular') ** power)
     corr, p_value = pearsonr(cube['similarity'].flatten(), cube['MSE'].flatten())
     return float(corr), float(p_value)
+
+
+class EvaluationPlan:
+    def __init__(
+        self,
+        tags: set[str],
+        transform: Callable[[CNColorMLP], CNColorMLP],
+        interventions: Sequence[InterventionConfig],
+    ):
+        self.tags = tags
+        self.interventions = interventions
+        self.transform = transform
+
+    def evaluate(self, model: CNColorMLP, data: ColorCube) -> ColorCube:
+        return evaluate_model_on_cube(model, self.interventions, data)
+
+
+class ScoreByHSVSimilarity:
+    def __init__(
+        self,
+        evaluation_plan: EvaluationPlan,
+        anchor_hsv: tuple[float, float, float],
+        power: float,
+        cube_subdivisions: int,
+    ):
+        self.evaluation_plan = evaluation_plan
+        self.anchor_hsv = anchor_hsv
+        self.power = power
+        coords = np.linspace(0, 1, cube_subdivisions)
+        self.val_data = ColorCube.from_rgb(r=coords, g=coords, b=coords)
+
+    def __call__(self, model: CNColorMLP) -> float:
+        transformed_model = self.evaluation_plan.transform(model)
+        results = evaluate_model_on_cube(transformed_model, self.evaluation_plan.interventions, self.val_data)
+        r, p_value = error_correlation(results, self.anchor_hsv, power=self.power)
+        del p_value
+        return r**2
+
+
+@deprecated('Use Result instead')
+@dataclass
+class BaseResult:
+    score: float
+
+    def __gt__(self, other: BaseResult | None) -> bool:
+        if other is None:
+            return True
+        return self.score > other.score
+
+
+@dataclass
+class Result:
+    seed: int
+    checkpoint_key: str
+    url: str
+    summary: dict[str, Any]
+    score: float
+
+    def to_row(self) -> dict[str, Any]:
+        row = {
+            'seed': self.seed,
+            'wandb url': self.url,
+            'score': self.score,
+        }
+        return row
+
+
+def results_to_dataframe(results: Sequence[Result]):
+    assert results, 'No results to summarize'
+    any_run = results[0]
+
+    summary_cols = [
+        k
+        for k in any_run.summary.keys()  #
+        if k == '_runtime' or k.startswith('labels/n') or k.startswith('val_')
+    ]
+    result_cols = list(any_run.to_row().keys())
+
+    df = pd.DataFrame(
+        [
+            tuple(r.to_row().values()) + tuple(r.summary.get(k, None) for k in summary_cols)  #
+            for r in results
+        ],
+        columns=result_cols + summary_cols,
+    )
+
+    return df
+
+
+def pareto_front(df: pd.DataFrame, minimize: list[str], maximize: list[str]) -> pd.DataFrame:
+    """
+    Return Pareto-optimal (non-dominated) rows from a DataFrame.
+
+    A solution dominates another if it's better-or-equal in all objectives
+    and strictly better in at least one.
+
+    Warning: This is an O(n^2) algorithm and may be slow for large DataFrames.
+    """
+    n = len(df)
+    dominated = np.zeros(n, dtype=bool)
+
+    # Extract values once for efficiency
+    min_vals = df[minimize].values if minimize else np.empty((n, 0))
+    max_vals = df[maximize].values if maximize else np.empty((n, 0))
+
+    for i in range(n):
+        if dominated[i]:
+            continue
+
+        for j in range(n):
+            if i == j or dominated[j]:
+                continue
+
+            # Does j dominate i?
+            # j dominates i if: j ≤ i (minimize) AND j ≥ i (maximize) AND strict in ≥1
+            min_leq = np.all(min_vals[j] <= min_vals[i])
+            max_geq = np.all(max_vals[j] >= max_vals[i])
+
+            if min_leq and max_geq:
+                min_strict = np.any(min_vals[j] < min_vals[i])
+                max_strict = np.any(max_vals[j] > max_vals[i])
+
+                if min_strict or max_strict:
+                    dominated[i] = True
+                    break
+
+    return df[~dominated].copy()

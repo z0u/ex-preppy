@@ -23,3 +23,10 @@ def duration(d: str) -> float:
         value, unit = match.groups()
         return float(value) * units[unit]
     raise ValueError(f'Invalid duration format: {d}')
+
+
+ms = millisecond = milliseconds = 0.001
+s = second = seconds = 1
+min_ = minute = minutes = 60
+h = hour = hours = 3600
+d = day = days = 86400

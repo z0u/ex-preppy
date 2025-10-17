@@ -149,15 +149,23 @@ class LabelProportionCallback(Callback):
         # Log total proportions over the entire training
         if self._total_counts <= 0:
             return
-        metrics_ = {name: s / max(1, self._total_counts) for name, s in sorted(self._total_label_sums.items())}
-        metrics = {f'{self.prefix}/{name}': v for name, v in metrics_.items()}
+        # Counts
+        metrics_n = {
+            f'{self.prefix}/n/{name}': v  #
+            for name, v in sorted(self._total_label_sums.items())
+        }
+        # Proportions
+        metrics_p = {
+            f'{self.prefix}/p/{name}': v / max(1, self._total_counts)  #
+            for name, v in sorted(self._total_label_sums.items())
+        }
 
         @rank_zero_only
         def _log():
             if trainer.logger:
-                trainer.logger.log_metrics(metrics)
+                trainer.logger.log_metrics(metrics_n | metrics_p | {f'{self.prefix}/n_total': self._total_counts})
             # Format: label: count (percentage)
-            human_readable = [f'{k}: {int(self._total_label_sums[k])} ({v:.3%})' for k, v in metrics_.items()]
+            human_readable = [f'{k}: {v}' for k, v in metrics_n.items()]
             log.info('Label frequencies (n=%d): %s', self._total_counts, ', '.join(human_readable))
 
         _log()

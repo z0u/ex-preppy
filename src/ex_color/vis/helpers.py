@@ -169,6 +169,33 @@ class NbViz:
         corr, p_value = error_correlation(cube, (0, 1, 1), power=power)
         print(f'MSE,sim{sup(power)} {",".join(tag_list)}: r = {corr:.2f}, R²: {corr**2:.2f}, p = {p_value:.3g}')
 
+    def plot_boxplot(
+        self,
+        data: Sequence[float] | pd.Series,
+        *,
+        figsize: tuple[int, int] = (4, 1),
+        ylabel: str,
+        tags: Collection[str] | None = None,
+        xlim: tuple[float | None, float | None] = (None, None),
+    ):
+        """
+        Create a horizontal box plot for a single variable.
+
+        Args:
+            data: Sequence of values to plot.
+            figsize: Figure size as (width, height).
+            ylabel: Label for the y-axis (typically a LaTeX-formatted metric name).
+            tags: Optional tags to include in the filename.
+            xlim: Tuple of (min, max) for x-axis limits. Use None for auto.
+        """
+        tag_list = list(tags) if tags else []
+
+        with displayer_mpl(
+            f'large-assets/ex-{self.nbid}-boxplot-{tags_for_file(tag_list)}.png',
+            alt_text=f"""Horizontal box plot showing the distribution of {ylabel}.""",
+        ) as show:
+            show(lambda: draw_boxplot(data, figsize=figsize, ylabel=ylabel, xlim=xlim))
+
     def tab_error_vs_color(self, *res: TestSet):
         df = hstack_named_results(*res)
         display(ColorTableHtmlFormatter().style(df))
@@ -199,6 +226,28 @@ class NbViz:
             label='tab:placeholder',
         )
         display({'text/markdown': f'```latex\n{latex}\n```', 'text/plain': latex}, raw=True)
+
+
+def draw_boxplot(
+    data: Sequence[float] | pd.Series,
+    *,
+    figsize: tuple[int, int] = (4, 1),
+    ylabel: str,
+    xlim: tuple[float | None, float | None],
+):
+    import matplotlib.pyplot as plt
+    # from matplotlib.ticker import ScalarFormatter
+
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.boxplot(data, vert=False, widths=[figsize[0] / 16])
+    ax.set_yticklabels([ylabel])
+    ax.set_xlim(*xlim)
+    # # Force scientific notation to ensure consistent plot width
+    # formatter = ScalarFormatter(useMathText=True)
+    # formatter.set_powerlimits((0, 0))  # Use scientific notation outside this range
+    # ax.xaxis.set_major_formatter(formatter)
+    ax.ticklabel_format(style='sci', axis='x', scilimits=(0, 0), useMathText=True)
+    return fig
 
 
 class ThemedAnnotation:

@@ -80,15 +80,20 @@ def freeze(
 
 def uv_freeze(
     *packages: str,
-    groups: list[str] | None = None,
-    not_groups: list[str] | None = None,
-    only_groups: list[str] | None = None,
+    groups: str | list[str] | None = None,
+    not_groups: str | list[str] | None = None,
+    only_groups: str | list[str] | None = None,
     all_groups: bool = False,
-    indexes: list[str] | None = None,
+    indexes: str | list[str] | None = None,
     python_version: str | None = None,
     python_platform: str | None = None,
     only_run_locally: bool = True,
 ) -> list[str]:
+    groups = [groups] if isinstance(groups, str) else groups
+    not_groups = [not_groups] if isinstance(not_groups, str) else not_groups
+    only_groups = [only_groups] if isinstance(only_groups, str) else only_groups
+    indexes = [indexes] if isinstance(indexes, str) else indexes
+
     if only_run_locally and not modal.is_local():
         log.info('Skipping package-freezing: not running locally')
         return []
@@ -101,7 +106,7 @@ def uv_freeze(
     opts: list[str | tuple[str, ...]] = []
     opts += [('--package', pkg) for pkg in packages]
     opts += [('--group', g) for g in (groups or [])]
-    opts += [('--not-group', g) for g in (not_groups or [])]
+    opts += [('--no-group', g) for g in (not_groups or [])]
     opts += [('--only-group', g) for g in (only_groups or [])]
     opts += [('--index', i) for i in (indexes or [])]
     if all_groups:
@@ -116,7 +121,7 @@ def uv_freeze(
     flat_opts = [opt for sublist in opts for opt in sublist]
 
     result = subprocess.run(cmd + flat_opts, text=True, capture_output=True, check=True)
-    selected_deps = parse_uv_tree_output(result.stdout, ignore_first=bool(groups))
+    selected_deps = parse_uv_tree_output(result.stdout, ignore_first=True)
     log.info(f'Selected {len(selected_deps)} of {len(all_deps)} dependencies')
     log.debug('Dependencies: %s', selected_deps)
     return selected_deps
