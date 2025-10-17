@@ -176,7 +176,8 @@ class NbViz:
         figsize: tuple[int, int] = (4, 1),
         ylabel: str,
         tags: Collection[str] | None = None,
-        xlim: tuple[float | None, float | None] = (None, None),
+        xlim: tuple[float | None, float | None] | None = None,
+        log_scale: bool = False,
     ):
         """
         Create a horizontal box plot for a single variable.
@@ -187,6 +188,7 @@ class NbViz:
             ylabel: Label for the y-axis (typically a LaTeX-formatted metric name).
             tags: Optional tags to include in the filename.
             xlim: Tuple of (min, max) for x-axis limits. Use None for auto.
+            log_scale: Whether to use a logarithmic scale for the x-axis.
         """
         tag_list = list(tags) if tags else []
 
@@ -194,7 +196,7 @@ class NbViz:
             f'large-assets/ex-{self.nbid}-boxplot-{tags_for_file(tag_list)}.png',
             alt_text=f"""Horizontal box plot showing the distribution of {ylabel}.""",
         ) as show:
-            show(lambda: draw_boxplot(data, figsize=figsize, ylabel=ylabel, xlim=xlim))
+            show(lambda: draw_boxplot(data, figsize=figsize, ylabel=ylabel, xlim=xlim, log_scale=log_scale))
 
     def tab_error_vs_color(self, *res: TestSet):
         df = hstack_named_results(*res)
@@ -233,20 +235,23 @@ def draw_boxplot(
     *,
     figsize: tuple[int, int] = (4, 1),
     ylabel: str,
-    xlim: tuple[float | None, float | None],
+    xlim: tuple[float | None, float | None] | None = None,
+    log_scale: bool = False,
 ):
     import matplotlib.pyplot as plt
-    # from matplotlib.ticker import ScalarFormatter
 
     fig, ax = plt.subplots(figsize=figsize)
     ax.boxplot(data, vert=False, widths=[figsize[0] / 16])
-    ax.set_yticklabels([ylabel])
-    ax.set_xlim(*xlim)
-    # # Force scientific notation to ensure consistent plot width
-    # formatter = ScalarFormatter(useMathText=True)
-    # formatter.set_powerlimits((0, 0))  # Use scientific notation outside this range
-    # ax.xaxis.set_major_formatter(formatter)
-    ax.ticklabel_format(style='sci', axis='x', scilimits=(0, 0), useMathText=True)
+    if not ylabel:
+        ax.set_yticks([])
+    else:
+        ax.set_yticklabels([ylabel])
+    if log_scale:
+        ax.set_xscale('log')
+    # else:
+    #     ax.ticklabel_format(style='sci', axis='x', scilimits=(0, 0), useMathText=True)
+    if xlim is not None:
+        ax.set_xlim(xlim)
     return fig
 
 
