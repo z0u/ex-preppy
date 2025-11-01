@@ -202,7 +202,7 @@ class NbViz:
         df = hstack_named_results(*res)
         display(ColorTableHtmlFormatter().style(df))
 
-    def tab_error_vs_color_latex(self, baseline: TestSet, *res: TestSet):
+    def tab_error_vs_color_latex(self, baseline: TestSet | pd.DataFrame, *res: TestSet):
         """
         Create a LaTeX table of results across several experiments.
 

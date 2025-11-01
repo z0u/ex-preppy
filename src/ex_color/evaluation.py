@@ -146,7 +146,7 @@ def evaluate_model_on_named_colors(
     return test_data.assign(recon=y_tuples, MSE=per_color_loss.numpy())
 
 
-def hstack_named_results(baseline: TestSet, *res: TestSet) -> pd.DataFrame:
+def hstack_named_results(baseline: TestSet | pd.DataFrame, *res: TestSet) -> pd.DataFrame:
     """
     Create a table of results across several experiments.
 
@@ -155,8 +155,11 @@ def hstack_named_results(baseline: TestSet, *res: TestSet) -> pd.DataFrame:
     baseline TestSet, '{tag}' is the 'MSE' from each subsequent TestSet, and
     '{tag}-delta' is the difference between that 'MSE' and the baseline.
     """
+    baseline = baseline.named_colors if isinstance(baseline, TestSet) else baseline
     names = [' '.join(r.tags) for r in res]
-    df = baseline.named_colors[['name', 'rgb', 'hsv', 'MSE']].rename(columns={'MSE': 'baseline'})
+    df = baseline[['name', 'rgb', 'hsv', 'MSE']].rename(columns={'MSE': 'baseline'})
+    if 'similarity-metric' in baseline.columns:
+        df['similarity-metric'] = baseline['similarity-metric']
     for name, r in zip(names, res, strict=True):
         df = df.merge(
             r.named_colors[['name', 'MSE']].rename(columns={'MSE': name}),
