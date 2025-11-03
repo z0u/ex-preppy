@@ -184,6 +184,20 @@ def error_correlation(
     return float(corr), float(p_value)
 
 
+def vibrancy_error_correlation(
+    data: ColorCube | TestSet,
+    *,
+    power: float,
+) -> tuple[float, float]:
+    """Compute correlation between vibrancy (saturation * value) and reconstruction error."""
+    # Use loss_cube because its coordinates are RGB (by convention) so it is unbiased
+    cube = data.loss_cube if isinstance(data, TestSet) else data
+    cube = cube.assign(hsv=ski.color.rgb2hsv(cube['color']))
+    vibrancy = (cube['hsv'][..., 1] * cube['hsv'][..., 2]) ** power
+    corr, p_value = pearsonr(vibrancy.flatten(), cube['MSE'].flatten())
+    return float(corr), float(p_value)
+
+
 class EvaluationPlan:
     def __init__(
         self,
@@ -217,6 +231,26 @@ class ScoreByHSVSimilarity:
         transformed_model = self.evaluation_plan.transform(model)
         results = evaluate_model_on_cube(transformed_model, self.evaluation_plan.interventions, self.val_data)
         r, p_value = error_correlation(results, self.anchor_hsv, power=self.power)
+        del p_value
+        return r**2
+
+
+class ScoreByVibrancy:
+    def __init__(
+        self,
+        evaluation_plan: EvaluationPlan,
+        power: float,
+        cube_subdivisions: int,
+    ):
+        self.evaluation_plan = evaluation_plan
+        self.power = power
+        coords = np.linspace(0, 1, cube_subdivisions)
+        self.val_data = ColorCube.from_rgb(r=coords, g=coords, b=coords)
+
+    def __call__(self, model: CNColorMLP) -> float:
+        transformed_model = self.evaluation_plan.transform(model)
+        results = evaluate_model_on_cube(transformed_model, self.evaluation_plan.interventions, self.val_data)
+        r, p_value = vibrancy_error_correlation(results, power=self.power)
         del p_value
         return r**2
 

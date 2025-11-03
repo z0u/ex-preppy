@@ -169,6 +169,29 @@ class NbViz:
         corr, p_value = error_correlation(cube, (0, 1, 1), power=power)
         print(f'MSE,sim{sup(power)} {",".join(tag_list)}: r = {corr:.2f}, R²: {corr**2:.2f}, p = {p_value:.3g}')
 
+    def plot_error_vs_vibrancy(
+        self,
+        data: ColorCube | TestSet,
+        *,
+        tags: Collection[str] | None = None,
+        power: float,
+    ):
+        """Plot reconstruction error vs vibrancy (saturation * value)."""
+        from ex_color.vis.plot_similarity import scatter_vibrancy_vs_error
+        from ex_color.evaluation import vibrancy_error_correlation
+
+        tag_list = list(tags) if tags else list(data.tags) if isinstance(data, TestSet) else []
+        cube = data if isinstance(data, ColorCube) else data.latent_cube
+
+        with displayer_mpl(
+            f'large-assets/ex-{self.nbid}-error-vs-vibrancy-{tags_for_file(tag_list)}.png',
+            alt_text="""Scatter plot showing reconstruction error versus vibrancy. Each point represents a color, with its position on the x-axis indicating how vibrant (saturated and bright) it is, and its position on the y-axis indicating the reconstruction error (mean squared error) for that color. The points are colored according to their actual color values.""",
+        ) as show:
+            show(lambda theme: scatter_vibrancy_vs_error(cube, theme=theme, power=power))
+
+        corr, p_value = vibrancy_error_correlation(cube, power=power)
+        print(f'MSE,vib{sup(power)} {",".join(tag_list)}: r = {corr:.2f}, R²: {corr**2:.2f}, p = {p_value:.3g}')
+
     def plot_boxplot(
         self,
         data: Sequence[float] | pd.Series,

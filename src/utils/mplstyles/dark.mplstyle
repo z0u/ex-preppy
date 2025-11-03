@@ -20,3 +20,8 @@ ytick.labelcolor: "#fff"
 text.color: "#fff"
 axes.labelcolor: "#fff"
 axes.edgecolor: "#fff5"
+
+boxplot.boxprops.color: "#fff"
+boxplot.flierprops.color: "#fff"
+boxplot.whiskerprops.color: "#fff"
+boxplot.capprops.color: "#fff"

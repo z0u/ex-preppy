@@ -24,5 +24,5 @@ def sup(num: float, *, precision: int = 2) -> str:
     if isinstance(num, int):
         num_str = str(num)
     else:
-        num_str = f'{num:.{precision}:f}'.rstrip('0').rstrip('.')
+        num_str = f'{num:.{precision}f}'.rstrip('0').rstrip('.')
     return ''.join(_supermap.get(c, c) for c in num_str)
