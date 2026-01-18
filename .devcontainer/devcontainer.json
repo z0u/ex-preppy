@@ -5,17 +5,12 @@
   "hostRequirements": {},
   "features": {},
   "mounts": [
-    // Podman layer cache
-    "source=podman-storage,target=/home/vscode/.local/share/containers,type=volume",
+    "source=${localWorkspaceFolderBasename}-local,target=/home/vscode/.local,type=volume",
     // Use a persistent volume for the UV cache; can be shared with other containers
     "source=uv-cache,target=/home/vscode/.cache/uv,type=volume",
     // Use a persistent volume for the virtual environment
     "source=${localWorkspaceFolderBasename}-venv,target=${containerWorkspaceFolder}/.venv,type=volume"
   ],
-  // Privileged mode to allow running Podman and Docker containers
-  // "runArgs": [
-  //   "--privileged"
-  // ],
   "containerEnv": {
     "UV_CACHE_DIR": "/home/vscode/.cache/uv",
     // Copy instead of hardlinking due to separate volumes

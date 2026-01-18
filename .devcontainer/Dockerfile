@@ -6,8 +6,6 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
         direnv \
         git-lfs \
         tig \
-    && apt-get -y install \
-        podman \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
